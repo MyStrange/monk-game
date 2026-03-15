@@ -105,7 +105,7 @@ const redMonk = { x:1120, y:GROUND_Y-MONK_H };
 
 // ── CLICK ZONES (BG space 2000×1116) ─────────────────────────────────────────
 const ZONES = {
-  statue: { x:750,  y:380, w:170, h:160 },  // Buddha face
+  statue: { x:780,  y:260, w:130, h:120 },  // Buddha face (head area)
   tree:   { x:1600, y:300, w:200, h:580 },  // Right tree
   cat:    { x:cat.x,     y:cat.y,     w:CAT_W,  h:CAT_H  },
   monk:   { x:redMonk.x, y:redMonk.y, w:MONK_W, h:MONK_H },
