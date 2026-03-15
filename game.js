@@ -107,7 +107,7 @@ const redMonk = { x:1120, y:GROUND_Y-MONK_H };
 // These define where the player can click to interact.
 // To adjust a zone: change x/y/w/h in BG-space coordinates (image is 2000×1116).
 const ZONES = {
-  statue: { x:760,  y:420, w:160, h:140 },  // Buddha face only
+  statue: { x:750,  y:380, w:170, h:160 },  // Buddha face only
   tree:   { x:1600, y:300, w:200, h:580 },  // Right tree trunk
   cat:    { x:cat.x,     y:cat.y,     w:CAT_W,  h:CAT_H  },
   monk:   { x:redMonk.x, y:redMonk.y, w:MONK_W, h:MONK_H },
@@ -446,14 +446,22 @@ bCanvas.addEventListener('mousemove',e=>{
 });
 function onBuddhaTap(cx,cy){
   if(activeScreen!=='buddha'||wishPlaying)return;
-  const jarSel=inventory.find(i=>i&&i.id==='jar')&&getSelectedItem()?.id==='jar';
+  // Светлячков можно ловить только если в инвентаре есть банка
+  if(!inventory.find(i=>i&&i.id==='jar'))return;
   for(const f of bFlies){
     if(!f.alive)continue;
     if(Math.sqrt((f.x-cx)**2+(f.y-cy)**2)<f.sz*5+14){
-      if(jarSel){f.alive=false;jarCaughtCount++;caughtNum.textContent=jarCaughtCount;caughtInd.style.display='block';showBMsg(`🫙 Светлячок в банке! Всего: ${jarCaughtCount}`);return;}
-      f.alive=false;catchCount++;
-      const entry=MSGS.find(m=>m.at===catchCount);
-      if(entry){if(catchCount===10){showBMsg(entry.text,2500);setTimeout(startWishAnim,2700);}else showBMsg(entry.text);}
+      f.alive=false;
+      jarCaughtCount++;
+      caughtNum.textContent=jarCaughtCount;
+      caughtInd.style.display='block';
+      // Обновить лейбл банки — показать точки как пойманных светлячков
+      const jarIdx=inventory.findIndex(i=>i&&i.id==='jar');
+      if(jarIdx>=0){
+        const dots='·'.repeat(Math.min(jarCaughtCount,9))+(jarCaughtCount>9?'+':'');
+        inventory[jarIdx].name='банка '+dots;
+        renderAllHotbars();
+      }
       return;
     }
   }
