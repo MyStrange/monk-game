@@ -56,7 +56,7 @@ function renderJarIcon(item) {
   for (let i = 0; i < n; i++) {
     const [x, y] = positions[i];
     const dur = (0.7 + (i*0.19)%0.9).toFixed(2);
-    dots.push(`<rect x="${x}" y="${y}" width="2" height="2" fill="#aaff66"><animate attributeName="opacity" values="0.2;1;0.2" dur="${dur}s" repeatCount="indefinite"/></rect>`);
+    dots.push(`<rect x="${x}" y="${y}" width="2" height="2" fill="#ffe066"><animate attributeName="opacity" values="0.2;1;0.2" dur="${dur}s" repeatCount="indefinite"/></rect>`);
   }
   return `<svg width="30" height="34" viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">
     <rect x="4" y="6" width="22" height="24" rx="3" fill="rgba(160,220,150,0.15)" stroke="rgba(140,210,130,0.65)" stroke-width="1.5"/>
@@ -410,7 +410,7 @@ function startWishAnim(jarRect, onDone){
       sz, age:0,
       delay:Math.floor(i/3)*4,
       life:200+Math.random()*80,
-      col: i%3===0?[180,255,120]:i%3===1?[255,240,100]:[140,220,255],
+      col: i%3===0?[255,220,60]:i%3===1?[255,248,180]:[200,255,120],
     };
   });
 
@@ -427,7 +427,7 @@ function startWishAnim(jarRect, onDone){
       const rr=af*4;
       const ra=Math.max(0,(1-af/60)*0.4);
       wCtx.save();wCtx.globalAlpha=ra;
-      wCtx.strokeStyle='rgba(180,255,120,1)';wCtx.lineWidth=2;
+      wCtx.strokeStyle='rgba(255,230,80,1)';wCtx.lineWidth=2;
       wCtx.beginPath();wCtx.arc(ox,oy,rr,0,Math.PI*2);wCtx.stroke();
       wCtx.restore();
     }
@@ -436,7 +436,7 @@ function startWishAnim(jarRect, onDone){
       const rr=(af-10)*5;
       const ra=Math.max(0,(1-(af-10)/70)*0.25);
       wCtx.save();wCtx.globalAlpha=ra;
-      wCtx.strokeStyle='rgba(255,240,100,1)';wCtx.lineWidth=1.5;
+      wCtx.strokeStyle='rgba(255,255,180,1)';wCtx.lineWidth=1.5;
       wCtx.beginPath();wCtx.arc(ox,oy,rr,0,Math.PI*2);wCtx.stroke();
       wCtx.restore();
     }
@@ -542,19 +542,19 @@ function startWishAnim(jarRect, onDone){
     const flashFlicker=Math.abs(Math.sin(af*0.8));
     if(af<20){
       wCtx.globalAlpha=(1-af/20)*0.55*flashFlicker;
-      wCtx.fillStyle='rgba(140,255,80,1)';
+      wCtx.fillStyle='rgba(255,230,80,1)';
       wCtx.fillRect(0,0,bW,bH);wCtx.globalAlpha=1;
     }
     // Second flash
     if(af>=25&&af<45){
       wCtx.globalAlpha=(1-(af-25)/20)*0.35*Math.abs(Math.sin(af*1.2));
-      wCtx.fillStyle='rgba(255,240,60,1)';
+      wCtx.fillStyle='rgba(255,248,140,1)';
       wCtx.fillRect(0,0,bW,bH);wCtx.globalAlpha=1;
     }
     // Third subtle flash later
     if(af>=60&&af<75){
       wCtx.globalAlpha=(1-(af-60)/15)*0.2;
-      wCtx.fillStyle='rgba(180,255,140,1)';
+      wCtx.fillStyle='rgba(220,255,160,1)';
       wCtx.fillRect(0,0,bW,bH);wCtx.globalAlpha=1;
     }
 
@@ -574,6 +574,7 @@ function startWishAnim(jarRect, onDone){
 
 function animBuddha(){
   if(activeScreen!=='buddha')return;
+  if(wishPlaying){requestAnimationFrame(animBuddha);return;}
   bCtx.clearRect(0,0,bW,bH);
   bFlies.forEach(f=>{
     if(!f.alive)return;
