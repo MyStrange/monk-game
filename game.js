@@ -30,11 +30,11 @@ function renderHotbar() {
     const div = document.createElement('div');
     const glowing = item.id === 'jar' && item.glowing;
     div.className = 'hotbar-slot' + (i === selectedSlot ? ' selected' : '') + (glowing ? ' jar-glowing' : '');
-    // Draw jar with fireflies if caught any
+    // Jar with fireflies uses SVG, others use emoji. No text label.
     if (item.id === 'jar' && item.caught > 0) {
-      div.innerHTML = `<span class="slot-icon">${renderJarIcon(item)}</span><span class="slot-label">${item.label||item.name}</span>`;
+      div.innerHTML = `<span class="slot-icon">${renderJarIcon(item)}</span>`;
     } else {
-      div.innerHTML = `<span class="slot-icon">${item.icon}</span><span class="slot-label">${item.label||item.name}</span>`;
+      div.innerHTML = `<span class="slot-icon">${item.icon}</span>`;
     }
     div.onclick = () => {
       selectedSlot = selectedSlot === i ? -1 : i;
@@ -47,19 +47,21 @@ function renderHotbar() {
 }
 
 function renderJarIcon(item) {
-  // Build SVG jar with tiny firefly squares inside
   const n = Math.min(item.caught, 9);
+  // Pre-defined chaotic positions inside jar (within 6-26 x, 10-28 y)
+  const positions = [
+    [9,22],[18,15],[13,26],[7,17],[21,24],[15,13],[11,19],[20,20],[8,27]
+  ];
   const dots = [];
-  // Place dots in 3x3 grid inside jar
   for (let i = 0; i < n; i++) {
-    const col = i % 3, row = Math.floor(i / 3);
-    const x = 8 + col * 8, y = 14 + row * 7;
-    dots.push(`<rect x="${x}" y="${y}" width="4" height="4" fill="#aaff66" opacity="0.9"><animate attributeName="opacity" values="0.5;1;0.5" dur="${1+Math.random()*0.8}s" repeatCount="indefinite"/></rect>`);
+    const [x, y] = positions[i];
+    const dur = (0.7 + (i*0.19)%0.9).toFixed(2);
+    dots.push(`<rect x="${x}" y="${y}" width="3" height="3" fill="#aaff66"><animate attributeName="opacity" values="0.3;1;0.3" dur="${dur}s" repeatCount="indefinite"/></rect>`);
   }
   return `<svg width="30" height="34" viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="6" width="22" height="24" rx="3" fill="rgba(160,220,150,0.18)" stroke="rgba(140,210,130,0.7)" stroke-width="1.5"/>
+    <rect x="4" y="6" width="22" height="24" rx="3" fill="rgba(160,220,150,0.15)" stroke="rgba(140,210,130,0.65)" stroke-width="1.5"/>
     <rect x="8" y="3" width="14" height="4" rx="1" fill="rgba(80,130,65,0.9)"/>
-    <rect x="6" y="7" width="4" height="18" rx="1" fill="rgba(200,255,180,0.18)"/>
+    <rect x="6" y="7" width="3" height="18" rx="1" fill="rgba(200,255,180,0.15)"/>
     ${dots.join('')}
   </svg>`;
 }
@@ -340,29 +342,32 @@ function showBMsg(text,dur=3200){clearTimeout(bMsgTimer);bMsgEl.textContent=text
 
 bCanvas.addEventListener('mousemove',e=>{
   if(wishPlaying){bCanvas.style.cursor='default';return;}
-  const jar=getItem('jar');
-  if(!jar){bCanvas.style.cursor='default';return;}
+  const sel=getSelectedItem();
+  if(!sel||sel.id!=='jar'){bCanvas.style.cursor='default';return;}
   const r=bCanvas.getBoundingClientRect(),cx=e.clientX-r.left,cy=e.clientY-r.top;
   bCanvas.style.cursor=bFlies.some(f=>f.alive&&Math.sqrt((f.x-cx)**2+(f.y-cy)**2)<f.sz*5+14)?'pointer':'default';
 });
 
 function onBuddhaTap(cx,cy){
   if(activeScreen!=='buddha'||wishPlaying)return;
-  const jar=getItem('jar');
-  if(!jar)return;
+  // Jar must be SELECTED in hotbar to catch fireflies
+  const sel=getSelectedItem();
+  if(!sel||sel.id!=='jar')return;
+  const jar=sel;
   for(const f of bFlies){
     if(!f.alive)continue;
     if(Math.sqrt((f.x-cx)**2+(f.y-cy)**2)<f.sz*5+14){
       f.alive=false;
       jar.caught=(jar.caught||0)+1;
-      jar.label='банка '+'·'.repeat(Math.min(jar.caught,9));
       renderHotbar();
       if(jar.caught>=10){
         showBMsg('✦ Загадай желание...',2200);
-        setTimeout(()=>startWishAnim(()=>{
+        // Get hotbar slot position for animation origin
+        const jarSlotEl=document.querySelector('#hotbar .hotbar-slot.selected');
+        const jarRect=jarSlotEl?jarSlotEl.getBoundingClientRect():null;
+        setTimeout(()=>startWishAnim(jarRect,()=>{
           jar.glowing=true;
           jar.icon='🫙';
-          jar.label='банка ✦';
           jar.caught=0;
           jar.description='Светляковская жижка. Внутри мерцает мягкий зелёный свет — след от десяти пойманных светлячков.';
           renderHotbar();
@@ -378,124 +383,151 @@ bCanvas.addEventListener('click',e=>{const r=bCanvas.getBoundingClientRect();onB
 bCanvas.addEventListener('touchend',e=>{e.preventDefault();if(!e.changedTouches.length)return;const r=bCanvas.getBoundingClientRect();onBuddhaTap(e.changedTouches[0].clientX-r.left,e.changedTouches[0].clientY-r.top);},{passive:false});
 
 // ── EPIC WISH ANIMATION ────────────────────────────────────────────────────────
-function startWishAnim(onDone){
+function startWishAnim(jarRect, onDone){
   wishPlaying=true;bCanvas.style.pointerEvents='none';wishCanvas.style.display='block';
+  bFlies.forEach(f=>f.alive=false);
 
-  // Collect alive firefly positions as starting points + random others
-  const startPositions=bFlies.map(f=>({x:f.x,y:f.y}));
-  bFlies.forEach(f=>f.alive=false); // hide them from the regular anim
+  // Origin: center of the jar hotbar slot, converted to buddha canvas coords
+  const bRect=wishCanvas.getBoundingClientRect();
+  let ox=bW*0.5, oy=bH*0.85; // fallback: bottom center
+  if(jarRect){
+    ox=jarRect.left+jarRect.width/2-bRect.left;
+    oy=jarRect.top+jarRect.height/2-bRect.top;
+  }
 
-  // Create 20 large particles with beautiful trajectories
-  const particles=Array.from({length:20},(_,i)=>{
-    const sp=startPositions[i%startPositions.length]||{x:bW*0.3+Math.random()*bW*0.4,y:bH*0.5+Math.random()*bH*0.3};
-    // Spiral/arc trajectory: each firefly curves upward differently
-    const angle=-Math.PI*0.5 + (Math.random()-0.5)*Math.PI*0.8;
-    const speed=2.5+Math.random()*2;
+  // 30 particles, all burst from jar slot
+  const particles=Array.from({length:30},(_,i)=>{
+    const angle=-Math.PI*(0.2+Math.random()*0.6) + (Math.random()-0.5)*Math.PI*0.4;
+    const speed=3+Math.random()*4;
+    const sz=8+Math.random()*10;
     return{
-      x:sp.x, y:sp.y,
-      vx:Math.cos(angle)*speed*(0.6+Math.random()*0.8),
-      vy:Math.sin(angle)*speed - 1,
-      ax:(Math.random()-0.5)*0.08,  // gentle horizontal drift
-      ay:-0.04-Math.random()*0.03,  // gravity upward (floats up)
+      x:ox, y:oy,
+      vx:Math.cos(angle)*speed*(0.5+Math.random()),
+      vy:Math.sin(angle)*speed-1.5,
+      ax:(Math.random()-0.5)*0.06,
+      ay:-0.06-Math.random()*0.04,
       phase:Math.random()*Math.PI*2,
-      sz:6+Math.random()*8,         // larger particles
-      age:0,
-      delay:i*6,
-      life:180+Math.random()*60,
-      // dust trail particles
-      trail:[],
+      sz, age:0,
+      delay:Math.floor(i/3)*4,
+      life:200+Math.random()*80,
+      col: i%3===0?[180,255,120]:i%3===1?[255,240,100]:[140,220,255],
     };
   });
 
-  // Extra dust particles pool
   const dust=[];
-
+  const sparks=[];
   let af=0;
+
   (function aw(){
     af++;
     wCtx.clearRect(0,0,bW,bH);
 
+    // Expanding ring burst from origin
+    if(af<60){
+      const rr=af*4;
+      const ra=Math.max(0,(1-af/60)*0.4);
+      wCtx.save();wCtx.globalAlpha=ra;
+      wCtx.strokeStyle='rgba(180,255,120,1)';wCtx.lineWidth=2;
+      wCtx.beginPath();wCtx.arc(ox,oy,rr,0,Math.PI*2);wCtx.stroke();
+      wCtx.restore();
+    }
+    // Second ring
+    if(af>10&&af<80){
+      const rr=(af-10)*5;
+      const ra=Math.max(0,(1-(af-10)/70)*0.25);
+      wCtx.save();wCtx.globalAlpha=ra;
+      wCtx.strokeStyle='rgba(255,240,100,1)';wCtx.lineWidth=1.5;
+      wCtx.beginPath();wCtx.arc(ox,oy,rr,0,Math.PI*2);wCtx.stroke();
+      wCtx.restore();
+    }
+
     particles.forEach(p=>{
       if(af<p.delay)return;
-      p.phase+=0.12;
-      p.vx+=p.ax;
-      p.vy+=p.ay;
-      p.x+=p.vx;
-      p.y+=p.vy;
-      p.age++;
-
+      p.phase+=0.14;p.vx+=p.ax;p.vy+=p.ay;p.x+=p.vx;p.y+=p.vy;p.age++;
       const t=p.age/p.life;
-      const alpha=t<0.1?t/0.1:t>0.75?1-(t-0.75)/0.25:1;
-      const glow=0.5+0.5*Math.abs(Math.sin(p.phase));
-      const sz=p.sz*(1-t*0.3);
+      const alpha=t<0.08?t/0.08:t>0.7?1-(t-0.7)/0.3:1;
+      const glow=0.4+0.6*Math.abs(Math.sin(p.phase));
+      const sz=p.sz*(1-t*0.2);
+      const [cr,cg,cb]=p.col;
 
-      // Spawn dust at current position
-      if(p.age%3===0 && t<0.8){
+      // Spawn dust more frequently
+      if(p.age%2===0&&t<0.85){
         dust.push({
-          x:p.x+(Math.random()-0.5)*sz,
-          y:p.y+(Math.random()-0.5)*sz,
-          vx:(Math.random()-0.5)*0.8,
-          vy:-(0.3+Math.random()*0.5),
-          sz:1.5+Math.random()*2.5,
-          age:0,life:30+Math.random()*20,
-          col:Math.random()<0.5?'#aaff66':'#ffee88',
+          x:p.x+(Math.random()-0.5)*sz*1.5,
+          y:p.y+(Math.random()-0.5)*sz*1.5,
+          vx:(Math.random()-0.5)*1.2,
+          vy:-(0.2+Math.random()*0.6),
+          sz:1+Math.random()*3,
+          age:0,life:25+Math.random()*25,
+          cr,cg,cb,
         });
+        // Occasional spark
+        if(Math.random()<0.15){
+          sparks.push({x:p.x,y:p.y,vx:(Math.random()-0.5)*3,vy:-(1+Math.random()*2),age:0,life:12+Math.random()*10});
+        }
       }
 
-      // Draw glow halo
+      // Large glow halo
       wCtx.save();
-      wCtx.globalAlpha=alpha*glow*0.3;
-      const grad=wCtx.createRadialGradient(p.x,p.y,0,p.x,p.y,sz*3);
-      grad.addColorStop(0,'rgba(180,255,120,0.8)');
-      grad.addColorStop(0.4,'rgba(120,220,80,0.3)');
-      grad.addColorStop(1,'rgba(80,160,40,0)');
+      wCtx.globalAlpha=alpha*glow*0.35;
+      const grad=wCtx.createRadialGradient(p.x,p.y,0,p.x,p.y,sz*4);
+      grad.addColorStop(0,`rgba(${cr},${cg},${cb},0.9)`);
+      grad.addColorStop(0.5,`rgba(${cr},${cg},${cb},0.2)`);
+      grad.addColorStop(1,'rgba(0,0,0,0)');
       wCtx.fillStyle=grad;
-      wCtx.beginPath();wCtx.arc(p.x,p.y,sz*3,0,Math.PI*2);wCtx.fill();
+      wCtx.beginPath();wCtx.arc(p.x,p.y,sz*4,0,Math.PI*2);wCtx.fill();
       wCtx.restore();
 
-      // Draw core square (pixel art style)
+      // Core pixel square
       wCtx.save();
       wCtx.globalAlpha=alpha;
-      wCtx.fillStyle=`rgba(200,255,140,${glow.toFixed(2)})`;
+      wCtx.fillStyle=`rgba(${cr},${cg},${cb},${glow.toFixed(2)})`;
       wCtx.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);
       // Bright center
-      wCtx.fillStyle=`rgba(255,255,220,${(alpha*glow).toFixed(2)})`;
-      wCtx.fillRect(p.x-sz*0.2,p.y-sz*0.2,sz*0.4,sz*0.4);
+      wCtx.fillStyle=`rgba(255,255,240,${(alpha*glow*0.9).toFixed(2)})`;
+      wCtx.fillRect(p.x-sz*0.22,p.y-sz*0.22,sz*0.44,sz*0.44);
       wCtx.restore();
     });
 
-    // Draw and update dust
+    // Dust
     for(let i=dust.length-1;i>=0;i--){
-      const d=dust[i];
-      d.x+=d.vx;d.y+=d.vy;d.age++;
-      const dt=d.age/d.life;
-      if(dt>=1){dust.splice(i,1);continue;}
+      const d=dust[i];d.x+=d.vx;d.y+=d.vy;d.age++;
+      const dt=d.age/d.life;if(dt>=1){dust.splice(i,1);continue;}
       const da=dt<0.3?dt/0.3:1-dt;
-      wCtx.globalAlpha=da*0.85;
-      wCtx.fillStyle=d.col;
+      wCtx.globalAlpha=da*0.9;
+      wCtx.fillStyle=`rgba(${d.cr},${d.cg},${d.cb},1)`;
       wCtx.fillRect(d.x-d.sz/2,d.y-d.sz/2,d.sz,d.sz);
       wCtx.globalAlpha=1;
     }
-
-    // Screen flash at the start
-    if(af<20){
-      wCtx.globalAlpha=(1-af/20)*0.25;
-      wCtx.fillStyle='rgba(180,255,120,1)';
-      wCtx.fillRect(0,0,bW,bH);
-      wCtx.globalAlpha=1;
+    // Sparks
+    for(let i=sparks.length-1;i>=0;i--){
+      const s=sparks[i];s.x+=s.vx;s.y+=s.vy;s.vy+=0.1;s.age++;
+      if(s.age>=s.life){sparks.splice(i,1);continue;}
+      const sa=1-s.age/s.life;
+      wCtx.globalAlpha=sa;wCtx.fillStyle='rgba(255,255,200,1)';
+      wCtx.fillRect(s.x-1,s.y-1,2,2);wCtx.globalAlpha=1;
     }
 
-    const allDone=particles.every(p=>p.age>p.life||af<p.delay&&af>p.delay+10);
+    // Screen flash
+    if(af<15){
+      wCtx.globalAlpha=(1-af/15)*0.35;
+      wCtx.fillStyle='rgba(160,255,100,1)';
+      wCtx.fillRect(0,0,bW,bH);wCtx.globalAlpha=1;
+    }
+    // Second flash at af=30
+    if(af>=28&&af<40){
+      wCtx.globalAlpha=(1-(af-28)/12)*0.2;
+      wCtx.fillStyle='rgba(255,240,80,1)';
+      wCtx.fillRect(0,0,bW,bH);wCtx.globalAlpha=1;
+    }
+
     const maxAge=Math.max(...particles.map(p=>p.delay+p.life));
-    if(af<maxAge+30){
+    if(af<maxAge+20){
       requestAnimationFrame(aw);
     } else {
       setTimeout(()=>{
-        wishCanvas.style.display='none';
-        wCtx.clearRect(0,0,bW,bH);
-        wishPlaying=false;
-        bCanvas.style.pointerEvents='auto';
-        // Respawn fireflies
+        wishCanvas.style.display='none';wCtx.clearRect(0,0,bW,bH);
+        wishPlaying=false;bCanvas.style.pointerEvents='auto';
         bFlies=bFlies.map(f=>({...f,alive:true,x:60+Math.random()*(bW-120),y:40+Math.random()*(bH*0.75)}));
         if(onDone)onDone();
       },400);
