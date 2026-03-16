@@ -56,7 +56,7 @@ function renderJarIcon(item) {
   for (let i = 0; i < n; i++) {
     const [x, y] = positions[i];
     const dur = (0.7 + (i*0.19)%0.9).toFixed(2);
-    dots.push(`<rect x="${x}" y="${y}" width="3" height="3" fill="#aaff66"><animate attributeName="opacity" values="0.3;1;0.3" dur="${dur}s" repeatCount="indefinite"/></rect>`);
+    dots.push(`<rect x="${x}" y="${y}" width="2" height="2" fill="#aaff66"><animate attributeName="opacity" values="0.2;1;0.2" dur="${dur}s" repeatCount="indefinite"/></rect>`);
   }
   return `<svg width="30" height="34" viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">
     <rect x="4" y="6" width="22" height="24" rx="3" fill="rgba(160,220,150,0.15)" stroke="rgba(140,210,130,0.65)" stroke-width="1.5"/>
@@ -443,39 +443,60 @@ function startWishAnim(jarRect, onDone){
 
     particles.forEach(p=>{
       if(af<p.delay)return;
-      p.phase+=0.14;p.vx+=p.ax;p.vy+=p.ay;p.x+=p.vx;p.y+=p.vy;p.age++;
+      p.phase+=0.16;p.vx+=p.ax;p.vy+=p.ay;p.x+=p.vx;p.y+=p.vy;p.age++;
       const t=p.age/p.life;
+      // Rapid flicker: glow pulses fast
       const alpha=t<0.08?t/0.08:t>0.7?1-(t-0.7)/0.3:1;
-      const glow=0.4+0.6*Math.abs(Math.sin(p.phase));
-      const sz=p.sz*(1-t*0.2);
+      const glow=0.3+0.7*Math.abs(Math.sin(p.phase*2.5)); // faster flicker
+      const sz=p.sz*(1-t*0.15);
       const [cr,cg,cb]=p.col;
 
-      // Spawn dust more frequently
-      if(p.age%2===0&&t<0.85){
-        dust.push({
-          x:p.x+(Math.random()-0.5)*sz*1.5,
-          y:p.y+(Math.random()-0.5)*sz*1.5,
-          vx:(Math.random()-0.5)*1.2,
-          vy:-(0.2+Math.random()*0.6),
-          sz:1+Math.random()*3,
-          age:0,life:25+Math.random()*25,
-          cr,cg,cb,
-        });
-        // Occasional spark
-        if(Math.random()<0.15){
-          sparks.push({x:p.x,y:p.y,vx:(Math.random()-0.5)*3,vy:-(1+Math.random()*2),age:0,life:12+Math.random()*10});
+      // Dense dust — every frame
+      if(t<0.88){
+        // Main dust trail
+        for(let d=0;d<3;d++){
+          dust.push({
+            x:p.x+(Math.random()-0.5)*sz*2,
+            y:p.y+(Math.random()-0.5)*sz*2,
+            vx:(Math.random()-0.5)*1.8,
+            vy:-(0.1+Math.random()*0.8),
+            sz:0.8+Math.random()*2.5,
+            age:0,life:20+Math.random()*30,
+            cr,cg,cb,
+          });
+        }
+        // Sparks — more frequent
+        if(Math.random()<0.35){
+          sparks.push({
+            x:p.x,y:p.y,
+            vx:(Math.random()-0.5)*5,
+            vy:-(1.5+Math.random()*3),
+            age:0,life:10+Math.random()*14,
+            cr,cg,cb,
+          });
         }
       }
 
-      // Large glow halo
+      // Very large glow halo — extra bright
       wCtx.save();
-      wCtx.globalAlpha=alpha*glow*0.35;
-      const grad=wCtx.createRadialGradient(p.x,p.y,0,p.x,p.y,sz*4);
-      grad.addColorStop(0,`rgba(${cr},${cg},${cb},0.9)`);
-      grad.addColorStop(0.5,`rgba(${cr},${cg},${cb},0.2)`);
+      wCtx.globalAlpha=alpha*glow*0.55;
+      const grad=wCtx.createRadialGradient(p.x,p.y,0,p.x,p.y,sz*5.5);
+      grad.addColorStop(0,`rgba(${cr},${cg},${cb},1)`);
+      grad.addColorStop(0.3,`rgba(${cr},${cg},${cb},0.5)`);
+      grad.addColorStop(0.7,`rgba(${cr},${cg},${cb},0.15)`);
       grad.addColorStop(1,'rgba(0,0,0,0)');
       wCtx.fillStyle=grad;
-      wCtx.beginPath();wCtx.arc(p.x,p.y,sz*4,0,Math.PI*2);wCtx.fill();
+      wCtx.beginPath();wCtx.arc(p.x,p.y,sz*5.5,0,Math.PI*2);wCtx.fill();
+      wCtx.restore();
+
+      // Outer ring glow (extra layer)
+      wCtx.save();
+      wCtx.globalAlpha=alpha*glow*0.25;
+      const grad2=wCtx.createRadialGradient(p.x,p.y,sz*2,p.x,p.y,sz*8);
+      grad2.addColorStop(0,`rgba(${cr},${cg},${cb},0.3)`);
+      grad2.addColorStop(1,'rgba(0,0,0,0)');
+      wCtx.fillStyle=grad2;
+      wCtx.beginPath();wCtx.arc(p.x,p.y,sz*8,0,Math.PI*2);wCtx.fill();
       wCtx.restore();
 
       // Core pixel square
@@ -484,40 +505,56 @@ function startWishAnim(jarRect, onDone){
       wCtx.fillStyle=`rgba(${cr},${cg},${cb},${glow.toFixed(2)})`;
       wCtx.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);
       // Bright center
-      wCtx.fillStyle=`rgba(255,255,240,${(alpha*glow*0.9).toFixed(2)})`;
-      wCtx.fillRect(p.x-sz*0.22,p.y-sz*0.22,sz*0.44,sz*0.44);
+      wCtx.fillStyle=`rgba(255,255,250,${(alpha*Math.min(glow*1.2,1)).toFixed(2)})`;
+      wCtx.fillRect(p.x-sz*0.2,p.y-sz*0.2,sz*0.4,sz*0.4);
       wCtx.restore();
     });
 
-    // Dust
+    // Dust — brighter, with glow
     for(let i=dust.length-1;i>=0;i--){
-      const d=dust[i];d.x+=d.vx;d.y+=d.vy;d.age++;
+      const d=dust[i];d.x+=d.vx;d.y+=d.vy;d.vy+=0.02;d.age++;
       const dt=d.age/d.life;if(dt>=1){dust.splice(i,1);continue;}
-      const da=dt<0.3?dt/0.3:1-dt;
-      wCtx.globalAlpha=da*0.9;
+      const da=(dt<0.2?dt/0.2:1-dt)*0.95;
+      wCtx.globalAlpha=da;
       wCtx.fillStyle=`rgba(${d.cr},${d.cg},${d.cb},1)`;
       wCtx.fillRect(d.x-d.sz/2,d.y-d.sz/2,d.sz,d.sz);
+      // Small glow on each dust particle
+      wCtx.globalAlpha=da*0.4;
+      wCtx.fillStyle=`rgba(${d.cr},${d.cg},${d.cb},0.5)`;
+      wCtx.fillRect(d.x-d.sz,d.y-d.sz,d.sz*2,d.sz*2);
       wCtx.globalAlpha=1;
     }
-    // Sparks
+    // Sparks — coloured
     for(let i=sparks.length-1;i>=0;i--){
-      const s=sparks[i];s.x+=s.vx;s.y+=s.vy;s.vy+=0.1;s.age++;
+      const s=sparks[i];s.x+=s.vx;s.y+=s.vy;s.vy+=0.15;s.age++;
       if(s.age>=s.life){sparks.splice(i,1);continue;}
       const sa=1-s.age/s.life;
-      wCtx.globalAlpha=sa;wCtx.fillStyle='rgba(255,255,200,1)';
-      wCtx.fillRect(s.x-1,s.y-1,2,2);wCtx.globalAlpha=1;
+      wCtx.globalAlpha=sa;
+      wCtx.fillStyle=`rgba(${s.cr},${s.cg},${s.cb},1)`;
+      wCtx.fillRect(s.x-1.5,s.y-1.5,3,3);
+      wCtx.globalAlpha=sa*0.5;
+      wCtx.fillStyle='rgba(255,255,220,1)';
+      wCtx.fillRect(s.x-0.5,s.y-0.5,1,1);
+      wCtx.globalAlpha=1;
     }
 
-    // Screen flash
-    if(af<15){
-      wCtx.globalAlpha=(1-af/15)*0.35;
-      wCtx.fillStyle='rgba(160,255,100,1)';
+    // Screen flash — brighter + rapid flicker
+    const flashFlicker=Math.abs(Math.sin(af*0.8));
+    if(af<20){
+      wCtx.globalAlpha=(1-af/20)*0.55*flashFlicker;
+      wCtx.fillStyle='rgba(140,255,80,1)';
       wCtx.fillRect(0,0,bW,bH);wCtx.globalAlpha=1;
     }
-    // Second flash at af=30
-    if(af>=28&&af<40){
-      wCtx.globalAlpha=(1-(af-28)/12)*0.2;
-      wCtx.fillStyle='rgba(255,240,80,1)';
+    // Second flash
+    if(af>=25&&af<45){
+      wCtx.globalAlpha=(1-(af-25)/20)*0.35*Math.abs(Math.sin(af*1.2));
+      wCtx.fillStyle='rgba(255,240,60,1)';
+      wCtx.fillRect(0,0,bW,bH);wCtx.globalAlpha=1;
+    }
+    // Third subtle flash later
+    if(af>=60&&af<75){
+      wCtx.globalAlpha=(1-(af-60)/15)*0.2;
+      wCtx.fillStyle='rgba(180,255,140,1)';
       wCtx.fillRect(0,0,bW,bH);wCtx.globalAlpha=1;
     }
 
