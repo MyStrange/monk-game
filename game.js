@@ -360,8 +360,25 @@ function onBuddhaTap(cx,cy){
       f.alive=false;
       jar.caught=(jar.caught||0)+1;
       renderHotbar();
+      // Narrative messages — irony → nostalgia → wish
+      const catchMsgs = [
+        'банкой на светлячка? что может быть посредственнее',
+        'невероятно скучное занятие',
+        'хотя раньше так не казалось',
+        'помню, как первый раз увидел светлячка в траве, летом...',
+        'мы тогда были в детском лагере и я всё ждал танцы вечером...',
+        'а потом кто-то поймал светлячка и посветил в темноте — и все засмеялись',
+        'я не пошёл на танцы той ночью. остался в траве.',
+        'не знаю зачем. просто не хотелось уходить.',
+        'некоторые вещи запоминаешь не потому что они важные. а просто.',
+        null
+      ];
+      if(jar.caught<10){
+        const msg=catchMsgs[jar.caught-1];
+        if(msg)showBMsg(msg, 3200);
+      }
       if(jar.caught>=10){
-        showBMsg('✦ Загадай желание...',2200);
+        showBMsg('загадай желание. они унесут.',3200);
         // Get hotbar slot position for animation origin
         const jarSlotEl=document.querySelector('#hotbar .hotbar-slot.selected');
         const jarRect=jarSlotEl?jarSlotEl.getBoundingClientRect():null;
@@ -395,22 +412,31 @@ function startWishAnim(jarRect, onDone){
     oy=jarRect.top+jarRect.height/2-bRect.top;
   }
 
-  // 30 particles, all burst from jar slot
-  const particles=Array.from({length:30},(_,i)=>{
-    const angle=-Math.PI*(0.2+Math.random()*0.6) + (Math.random()-0.5)*Math.PI*0.4;
-    const speed=3+Math.random()*4;
-    const sz=8+Math.random()*10;
+  // 20 fireflies — all start from jar slot, drift up organically
+  // Each has unique slow speed, meandering path (no burst pattern)
+  const particles=Array.from({length:20},(_,i)=>{
+    const speed=0.6+Math.random()*1.8; // slow, varied
+    // Start direction: mostly upward, slight spread — NOT burst angle
+    const spread=(Math.random()-0.5)*0.7; // gentle horizontal spread
+    const sz=7+Math.random()*8;
+    // Each firefly gets a unique drift signature
+    const driftFreq=0.02+Math.random()*0.03;
+    const driftAmp=(Math.random()-0.5)*0.12;
+    const colRoll=Math.random();
+    const col=colRoll<0.5?[255,225,70]:colRoll<0.85?[255,252,200]:[255,245,160];
     return{
-      x:ox, y:oy,
-      vx:Math.cos(angle)*speed*(0.5+Math.random()),
-      vy:Math.sin(angle)*speed-1.5,
-      ax:(Math.random()-0.5)*0.06,
-      ay:-0.06-Math.random()*0.04,
+      x:ox+(Math.random()-0.5)*8, // tiny start scatter
+      y:oy,
+      vx:spread*speed,
+      vy:-speed,
+      ax:driftAmp, // slow horizontal drift, changes organically
+      ay:-0.018-Math.random()*0.012, // gentle upward acceleration
+      driftFreq, driftPhase:Math.random()*Math.PI*2,
       phase:Math.random()*Math.PI*2,
       sz, age:0,
-      delay:Math.floor(i/3)*4,
-      life:200+Math.random()*80,
-      col: i%3===0?[255,220,60]:i%3===1?[255,248,180]:[200,255,120],
+      delay:i*7+Math.floor(Math.random()*8), // staggered, not grouped
+      life:220+Math.random()*120,
+      col,
     };
   });
 
@@ -422,9 +448,9 @@ function startWishAnim(jarRect, onDone){
     af++;
     wCtx.clearRect(0,0,bW,bH);
 
-    // Expanding ring burst from origin
-    if(af<60){
-      const rr=af*4;
+    // Soft expanding ring
+    if(af<80){
+      const rr=af*2.5;
       const ra=Math.max(0,(1-af/60)*0.4);
       wCtx.save();wCtx.globalAlpha=ra;
       wCtx.strokeStyle='rgba(255,230,80,1)';wCtx.lineWidth=2;
@@ -432,8 +458,8 @@ function startWishAnim(jarRect, onDone){
       wCtx.restore();
     }
     // Second ring
-    if(af>10&&af<80){
-      const rr=(af-10)*5;
+    if(af>20&&af<100){
+      const rr=(af-20)*3;
       const ra=Math.max(0,(1-(af-10)/70)*0.25);
       wCtx.save();wCtx.globalAlpha=ra;
       wCtx.strokeStyle='rgba(255,255,180,1)';wCtx.lineWidth=1.5;
@@ -443,7 +469,13 @@ function startWishAnim(jarRect, onDone){
 
     particles.forEach(p=>{
       if(af<p.delay)return;
-      p.phase+=0.16;p.vx+=p.ax;p.vy+=p.ay;p.x+=p.vx;p.y+=p.vy;p.age++;
+      p.phase+=0.10;
+      p.driftPhase+=p.driftFreq;
+      // Organic meander: vx drifts like real firefly
+      p.vx += Math.sin(p.driftPhase)*0.06 + p.ax*0.1;
+      p.vx *= 0.98; // slight damping so they don't fly too sideways
+      p.vy += p.ay;
+      p.x+=p.vx;p.y+=p.vy;p.age++;
       const t=p.age/p.life;
       // Rapid flicker: glow pulses fast
       const alpha=t<0.08?t/0.08:t>0.7?1-(t-0.7)/0.3:1;
