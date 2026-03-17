@@ -173,6 +173,7 @@ const ZONES={
   tree:  {x:1600,y:300,w:200,h:580},
   cat:   {x:cat.x,y:cat.y,w:CAT_W,h:CAT_H},
   monk:  {x:redMonk.x,y:redMonk.y,w:MONK_W,h:MONK_H},
+  bush:  {x:30,y:820,w:220,h:180},  // left foreground bush
 };
 function inZone(cx,cy,z){return cx>=bx(z.x)&&cx<=bx(z.x)+bw(z.w)&&cy>=by(z.y)&&cy<=by(z.y)+bh(z.h);}
 function hitZone(cx,cy){for(const[n,z]of Object.entries(ZONES)){if(inZone(cx,cy,z))return n;}return null;}
@@ -222,6 +223,39 @@ function spawnSym(){
   const angle=(Math.random()-0.5)*Math.PI*1.6,speed=0.4+Math.random()*0.7;
   pSyms.push({x:bx(cx+(Math.random()-0.5)*60),y:by(cy),ch:thaiChars[Math.floor(Math.random()*thaiChars.length)],col:golds[Math.floor(Math.random()*golds.length)],vx:Math.sin(angle)*speed*2.5,vy:-(Math.cos(angle)*speed+0.5),life:140+Math.random()*80,age:0,size:(14+Math.random()*14)*Math.min(W/BG_W,H/BG_H)*3,rotV:(Math.random()-0.5)*0.03});
 }
+
+
+// ── BUSH / STICK ──────────────────────────────────────────────────────────────
+let stickPickedUp = false;
+function pickUpStick() {
+  if (stickPickedUp) { showMsg('Здесь больше ничего нет.'); return; }
+  stickPickedUp = true;
+  addItem({id:'stick', name:'палка', icon:'🪵', label:'палка', description:'Обычная палка. Немного влажная. Зачем ты её взял?'});
+  showMsg('Ты нашёл палку в кустах.');
+}
+
+// ── CAT & MONK MESSAGES ───────────────────────────────────────────────────────
+const catMsgs = [
+  'Кот смотрит сквозь тебя. Ты для него не существуешь.',
+  'Кот моргнул. Это был знак. Ты не понял какой.',
+  'Кот думает о чём-то важном. Или ни о чём. Непонятно.',
+  'Кот чешет ухо. Это лучшее, что ты видел сегодня.',
+  'Кот повернул голову. Посмотрел на тебя. Отвернулся.',
+  'У кота нет времени на твои вопросы.',
+];
+let catMsgIdx = 0;
+function catMsg() { return catMsgs[catMsgIdx++ % catMsgs.length]; }
+
+const monkMsgs = [
+  'Монах медитирует. Он слышит тебя, но притворяется что нет.',
+  'Монах не открыл глаза. Хороший знак.',
+  'Монах дышит. Медленно. Ты тоже попробуй.',
+  'Монах сидит здесь уже три часа. Или три года. Непонятно.',
+  'Монах чуть заметно улыбнулся. Или тебе показалось.',
+  'Монах думает о пустоте. Ты думаешь о монахе. Интересная цепочка.',
+];
+let monkMsgIdx = 0;
+function monkMsg() { return monkMsgs[monkMsgIdx++ % monkMsgs.length]; }
 
 // ── GAME LOOP ─────────────────────────────────────────────────────────────────
 let tick=0,catFrame=0,monkFrame=0;
@@ -300,8 +334,9 @@ function onMainTap(cx,cy){
   const zone=hitZone(cx,cy);
   if(zone==='statue'){openBuddha();return;}
   if(zone==='tree')  {openScene2();return;}
-  if(zone==='cat')   {showMsg('Кот сидит спокойно и наблюдает за статуей.');return;}
-  if(zone==='monk')  {showMsg('Монах медитирует. Не стоит мешать.');return;}
+  if(zone==='bush')  {pickUpStick();return;}
+  if(zone==='cat')   {showMsg(catMsg());return;}
+  if(zone==='monk')  {showMsg(monkMsg());return;}
   if(!hero.praying){hero.targetX=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,ibx(cx)-HERO_WALK_W/2));hero.idle=false;}
 }
 gc.addEventListener('click',e=>{const r=gc.getBoundingClientRect();onMainTap(e.clientX-r.left,e.clientY-r.top);});
@@ -434,6 +469,7 @@ function onBuddhaTap(cx,cy){
   const sel=getSelectedItem();
   if(!sel||sel.id!=='jar')return;
   const jar=sel;
+  if(jar.released)return; // already released once
   for(const f of bFlies){
     if(!f.alive)continue;
     if(Math.sqrt((f.x-cx)**2+(f.y-cy)**2)<f.sz*5+14){
@@ -443,15 +479,15 @@ function onBuddhaTap(cx,cy){
       renderHotbar();
       // Narrative messages — irony → nostalgia → wish
       const catchMsgs = [
-        'банкой на светлячка? что может быть посредственнее',
-        'невероятно скучное занятие',
-        'хотя раньше так не казалось',
-        'помню, как первый раз увидел светлячка в траве, летом...',
-        'мы тогда были в детском лагере и я всё ждал танцы вечером...',
-        'а потом кто-то поймал светлячка и посветил в темноте — и все засмеялись',
-        'я не пошёл на танцы той ночью. остался в траве.',
-        'не знаю зачем. просто не хотелось уходить.',
-        'некоторые вещи запоминаешь не потому что они важные. а просто.',
+        'Банкой на светлячка? Что может быть посредственнее.',
+        'Невероятно скучное занятие.',
+        'Хотя раньше так не казалось.',
+        'Помню, как первый раз увидел светлячка в траве, летом...',
+        'Мы тогда были в детском лагере и я всё ждал танцы вечером...',
+        'А потом кто-то поймал светлячка и посветил в темноте — и все засмеялись.',
+        'Я не пошёл на танцы той ночью. Остался в траве.',
+        'Не знаю зачем. Просто не хотелось уходить.',
+        'Некоторые вещи запоминаешь не потому что они важные. А просто.',
         null
       ];
       if(jar.caught<10){
@@ -459,12 +495,13 @@ function onBuddhaTap(cx,cy){
         if(msg)showBMsg(msg, 3200);
       }
       if(jar.caught>=10){
-        showBMsg('загадай желание. они унесут.',3200);
+        showBMsg('Загадай желание. Они унесут.',3200);
         // Get hotbar slot position for animation origin
         const jarSlotEl=document.querySelector('#hotbar .hotbar-slot.selected');
         const jarRect=jarSlotEl?jarSlotEl.getBoundingClientRect():null;
         setTimeout(()=>startWishAnim(jarRect,()=>{
           jar.glowing=true;
+          jar.released=true;
           jar.icon='🫙';
           jar.caught=0;
           jar.description='Светляковская жижка. Внутри мерцает мягкий зелёный свет — след от десяти пойманных светлячков.';
@@ -480,12 +517,11 @@ function onBuddhaTap(cx,cy){
 bCanvas.addEventListener('click',e=>{const r=bCanvas.getBoundingClientRect();onBuddhaTap(e.clientX-r.left,e.clientY-r.top);});
 bCanvas.addEventListener('touchend',e=>{e.preventDefault();if(!e.changedTouches.length)return;const r=bCanvas.getBoundingClientRect();onBuddhaTap(e.changedTouches[0].clientX-r.left,e.changedTouches[0].clientY-r.top);},{passive:false});
 
-// ── WISH ANIMATION — fireflies drift up from jar, like real insects ──────────────
+// ── WISH ANIMATION — fireflies rise from jar to top of screen ───────────────────
 function startWishAnim(jarRect, onDone){
   wishPlaying=true; bCanvas.style.pointerEvents='none'; wishCanvas.style.display='block';
   bFlies.forEach(f=>f.alive=false);
 
-  // Origin: center of the jar hotbar slot in canvas coords
   const bRect=wishCanvas.getBoundingClientRect();
   let ox=bW*0.5, oy=bH*0.88;
   if(jarRect){
@@ -493,38 +529,41 @@ function startWishAnim(jarRect, onDone){
     oy=jarRect.top+jarRect.height/2-bRect.top;
   }
 
-  // 10 fireflies — each one is a separate creature with its own lazy path
-  // They emerge one by one from the jar, hover briefly, then drift upward
+  // 10 fireflies, emerge one by one from jar, travel all the way to top
   const flies=Array.from({length:10},(_,i)=>{
-    const angle=(Math.random()-0.5)*0.5; // very narrow initial spread
-    const speed=0.4+Math.random()*0.6;  // all slow
+    const travelH = oy + 40; // full distance from jar to above top
+    const baseSpeed = travelH / (260+Math.random()*80); // speed so they reach top in ~300 frames
+    // Each has a unique horizontal destiny — spreads wide across screen
+    const destX = bW*0.1 + Math.random()*bW*0.8;
+    const colRoll=Math.random();
+    const cr=colRoll<0.5?255:240+Math.floor(Math.random()*15);
+    const cg=colRoll<0.5?220+Math.floor(Math.random()*30):200+Math.floor(Math.random()*50);
+    const cb=colRoll<0.5?60+Math.floor(Math.random()*40):80+Math.floor(Math.random()*60);
     return{
-      x:ox+(Math.random()-0.5)*6,
+      x:ox+(Math.random()-0.5)*10,
       y:oy,
-      vx:Math.sin(angle)*speed,
-      vy:-speed*0.6,
-      // Each fly has its own sine wave drift — different freq and phase
-      driftFreqX:0.015+Math.random()*0.025,
-      driftFreqY:0.010+Math.random()*0.020,
-      driftPhX:Math.random()*Math.PI*2,
-      driftPhY:Math.random()*Math.PI*2,
-      driftAmpX:0.4+Math.random()*0.5,
-      driftAmpY:0.15+Math.random()*0.2,
-      // Flicker
+      destX,
+      baseSpeed,
+      // Winding path: multiple sine waves layered
+      wave1Freq:0.012+Math.random()*0.018,
+      wave1Amp:18+Math.random()*28,
+      wave1Ph:Math.random()*Math.PI*2,
+      wave2Freq:0.025+Math.random()*0.025,
+      wave2Amp:8+Math.random()*12,
+      wave2Ph:Math.random()*Math.PI*2,
       flickPhase:Math.random()*Math.PI*2,
-      flickSpeed:0.08+Math.random()*0.06,
+      flickSpeed:0.07+Math.random()*0.05,
       sz:5+Math.random()*4,
       age:0,
-      delay:i*18,           // emerge one by one, slowly
-      life:280+Math.random()*120,
-      // Slight color variation — all warm gold/cream
-      cr:240+Math.floor(Math.random()*15),
-      cg:210+Math.floor(Math.random()*40),
-      cb:60+Math.floor(Math.random()*60),
+      delay:i*20,
+      life:320+Math.random()*100,
+      cr,cg,cb,
+      // Trail: ring buffer of last N positions
+      trail:[],
+      trailLen:28,
     };
   });
 
-  // Small trailing dust per fly — very subtle
   const dust=[];
   let af=0;
 
@@ -538,32 +577,49 @@ function startWishAnim(jarRect, onDone){
       const t=f.age/f.life;
       if(t>=1) return;
 
-      // Update drift — sine wave meander, no explosions
-      f.driftPhX+=f.driftFreqX;
-      f.driftPhY+=f.driftFreqY;
-      f.vx=Math.sin(f.driftPhX)*f.driftAmpX;
-      // Upward drift accelerates slowly over time
-      f.vy=-(0.3+t*0.5) + Math.sin(f.driftPhY)*f.driftAmpY;
-      f.x+=f.vx;
-      f.y+=f.vy;
+      // Position: lerp toward destX horizontally + winding sine waves
+      const progress=t; // 0→1 as fly travels up
+      const targetX=ox+(f.destX-ox)*progress;
+      const windX=Math.sin(f.wave1Ph+f.age*f.wave1Freq)*f.wave1Amp*(1-progress*0.4)
+                 +Math.sin(f.wave2Ph+f.age*f.wave2Freq)*f.wave2Amp;
+      f.x=targetX+windX;
+      f.y=oy-progress*progress*(oy+60); // eased upward
 
-      // Flicker — slow and organic, not rapid
+      // Store trail
+      f.trail.push({x:f.x,y:f.y});
+      if(f.trail.length>f.trailLen) f.trail.shift();
+
       f.flickPhase+=f.flickSpeed;
-      const flicker=0.45+0.55*Math.abs(Math.sin(f.flickPhase));
-
-      // Fade in/out
-      const alpha=t<0.1?t/0.1:t>0.8?1-(t-0.8)/0.2:1;
+      const flicker=0.4+0.6*Math.abs(Math.sin(f.flickPhase));
+      const alpha=t<0.08?t/0.08:t>0.85?1-(t-0.85)/0.15:1;
       const {cr,cg,cb,sz}=f;
 
-      // Soft glow — one layer, not blinding
+      // Draw glowing trail
+      for(let ti=0;ti<f.trail.length;ti++){
+        const tt=ti/f.trail.length;
+        const ta=tt*tt*alpha*0.55*flicker;
+        const tsz=sz*(0.3+tt*0.7);
+        wCtx.globalAlpha=ta;
+        wCtx.fillStyle=`rgba(${cr},${cg},${cb},1)`;
+        wCtx.fillRect(f.trail[ti].x-tsz/2,f.trail[ti].y-tsz/2,tsz,tsz);
+        // Trail glow
+        if(ti>f.trail.length*0.5){
+          wCtx.globalAlpha=ta*0.3;
+          wCtx.fillStyle=`rgba(${cr},${cg},100,0.8)`;
+          wCtx.fillRect(f.trail[ti].x-tsz,f.trail[ti].y-tsz,tsz*2,tsz*2);
+        }
+        wCtx.globalAlpha=1;
+      }
+
+      // Soft glow halo around fly
       wCtx.save();
-      wCtx.globalAlpha=alpha*flicker*0.4;
-      const grad=wCtx.createRadialGradient(f.x,f.y,0,f.x,f.y,sz*4);
-      grad.addColorStop(0,`rgba(${cr},${cg},${cb},0.9)`);
-      grad.addColorStop(0.5,`rgba(${cr},${cg},100,0.3)`);
+      wCtx.globalAlpha=alpha*flicker*0.45;
+      const grad=wCtx.createRadialGradient(f.x,f.y,0,f.x,f.y,sz*4.5);
+      grad.addColorStop(0,`rgba(${cr},${cg},${cb},1)`);
+      grad.addColorStop(0.4,`rgba(${cr},${cg},100,0.35)`);
       grad.addColorStop(1,'rgba(0,0,0,0)');
       wCtx.fillStyle=grad;
-      wCtx.beginPath();wCtx.arc(f.x,f.y,sz*4,0,Math.PI*2);wCtx.fill();
+      wCtx.beginPath();wCtx.arc(f.x,f.y,sz*4.5,0,Math.PI*2);wCtx.fill();
       wCtx.restore();
 
       // Core pixel
@@ -571,29 +627,29 @@ function startWishAnim(jarRect, onDone){
       wCtx.globalAlpha=alpha*flicker;
       wCtx.fillStyle=`rgba(${cr},${cg},${cb},1)`;
       wCtx.fillRect(f.x-sz/2,f.y-sz/2,sz,sz);
-      wCtx.fillStyle=`rgba(255,255,230,${(alpha*flicker*0.8).toFixed(2)})`;
-      wCtx.fillRect(f.x-sz*0.2,f.y-sz*0.2,sz*0.4,sz*0.4);
+      wCtx.fillStyle=`rgba(255,255,230,${(alpha*flicker*0.85).toFixed(2)})`;
+      wCtx.fillRect(f.x-sz*0.22,f.y-sz*0.22,sz*0.44,sz*0.44);
       wCtx.restore();
 
-      // Sparse dust — only sometimes, small
-      if(Math.random()<0.12 && t<0.85){
+      // Sparse dust from trail
+      if(Math.random()<0.1 && t<0.9){
         dust.push({
-          x:f.x+(Math.random()-0.5)*sz,
-          y:f.y+(Math.random()-0.5)*sz,
-          vx:(Math.random()-0.5)*0.4,
-          vy:-(0.05+Math.random()*0.25),
-          sz:0.8+Math.random()*1.4,
-          age:0,life:30+Math.random()*30,
+          x:f.x+(Math.random()-0.5)*sz*1.5,
+          y:f.y+(Math.random()-0.5)*sz*1.5,
+          vx:(Math.random()-0.5)*0.5,
+          vy:-(0.05+Math.random()*0.2),
+          sz:0.8+Math.random()*1.8,
+          age:0,life:35+Math.random()*25,
           cr,cg,cb,
         });
       }
     });
 
-    // Dust — very faint
+    // Dust
     for(let i=dust.length-1;i>=0;i--){
-      const d=dust[i]; d.x+=d.vx; d.y+=d.vy; d.age++;
-      const dt=d.age/d.life; if(dt>=1){dust.splice(i,1);continue;}
-      const da=(dt<0.3?dt/0.3:1-dt)*0.6;
+      const d=dust[i];d.x+=d.vx;d.y+=d.vy;d.age++;
+      const dt=d.age/d.life;if(dt>=1){dust.splice(i,1);continue;}
+      const da=(dt<0.25?dt/0.25:1-dt)*0.7;
       wCtx.globalAlpha=da;
       wCtx.fillStyle=`rgba(${d.cr},${d.cg},${d.cb},1)`;
       wCtx.fillRect(d.x-d.sz/2,d.y-d.sz/2,d.sz,d.sz);
@@ -605,8 +661,8 @@ function startWishAnim(jarRect, onDone){
       requestAnimationFrame(aw);
     } else {
       setTimeout(()=>{
-        wishCanvas.style.display='none'; wCtx.clearRect(0,0,bW,bH);
-        wishPlaying=false; bCanvas.style.pointerEvents='auto';
+        wishCanvas.style.display='none';wCtx.clearRect(0,0,bW,bH);
+        wishPlaying=false;bCanvas.style.pointerEvents='auto';
         bFlies=bFlies.map(f=>({...f,alive:true,x:60+Math.random()*(bW-120),y:40+Math.random()*(bH*0.75)}));
         if(onDone)onDone();
       },400);
