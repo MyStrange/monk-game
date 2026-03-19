@@ -30,8 +30,8 @@ function renderHotbar() {
     const div = document.createElement('div');
     const glowing = item.id === 'jar' && item.glowing;
     div.className = 'hotbar-slot' + (i === selectedSlot ? ' selected' : '') + (glowing ? ' jar-glowing' : '');
-    // Jar with fireflies uses SVG, others use emoji. No text label.
-    if (item.id === 'jar' && item.caught > 0) {
+    // Jar always uses pixel-art SVG (same as cursor). Others use emoji.
+    if (item.id === 'jar') {
       div.innerHTML = `<span class="slot-icon">${renderJarIcon(item)}</span>`;
     } else {
       div.innerHTML = `<span class="slot-icon">${item.icon}</span>`;
@@ -230,29 +230,29 @@ let stickPickedUp = false;
 function pickUpStick() {
   if (stickPickedUp) { showMsg('Здесь больше ничего нет.'); return; }
   stickPickedUp = true;
-  addItem({id:'stick', name:'палка', icon:'🪵', label:'палка', description:'Обычная палка. Немного влажная. Зачем ты её взял?'});
-  showMsg('Ты нашёл палку в кустах.');
+  addItem({id:'stick', name:'палка', icon:'🪵', label:'палка', description:'Обычная палка. Немного влажная. Пахнет листьями.'});
+  showMsg('Ты нашёл палку в кустах. Зачем-то взял её.');
 }
 
 // ── CAT & MONK MESSAGES ───────────────────────────────────────────────────────
 const catMsgs = [
-  'Кот смотрит сквозь тебя. Ты для него не существуешь.',
-  'Кот моргнул. Это был знак. Ты не понял какой.',
-  'Кот думает о чём-то важном. Или ни о чём. Непонятно.',
-  'Кот чешет ухо. Это лучшее, что ты видел сегодня.',
-  'Кот повернул голову. Посмотрел на тебя. Отвернулся.',
-  'У кота нет времени на твои вопросы.',
+  'Кот смотрит сквозь тебя.',
+  'Моргнул. Это был знак. Ты не понял — какой.',
+  'Думает о чём-то своём. Или просто греется.',
+  'Чешет ухо. Это лучшее, что ты сегодня видел.',
+  'Повернул голову. Посмотрел. Отвернулся.',
+  'Ты ему неинтересен. Это освобождает.',
 ];
 let catMsgIdx = 0;
 function catMsg() { return catMsgs[catMsgIdx++ % catMsgs.length]; }
 
 const monkMsgs = [
-  'Монах медитирует. Он слышит тебя, но притворяется что нет.',
-  'Монах не открыл глаза. Хороший знак.',
-  'Монах дышит. Медленно. Ты тоже попробуй.',
-  'Монах сидит здесь уже три часа. Или три года. Непонятно.',
-  'Монах чуть заметно улыбнулся. Или тебе показалось.',
-  'Монах думает о пустоте. Ты думаешь о монахе. Интересная цепочка.',
+  'Монах сидит. Может, слышит тебя. Не подаёт вида.',
+  'Не открыл глаза. Это, наверное, хороший знак.',
+  'Дышит медленно. Попробуй так же — вдруг поможет.',
+  'Сидит здесь уже давно. Три часа или три года — не поймёшь.',
+  'Кажется, чуть улыбнулся. Или показалось.',
+  'Думает о пустоте. Ты думаешь о нём. Занятная цепочка.',
 ];
 let monkMsgIdx = 0;
 function monkMsg() { return monkMsgs[monkMsgIdx++ % monkMsgs.length]; }
@@ -327,16 +327,28 @@ document.addEventListener('keyup',e=>{
 gc.addEventListener('mousemove',e=>{
   if(activeScreen!=='main')return;
   const r=gc.getBoundingClientRect();
-  gc.style.cursor=hitZone(e.clientX-r.left,e.clientY-r.top)?'pointer':'default';
+  const cx=e.clientX-r.left, cy=e.clientY-r.top;
+  const zone=hitZone(cx,cy);
+  // When item selected, only show pointer for bush/cat/monk, not scene transitions
+  if(selectedSlot>=0){
+    gc.style.cursor=(zone==='cat'||zone==='monk'||zone==='bush')?'pointer':'default';
+  } else {
+    gc.style.cursor=zone?'pointer':'default';
+  }
 });
 function onMainTap(cx,cy){
   if(activeScreen!=='main')return;
   const zone=hitZone(cx,cy);
+  if(zone==='bush') {pickUpStick();return;}
+  if(zone==='cat')  {showMsg(catMsg());return;}
+  if(zone==='monk') {showMsg(monkMsg());return;}
+  // Block scene transitions when item is selected
+  if(selectedSlot>=0){
+    if(!hero.praying){hero.targetX=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,ibx(cx)-HERO_WALK_W/2));hero.idle=false;}
+    return;
+  }
   if(zone==='statue'){openBuddha();return;}
   if(zone==='tree')  {openScene2();return;}
-  if(zone==='bush')  {pickUpStick();return;}
-  if(zone==='cat')   {showMsg(catMsg());return;}
-  if(zone==='monk')  {showMsg(monkMsg());return;}
   if(!hero.praying){hero.targetX=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,ibx(cx)-HERO_WALK_W/2));hero.idle=false;}
 }
 gc.addEventListener('click',e=>{const r=gc.getBoundingClientRect();onMainTap(e.clientX-r.left,e.clientY-r.top);});
@@ -374,7 +386,7 @@ s2Canvas.addEventListener('touchend',e=>{e.preventDefault();if(!e.changedTouches
 function pickUpJar(){
   if(jarPickedUp)return;
   jarPickedUp=true;
-  addItem({id:'jar',name:'банка',icon:'🫙',label:'банка',caught:0,glowing:false,description:'Пустая стеклянная банка. Можно поймать что-нибудь.'});
+  addItem({id:'jar',name:'банка',icon:'🫙',label:'банка',caught:0,glowing:false,description:'Пустая стеклянная банка. Поймай в неё что-нибудь.'});
   updateItemCursor();
   s2MsgEl.textContent='Ты подобрал стеклянную банку. Она пустая.';
   s2MsgEl.style.display='block';
@@ -458,7 +470,7 @@ function drawBubbles() {
 bCanvas.addEventListener('mousemove',e=>{
   if(wishPlaying){bCanvas.style.cursor='default';return;}
   const sel=getSelectedItem();
-  if(!sel||sel.id!=='jar'){bCanvas.style.cursor='default';return;}
+  if(!sel||sel.id!=='jar'||sel.released){bCanvas.style.cursor='default';return;}
   const r=bCanvas.getBoundingClientRect(),cx=e.clientX-r.left,cy=e.clientY-r.top;
   bCanvas.style.cursor=bFlies.some(f=>f.alive&&Math.sqrt((f.x-cx)**2+(f.y-cy)**2)<f.sz*5+14)?'pointer':'default';
 });
@@ -504,10 +516,10 @@ function onBuddhaTap(cx,cy){
           jar.released=true;
           jar.icon='🫙';
           jar.caught=0;
-          jar.description='Светляковская жижка. Внутри мерцает мягкий зелёный свет — след от десяти пойманных светлячков.';
+          jar.description='Светляковая жижка. Внутри мерцает тихий свет — след от десяти светлячков.';
           renderHotbar();
           updateItemCursor();
-          showBMsg('Они улетели. В банке осталась светляковская жижка.');
+          showBMsg('Они улетели. В банке осталось немного их света.');
         }),2400);
       }
       return;
