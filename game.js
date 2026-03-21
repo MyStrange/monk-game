@@ -1048,7 +1048,7 @@ function onMainTap(cx,cy){
     if(orb){collectOrb(orb);return;}
     // In meditation, tap without drag: orbs and zone messages only
     // Symbol drag is handled by mousedown/mouseup
-    if(inscHitCanvas(cx,cy)) { if(inscriptionReady||inscriptionCharge>=5) openScene4(); else showMsg(inscriptionCharge===0?'Надпись мерцает. Принеси ей символ молитвы.':'Ещё '+( 5-inscriptionCharge)+'. Продолжай.', 2000); return; }
+    if(inscHitCanvas(cx,cy)) { openScene4(); return; }
     const orb2=hitMeditationOrb(cx,cy);
     if(orb2){collectOrb(orb2);return;}
     const zone=hitZone(cx,cy);
@@ -1443,7 +1443,7 @@ function createScene3El() {
 
   const canvas = document.createElement('canvas');
   canvas.id = 'scene3-canvas';
-  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:default;image-rendering:pixelated;';
+  canvas.style.cssText = 'display:block;width:100%;height:100%;cursor:default;image-rendering:pixelated;';
 
   const back = document.createElement('button');
   back.id = 'scene3-back';
@@ -1623,13 +1623,13 @@ function createScene4El() {
   if(document.getElementById('scene4')) return;
   const el = document.createElement('div');
   el.id = 'scene4';
-  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:46;overflow:hidden;';
+  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:60;overflow:hidden;';
 
   // Background drawn procedurally on canvas
 
   const canvas = document.createElement('canvas');
   canvas.id = 'scene4-canvas';
-  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:default;image-rendering:pixelated;';
+  canvas.style.cssText = 'display:block;width:100%;height:100%;cursor:default;image-rendering:pixelated;';
 
   const back = document.createElement('button');
   back.id = 'scene4-back';
@@ -1651,25 +1651,32 @@ function createScene4El() {
 let s4AnimId=null, s4Tick=0;
 
 function openScene4() {
-  if(!document.getElementById('scene4')) createScene4El();
+  createScene4El(); // safe — checks internally
   activeScreen='scene4';
   scene4Unlocked=true;
   const el=document.getElementById('scene4');
   el.style.display='block';
-  // Show arrival message
+  // Immediately set canvas size and draw first frame
+  const canvas=document.getElementById('scene4-canvas');
+  if(canvas){
+    canvas.width=Math.round(el.offsetWidth)||window.innerWidth;
+    canvas.height=Math.round(el.offsetHeight)||window.innerHeight;
+    s4Tick=0;
+    if(!s4AnimId) animScene4();
+  }
+  // Message
   const msg=document.getElementById('scene4-msg');
   if(msg){
     msg.textContent='Ты поднялся. Сверху всё выглядит иначе.';
     msg.style.display='block';
     setTimeout(()=>msg.style.display='none',3000);
   }
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    const canvas=document.getElementById('scene4-canvas');
+  // Resize canvas properly after layout
+  requestAnimationFrame(()=>{
+    if(!canvas) return;
     const r=el.getBoundingClientRect();
-    canvas.width=Math.round(r.width);
-    canvas.height=Math.round(r.height);
-    if(!s4AnimId) animScene4();
-  }));
+    if(r.width>0){canvas.width=Math.round(r.width);canvas.height=Math.round(r.height);}
+  });
 }
 function closeScene4() {
   activeScreen='main';
