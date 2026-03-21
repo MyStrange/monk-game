@@ -257,19 +257,20 @@ const golds=['#FFD700','#FFC200','#FFB800','#E8A800','#FFEC80','#FFF0A0','#D4AF3
 let pSyms=[],pTick=0;
 function spawnSym(){
   const cx=hero.x+HERO_SIT_W/2, cy=GROUND_Y-HERO_SIT_H*0.85;
-  const wobble=(Math.random()-0.5)*0.6;
-  const speed=0.5+Math.random()*0.5;
+  const wobble=(Math.random()-0.5)*1.8;   // wider spread
+  const speed=0.25+Math.random()*0.3;     // slower
   const sc=Math.min(W/BG_W,H/BG_H);
   pSyms.push({
-    x:bx(cx+(Math.random()-0.5)*40), y:by(cy),
+    x:bx(cx+(Math.random()-0.5)*80), y:by(cy),  // wider spawn
     ch:thaiChars[Math.floor(Math.random()*thaiChars.length)],
     col:golds[Math.floor(Math.random()*golds.length)],
-    vx:wobble, vy:-(speed+0.4),
-    ax:-wobble*0.04,
-    life:160+Math.random()*80, age:0,
+    vx:wobble,
+    vy:-(speed+0.15),  // slower upward
+    ax:-wobble*0.025,  // gentler centering
+    life:220+Math.random()*100, age:0,  // longer life
     startSize:(18+Math.random()*12)*sc,
     endSize:(44+Math.random()*24)*sc,
-    rotV:(Math.random()-0.5)*0.015,
+    rotV:(Math.random()-0.5)*0.008,  // gentler rotation
   });
 }
 
@@ -613,14 +614,29 @@ function drawMeditationLayer() {
   if(inscAlpha > 0.05){
     ctx.save();
     ctx.globalAlpha = inscAlpha;
-    ctx.font = `bold ${Math.round(bw(28))}px serif`;
-    ctx.fillStyle = 'rgba(255,220,80,1)';
+    // Glow behind inscription
+    const ig2=ctx.createRadialGradient(bx(790),by(820),0,bx(790),by(820),bw(90));
+    ig2.addColorStop(0,'rgba(255,200,60,0.5)');
+    ig2.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.globalAlpha=inscAlpha*0.6;
+    ctx.fillStyle=ig2;
+    ctx.fillRect(bx(700),by(760),bw(180),bh(110));
+    // Main symbol — large Thai OM
+    ctx.globalAlpha=inscAlpha;
+    ctx.font = `bold ${Math.round(bw(52))}px serif`;
+    ctx.fillStyle = '#ffe066';
     ctx.textAlign = 'center';
-    ctx.fillText('ธ', bx(760), by(810)); // Thai Om symbol
-    ctx.font = `${Math.round(bw(13))}px serif`;
-    ctx.globalAlpha = inscAlpha * 0.8;
-    ctx.fillStyle = 'rgba(255,240,140,1)';
-    ctx.fillText('สวนดอกไม้', bx(760), by(830)); // "flower garden"
+    ctx.shadowColor='rgba(255,200,0,0.8)';
+    ctx.shadowBlur=12;
+    ctx.fillText('ᩮ', bx(790), by(830));
+    ctx.shadowBlur=0;
+    // Charge indicator dots around symbol
+    for(let di=0;di<inscriptionCharge;di++){
+      const da=(di/5)*Math.PI*2-Math.PI/2;
+      ctx.globalAlpha=inscAlpha;
+      ctx.fillStyle='#fff8aa';
+      ctx.fillRect(bx(790)+Math.cos(da)*bw(38)-3,by(810)+Math.sin(da)*bh(25)-3,6,6);
+    }
     ctx.restore();
   }
 
@@ -714,7 +730,7 @@ let scene4Unlocked = false;
 function symHit(cx, cy, s) {
   const sc = Math.min(W/BG_W, H/BG_H);
   const sz = s.startSize + (s.endSize - s.startSize) * (s.age/s.life);
-  return Math.abs(cx - s.x) < sz*0.8 && Math.abs(cy - s.y) < sz*0.8;
+  return Math.abs(cx - s.x) < sz*1.2 && Math.abs(cy - s.y) < sz*1.2;
 }
 
 // Hit test for inscription zone in canvas coords
@@ -823,7 +839,7 @@ function drawResonanceFlashes() {
 }
 
 // Inscription zone — only in meditation
-const INSCRIPTION_ZONE = {x:700, y:770, w:130, h:80};
+const INSCRIPTION_ZONE = {x:700, y:760, w:180, h:110};  // bigger, on pedestal
 let scene3Unlocked = false;
 
 function inscriptionHit(cx, cy) {
@@ -872,7 +888,6 @@ function loop(){
   drawCat(catFrame);drawRedMonk(monkFrame);drawHero();
   drawMeditationLayer();
   drawResonanceFlashes();
-  drawDraggedSym();
   pCtx.clearRect(0,0,W,H);
   pSyms.forEach(s=>{
     const p=s.age/s.life;
@@ -887,6 +902,8 @@ function loop(){
     pCtx.fillText(s.ch,0,0);
     pCtx.restore();
   });
+  // Draw dragged symbol on top of everything
+  if(draggedSym) drawDraggedSym();
   requestAnimationFrame(loop);
 }
 bgEl.onload=()=>{syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();};
@@ -1511,13 +1528,11 @@ function createScene4El() {
   el.id = 'scene4';
   el.style.cssText = 'position:absolute;inset:0;display:none;z-index:46;overflow:hidden;';
 
-  const bg = document.createElement('img');
-  bg.src = 'assets/bg/flight.jpeg';
-  bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;object-position:center;image-rendering:pixelated;';
+  // Background drawn procedurally on canvas
 
   const canvas = document.createElement('canvas');
   canvas.id = 'scene4-canvas';
-  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated;';
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:default;image-rendering:pixelated;';
 
   const back = document.createElement('button');
   back.id = 'scene4-back';
@@ -1568,22 +1583,133 @@ function closeScene4() {
 }
 window.closeScene4=closeScene4;
 
+function drawScene4Bg(c, W4, H4, t) {
+  // ── Sky — dark jungle canopy top-down ──────────────────────────
+  const sky = c.createRadialGradient(W4*0.5,H4*0.5,H4*0.05, W4*0.5,H4*0.5,H4*0.75);
+  sky.addColorStop(0, '#1a2e10');
+  sky.addColorStop(0.5, '#0d1e08');
+  sky.addColorStop(1, '#060e04');
+  c.fillStyle=sky; c.fillRect(0,0,W4,H4);
+
+  // ── Root system — radiating from center ───────────────────────
+  const cx=W4*0.5, cy=H4*0.5;
+  const rootAngles=[0,0.42,0.9,1.4,1.85,2.3,2.8,3.3,3.8,4.3,4.8,5.4];
+  rootAngles.forEach((angle,ri)=>{
+    const sway=Math.sin(t*0.008+ri*0.7)*0.04;
+    const a=angle+sway;
+    const len=H4*(0.38+ri%3*0.06);
+    const thick=6+ri%4*3;
+    c.save();
+    c.strokeStyle=`rgba(${50+ri*3},${28+ri*2},${12},0.85)`;
+    c.lineWidth=thick;
+    c.lineCap='round';
+    c.beginPath();
+    c.moveTo(cx,cy);
+    // Curved root path
+    const mid1x=cx+Math.cos(a-0.15)*len*0.4+Math.sin(t*0.01+ri)*20;
+    const mid1y=cy+Math.sin(a-0.15)*len*0.4+Math.cos(t*0.012+ri)*15;
+    const mid2x=cx+Math.cos(a+0.1)*len*0.75;
+    const mid2y=cy+Math.sin(a+0.1)*len*0.75;
+    const ex=cx+Math.cos(a)*len, ey=cy+Math.sin(a)*len;
+    c.bezierCurveTo(mid1x,mid1y,mid2x,mid2y,ex,ey);
+    c.stroke();
+    // Branch off each root
+    if(ri%2===0){
+      c.lineWidth=thick*0.5;
+      c.strokeStyle=`rgba(${45+ri*2},${25+ri},10,0.7)`;
+      c.beginPath();
+      c.moveTo(mid2x,mid2y);
+      const ba=a+(ri%2===0?0.5:-0.5);
+      c.lineTo(mid2x+Math.cos(ba)*len*0.2, mid2y+Math.sin(ba)*len*0.2);
+      c.stroke();
+    }
+    c.restore();
+  });
+
+  // ── Moss / foliage patches between roots ─────────────────────
+  const patches=[
+    [0.2,0.25],[0.75,0.2],[0.15,0.7],[0.8,0.72],
+    [0.35,0.12],[0.65,0.85],[0.05,0.45],[0.92,0.5],
+  ];
+  patches.forEach(([px,py],pi)=>{
+    const pw=W4*(0.08+pi%3*0.04), ph=H4*(0.06+pi%3*0.03);
+    const pulse=0.6+0.4*Math.abs(Math.sin(t*0.015+pi));
+    c.fillStyle=`rgba(${20+pi*3},${55+pi*4},${12+pi*2},${(0.7*pulse).toFixed(2)})`;
+    c.fillRect(px*W4-pw/2, py*H4-ph/2, pw, ph);
+    // Lighter top
+    c.fillStyle=`rgba(${40+pi*4},${80+pi*5},${20+pi*3},${(0.4*pulse).toFixed(2)})`;
+    c.fillRect(px*W4-pw/2, py*H4-ph/2, pw, ph*0.4);
+  });
+
+  // ── Buddha statue — center, top-down view ────────────────────
+  const sr=H4*0.11; // statue radius
+  // Stone platform
+  c.fillStyle='rgba(160,145,115,0.95)';
+  c.fillRect(cx-sr*1.1, cy-sr*1.1, sr*2.2, sr*2.2);
+  // Platform shadow
+  c.fillStyle='rgba(80,70,50,0.5)';
+  c.fillRect(cx-sr*1.1, cy+sr*0.7, sr*2.2, sr*0.4);
+  // Inner platform
+  c.fillStyle='rgba(185,168,130,0.95)';
+  c.fillRect(cx-sr*0.85, cy-sr*0.85, sr*1.7, sr*1.7);
+  // Statue body (top-down: circular orange form)
+  const statueGlow=0.7+0.3*Math.abs(Math.sin(t*0.02));
+  c.save();
+  c.globalAlpha=statueGlow;
+  // Robe — concentric from above
+  [[sr*0.72,'#c87820'],[sr*0.55,'#d4891a'],[sr*0.38,'#e09820'],[sr*0.22,'#f0b030']].forEach(([r2,col])=>{
+    c.fillStyle=col;
+    c.beginPath(); c.arc(cx,cy,r2,0,Math.PI*2); c.fill();
+  });
+  // Head
+  c.fillStyle='#d4a060';
+  c.beginPath(); c.arc(cx,cy-sr*0.15,sr*0.16,0,Math.PI*2); c.fill();
+  c.fillStyle='#c89040';
+  c.beginPath(); c.arc(cx,cy-sr*0.15,sr*0.10,0,Math.PI*2); c.fill();
+  // Ushnisha (top knot)
+  c.fillStyle='#b87820';
+  c.beginPath(); c.arc(cx,cy-sr*0.15,sr*0.055,0,Math.PI*2); c.fill();
+  c.restore();
+  // Statue inner glow
+  c.save();
+  c.globalAlpha=0.25*statueGlow;
+  const sg=c.createRadialGradient(cx,cy,0,cx,cy,sr*1.2);
+  sg.addColorStop(0,'rgba(255,200,60,0.9)');
+  sg.addColorStop(1,'rgba(0,0,0,0)');
+  c.fillStyle=sg; c.beginPath(); c.arc(cx,cy,sr*1.2,0,Math.PI*2); c.fill();
+  c.restore();
+
+  // ── Water pool — bottom left (like in the photo) ──────────────
+  c.save();
+  const wx=W4*0.12, wy=H4*0.78, ww=W4*0.18, wh=H4*0.14;
+  const waterShimmer=0.5+0.5*Math.abs(Math.sin(t*0.03));
+  c.fillStyle=`rgba(60,90,130,${(0.75*waterShimmer).toFixed(2)})`;
+  c.fillRect(wx,wy,ww,wh);
+  c.fillStyle=`rgba(120,160,200,${(0.3*waterShimmer).toFixed(2)})`;
+  c.fillRect(wx,wy,ww,wh*0.3);
+  c.restore();
+
+  // ── Floating fireflies ────────────────────────────────────────
+  for(let i=0;i<25;i++){
+    const fx=((i*173.7+t*0.25*(i%2?1:-0.7))%W4+W4)%W4;
+    const fy=((i*97.3+t*0.18*(i%3?1:-0.5))%H4+H4)%H4;
+    const fa=0.15+0.85*Math.abs(Math.sin(t*0.04+i*0.7));
+    // Skip center area (statue)
+    if(Math.abs(fx-cx)<sr*1.5&&Math.abs(fy-cy)<sr*1.5) return;
+    c.fillStyle=`rgba(255,240,100,${fa.toFixed(2)})`;
+    c.fillRect(fx-1,fy-1,3,3);
+    c.fillStyle=`rgba(255,235,80,${(fa*0.2).toFixed(2)})`;
+    c.fillRect(fx-3,fy-1,7,3);
+  }
+}
+
 function animScene4() {
   if(activeScreen!=='scene4'){s4AnimId=null;return;}
   s4Tick++;
   const canvas=document.getElementById('scene4-canvas');
   if(!canvas){s4AnimId=null;return;}
   const c=canvas.getContext('2d');
-  const W4=canvas.width, H4=canvas.height;
-  c.clearRect(0,0,W4,H4);
-  // Subtle golden shimmer overlay — fireflies drifting
-  for(let i=0;i<20;i++){
-    const fx=((i*173+s4Tick*0.3)%W4);
-    const fy=((i*97+s4Tick*0.2)%H4);
-    const fa=0.2+0.6*Math.abs(Math.sin(s4Tick*0.04+i));
-    c.fillStyle=`rgba(255,240,100,${fa.toFixed(2)})`;
-    c.fillRect(fx-1,fy-1,3,3);
-  }
+  drawScene4Bg(c, canvas.width, canvas.height, s4Tick);
   s4AnimId=requestAnimationFrame(animScene4);
 }
 
