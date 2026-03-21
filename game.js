@@ -744,18 +744,29 @@ function inscHitCanvas(cx, cy) {
 function deliverSymbol() {
   inscriptionCharge++;
   draggedSym = null;
-  // Spawn resonance flash
+  // Resonance flash
   resonanceFlashes.push({
     x: INSCRIPTION_ZONE.x + INSCRIPTION_ZONE.w/2,
     y: INSCRIPTION_ZONE.y + INSCRIPTION_ZONE.h/2,
-    age: 0, life: 40,
-    chars: '✦ ธ ✦'.split(' '),
+    age: 0, life: 50,
   });
   inscriptionGlow = 1.0;
   if (inscriptionCharge >= 5) {
-    setTimeout(openScene4, 800);
+    // Epic: multiple flashes, then message to click
+    inscriptionGlow = 2.0; // over-glow
+    for(let i=0;i<3;i++){
+      setTimeout(()=>{
+        resonanceFlashes.push({
+          x:INSCRIPTION_ZONE.x+INSCRIPTION_ZONE.w/2,
+          y:INSCRIPTION_ZONE.y+INSCRIPTION_ZONE.h/2,
+          age:0,life:60,
+        });
+        inscriptionGlow=Math.max(inscriptionGlow,1.5);
+      }, i*200);
+    }
+    showMsg('Надпись горит. Нажми на неё.', 4000);
   } else {
-    showMsg(['Раз.','Два.','Три.','Четыре.','Пять.'][inscriptionCharge-1] + ' Надпись светится.', 1800);
+    showMsg(['Один.','Два.','Три.','Четыре.'][inscriptionCharge-1] + ' Надпись светится.', 1800);
   }
 }
 
@@ -785,8 +796,9 @@ function drawResonanceFlashes() {
     const ix = bx(INSCRIPTION_ZONE.x + INSCRIPTION_ZONE.w/2);
     const iy = by(INSCRIPTION_ZONE.y + INSCRIPTION_ZONE.h/2);
     const chargeRatio = inscriptionCharge / 5;
+    const glowClamped = Math.min(inscriptionGlow, 1.0);
     ctx.save();
-    ctx.globalAlpha = inscriptionGlow * (0.5 + chargeRatio * 0.5);
+    ctx.globalAlpha = glowClamped * (0.5 + chargeRatio * 0.5) * (inscriptionCharge>=5?1.8:1);
     const ig = ctx.createRadialGradient(ix, iy, 0, ix, iy, bw(80 + chargeRatio*60));
     ig.addColorStop(0, `rgba(255,220,60,0.9)`);
     ig.addColorStop(0.4, `rgba(255,180,0,0.4)`);
@@ -922,7 +934,7 @@ document.addEventListener('keydown',e=>{
   if(STAND_K.has(e.key)){standUp();return;}
   if(LEFT_K.has(e.key)){keys['l']=true;hero.targetX=null;}
   if(RIGHT_K.has(e.key)){keys['r']=true;hero.targetX=null;}
-  if(e.key==='Escape'){closeBuddha();closeScene2();}
+  if(e.key==='Escape'){closeBuddha();closeScene2();selectedSlot=-1;renderHotbar();updateItemCursor();draggedSym=null;}
 });
 document.addEventListener('keyup',e=>{
   if(LEFT_K.has(e.key)){keys['l']=false;if(!keys['r'])hero.idle=true;}
@@ -934,8 +946,19 @@ gc.addEventListener('mousemove',e=>{
   if(activeScreen!=='main')return;
   const r=gc.getBoundingClientRect();
   const cx=e.clientX-r.left, cy=e.clientY-r.top;
+  dragX=cx; dragY=cy;
   const zone=hitZone(cx,cy);
-  // When item selected, only show pointer for bush/cat/monk, not scene transitions
+  if(hero.praying){
+    if(draggedSym){
+      gc.style.cursor=inscHitCanvas(cx,cy)?'crosshair':'grabbing';
+    } else {
+      const onOrb=hitMeditationOrb(cx,cy);
+      const onSym=inscriptionCharge<5&&pSyms.some(s=>symHit(cx,cy,s));
+      const onInsc=inscHitCanvas(cx,cy)&&inscriptionCharge>=5;
+      gc.style.cursor=(onOrb||onSym||onInsc)?'pointer':'default';
+    }
+    return;
+  }
   if(selectedSlot>=0){
     const interactZones=['cat','monk','bush','water','statue','tree'];
     gc.style.cursor=interactZones.includes(zone)?'pointer':'default';
@@ -955,33 +978,11 @@ function onMainTap(cx,cy){
     // Collect orb
     const orb=hitMeditationOrb(cx,cy);
     if(orb){collectOrb(orb);return;}
-    // If holding a symbol → deliver to inscription
-    if(draggedSym) {
-      if(inscHitCanvas(cx,cy) && inscriptionCharge < 5) {
-        deliverSymbol();
-      } else {
-        // Drop symbol back
-        draggedSym = null;
-        gc.style.cursor = 'default';
-      }
-      return;
+    // In meditation, tap without drag: orbs and zone messages only
+    // Symbol drag is handled by mousedown/mouseup
+    if(inscHitCanvas(cx,cy) && inscriptionCharge>=5) {
+      openScene4(); return;
     }
-    // Click on a prayer symbol → pick it up
-    const symIdx = pSyms.findIndex(s=>symHit(cx,cy,s));
-    if(symIdx >= 0 && inscriptionCharge < 5) {
-      draggedSym = pSyms[symIdx];
-      pSyms.splice(symIdx, 1); // remove from floating
-      dragX = cx; dragY = cy;
-      showMsg('Символ в руке. Перетащи на надпись.', 1500);
-      return;
-    }
-    // Inscription click without symbol → hint
-    if(inscHitCanvas(cx,cy)) {
-      if(inscriptionCharge === 0) showMsg('Надпись мерцает. Принеси ей символ.', 2000);
-      else showMsg(`Ещё ${5-inscriptionCharge}. Продолжай.`, 1800);
-      return;
-    }
-    // Orb collect
     const orb2=hitMeditationOrb(cx,cy);
     if(orb2){collectOrb(orb2);return;}
     const zone=hitZone(cx,cy);
@@ -1023,6 +1024,35 @@ function onMainTap(cx,cy){
   if(!hero.praying){hero.targetX=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,ibx(cx)-HERO_WALK_W/2));hero.idle=false;}
 }
 gc.addEventListener('click',e=>{const r=gc.getBoundingClientRect();onMainTap(e.clientX-r.left,e.clientY-r.top);});
+
+// ── SYMBOL DRAG — hold LMB to grab symbol, release on inscription ─────────────
+gc.addEventListener('mousedown',e=>{
+  if(activeScreen!=='main'||!hero.praying||inscriptionCharge>=5)return;
+  const r=gc.getBoundingClientRect();
+  const cx=e.clientX-r.left,cy=e.clientY-r.top;
+  const idx=pSyms.findIndex(s=>symHit(cx,cy,s));
+  if(idx>=0){
+    e.preventDefault();
+    draggedSym=pSyms[idx];
+    pSyms.splice(idx,1);
+    dragX=cx;dragY=cy;
+    gc.style.cursor='grabbing';
+  }
+});
+gc.addEventListener('mouseup',e=>{
+  if(activeScreen!=='main'||!hero.praying||!draggedSym)return;
+  const r=gc.getBoundingClientRect();
+  const cx=e.clientX-r.left,cy=e.clientY-r.top;
+  if(inscHitCanvas(cx,cy)&&inscriptionCharge<5){
+    deliverSymbol();
+  } else {
+    draggedSym=null;
+  }
+  gc.style.cursor='default';
+});
+gc.addEventListener('mouseleave',()=>{
+  if(draggedSym){draggedSym=null;gc.style.cursor='default';}
+});
 gc.addEventListener('touchmove',e=>{
   if(activeScreen!=='main'||!hero.praying)return;
   e.preventDefault();
@@ -1060,9 +1090,9 @@ function bottleHit(cx,cy){if(jarPickedUp)return false;const b=getBottleRect();re
 function animScene2(){s2Ctx.clearRect(0,0,s2W,s2H);if(!jarPickedUp&&bottleImg.complete&&bottleImg.naturalWidth){const b=getBottleRect();s2Ctx.drawImage(bottleImg,b.x,b.y,b.w,b.h);}s2AnimId=requestAnimationFrame(animScene2);}
 
 const ROCKS = [
-  {fx:0.06, fy:0.68, fw:0.16, fh:0.18, name:'rock1'},  // left rock
-  {fx:0.44, fy:0.55, fw:0.14, fh:0.16, name:'rock2'},  // center rock
-  {fx:0.62, fy:0.53, fw:0.14, fh:0.16, name:'rock3'},  // right rock
+  {fx:0.04, fy:0.75, fw:0.18, fh:0.20, name:'rock1'},  // left rock — lower
+  {fx:0.44, fy:0.62, fw:0.14, fh:0.16, name:'rock2'},  // center rock
+  {fx:0.63, fy:0.60, fw:0.18, fh:0.20, name:'rock3'},  // right rock — wider
 ];
 const rockStates = {rock1:false, rock2:false, rock3:false};
 function getRockRect(r){ return {x:r.fx*s2W,y:r.fy*s2H,w:r.fw*s2W,h:r.fh*s2H}; }
