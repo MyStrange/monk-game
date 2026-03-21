@@ -30,9 +30,11 @@ function renderHotbar() {
     const div = document.createElement('div');
     const glowing = item.id === 'jar' && item.glowing;
     div.className = 'hotbar-slot' + (i === selectedSlot ? ' selected' : '') + (glowing ? ' jar-glowing' : '');
-    // Jar always uses pixel-art SVG (same as cursor). Others use emoji.
+    // Jar and stick use pixel-art SVG
     if (item.id === 'jar') {
       div.innerHTML = `<span class="slot-icon">${renderJarIcon(item)}</span>`;
+    } else if (item.id === 'stick' || item.id === 'glowstick') {
+      div.innerHTML = `<span class="slot-icon">${renderStickIcon(item.id==='glowstick')}</span>`;
     } else {
       div.innerHTML = `<span class="slot-icon">${item.icon}</span>`;
     }
@@ -87,6 +89,37 @@ function renderJarIcon(item) {
   </svg>`;
 }
 
+function renderStickIcon(glowing=false) {
+  const col1 = glowing ? '#ffe066' : '#8b5e3c';
+  const col2 = glowing ? '#fff4aa' : '#a0714f';
+  const col3 = glowing ? '#ffcc00' : '#6b4226';
+  const glow = glowing ? '<rect x="4" y="4" width="40" height="46" fill="rgba(255,230,80,0.08)"/>' : '';
+  const spark = glowing ? `
+    <rect x="28" y="6" width="2" height="2" fill="#fff8aa"><animate attributeName="opacity" values="0;1;0" dur="0.7s" repeatCount="indefinite"/></rect>
+    <rect x="22" y="10" width="2" height="2" fill="#ffe066"><animate attributeName="opacity" values="0;1;0" dur="1.1s" repeatCount="indefinite"/></rect>
+    <rect x="32" y="14" width="2" height="2" fill="#ffffff"><animate attributeName="opacity" values="0;1;0" dur="0.9s" repeatCount="indefinite"/></rect>` : '';
+  return `<svg width="48" height="54" viewBox="0 0 48 54" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    ${glow}
+    <!-- stick body: diagonal from top-right to bottom-left -->
+    <rect x="30" y="4"  width="6" height="6"  fill="${col1}"/>
+    <rect x="26" y="8"  width="6" height="4"  fill="${col1}"/>
+    <rect x="24" y="10" width="4" height="4"  fill="${col2}"/>
+    <rect x="20" y="14" width="6" height="4"  fill="${col1}"/>
+    <rect x="18" y="16" width="4" height="4"  fill="${col2}"/>
+    <rect x="14" y="20" width="6" height="4"  fill="${col1}"/>
+    <rect x="12" y="22" width="4" height="4"  fill="${col2}"/>
+    <rect x="8"  y="26" width="6" height="4"  fill="${col1}"/>
+    <rect x="6"  y="28" width="4" height="4"  fill="${col2}"/>
+    <rect x="4"  y="32" width="6" height="4"  fill="${col3}"/>
+    <rect x="4"  y="36" width="4" height="6"  fill="${col3}"/>
+    <!-- knot -->
+    <rect x="22" y="12" width="2" height="2"  fill="${col3}"/>
+    <rect x="16" y="20" width="2" height="2"  fill="${col3}"/>
+    ${spark}
+  </svg>`;
+}
+
+
 // ── ITEM CURSOR FOLLOWER ──────────────────────────────────────────────────────
 const itemCursorEl = document.createElement('div');
 itemCursorEl.id = 'item-cursor';
@@ -102,8 +135,10 @@ function updateItemCursor() {
   if (item) {
     itemCursorEl.style.display = 'block';
     if (item.id === 'jar') {
-      // Show pixel-art jar at cursor, larger
       itemCursorEl.innerHTML = renderJarIcon(item);
+      itemCursorEl.style.fontSize = '';
+    } else if (item.id === 'stick' || item.id === 'glowstick') {
+      itemCursorEl.innerHTML = renderStickIcon(item.id==='glowstick');
       itemCursorEl.style.fontSize = '';
     } else {
       itemCursorEl.innerHTML = '';
@@ -169,13 +204,13 @@ const redMonk={x:1120,y:GROUND_Y-MONK_H};
 
 // ── CLICK ZONES ───────────────────────────────────────────────────────────────
 const ZONES={
-  statue:{x:750,y:320,w:100,h:120},  // Buddha face
+  statue:{x:700,y:300,w:120,h:130},  // Buddha face
   tree:  {x:1600,y:300,w:200,h:580},
   cat:   {x:cat.x,y:cat.y,w:CAT_W,h:CAT_H},
   monk:  {x:redMonk.x,y:redMonk.y,w:MONK_W,h:MONK_H},
-  bush:  {x:30,y:820,w:220,h:180},  // left foreground bush
+  bush:  {x:30,y:820,w:220,h:180},   // left foreground bush
   water: {x:200,y:950,w:1400,h:140}, // water with reflection
-  water: {x:200,y:950,w:1400,h:140}, // water reflection strip
+  dirt:  {x:870,y:890,w:100,h:80},    // dirt pile after cat buries
 };
 function inZone(cx,cy,z){return cx>=bx(z.x)&&cx<=bx(z.x)+bw(z.w)&&cy>=by(z.y)&&cy<=by(z.y)+bh(z.h);}
 function hitZone(cx,cy){for(const[n,z]of Object.entries(ZONES)){if(inZone(cx,cy,z))return n;}return null;}
@@ -242,10 +277,23 @@ function spawnSym(){
 // ── BUSH / STICK ──────────────────────────────────────────────────────────────
 let stickPickedUp = false;
 function pickUpStick() {
-  if (stickPickedUp) { showMsg('Здесь больше ничего нет.'); return; }
+  if (stickPickedUp && !bushBreadPickedUp) { tryPickupBread(); return; }
+  if (stickPickedUp && bushBreadPickedUp) { showMsg('Здесь больше ничего нет.'); return; }
+  if (selectedSlot >= 0) { showMsg('Руки заняты.'); return; }
   stickPickedUp = true;
   addItem({id:'stick', name:'палка', icon:'🪵', label:'палка', description:'Обычная палка. Немного влажная. Пахнет листьями.'});
   showMsg('Ты нашёл палку в кустах. Зачем-то взял её.');
+}
+
+// Bread — found in bush after stick
+let bushBreadPickedUp = false;
+function tryPickupBread() {
+  if (bushBreadPickedUp) { showMsg('Здесь больше ничего нет.'); return; }
+  if (selectedSlot >= 0) { showMsg('Руки заняты.'); return; }
+  bushBreadPickedUp = true;
+  addItem({id:'bread', name:'сухарик', icon:'🍞', label:'сухарик',
+    description:'Старый сухой сухарик. Немного грустный на вид. Коту, может, зайдёт.'});
+  showMsg('На дне куста лежал сухарик. Ты взял его, не зная зачем.');
 }
 
 // ── CAT & MONK MESSAGES ───────────────────────────────────────────────────────
@@ -260,6 +308,11 @@ const catMsgs = [
 let catMsgIdx = 0;
 function catMsg() { return catMsgs[catMsgIdx++ % catMsgs.length]; }
 
+// Cat burying mechanic
+let catBurying = false, catBuryTimer = 0, dirtReady = false;
+let dirtPickedUp = false;
+const DIRT_ZONE = {x:870, y:890, w:100, h:80}; // near cat after burying
+
 const monkMsgs = [
   'Монах сидит. Может, слышит тебя. Не подаёт вида.',
   'Не открыл глаза. Это, наверное, хороший знак.',
@@ -270,235 +323,6 @@ const monkMsgs = [
 ];
 let monkMsgIdx = 0;
 function monkMsg() { return monkMsgs[monkMsgIdx++ % monkMsgs.length]; }
-
-
-// ── ITEM × ELEMENT INTERACTIONS ──────────────────────────────────────────────
-// Tracks how many times each item×zone combo has been triggered
-const interactCounts = {};
-function interactKey(itemId, zone){ return itemId+'×'+zone; }
-function getInteractCount(itemId, zone){ return interactCounts[interactKey(itemId,zone)]||0; }
-function bumpInteract(itemId, zone){ const k=interactKey(itemId,zone); interactCounts[k]=(interactCounts[k]||0)+1; }
-
-// Returns response text for item used on zone, or null if no interaction
-function itemOnZone(itemId, zone){
-  const n=getInteractCount(itemId,zone);
-  bumpInteract(itemId,zone);
-
-  if(itemId==='jar'){
-    if(zone==='cat'){
-      const msgs=[
-        'Коты, конечно, жидкость, но не этот.',
-        'Он туда не пойдёт. Он это показал всем видом.',
-        'Кот посмотрел на банку. Потом на тебя. Выбрал смотреть в пустоту.',
-        'Нет.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='monk'){
-      const msgs=[
-        'Ты у него денег просишь? У монаха.',
-        'Монах не отвлекается на банки.',
-        'Он уже всё отпустил. И твою банку тоже.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='statue'){
-      const msgs=[
-        'Будда смотрит на банку. Банка смотрит на Будду. Никто не моргает.',
-        'Статуя молчит. Как обычно.',
-        'Ничего.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='water'){
-      const msgs=[
-        'В отражении банка выглядит глубже, чем есть.',
-        'Вода не удивлена.',
-        'Вода вообще ничем не удивляется.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-  }
-
-  if(itemId==='stick'){
-    if(zone==='cat'){
-      const msgs=[
-        'Кот скосил взгляд. Не впечатлён.',
-        'Ты помахал палкой. Кот зевнул и отвернулся.',
-        'Нет.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='monk'){
-      const msgs=[
-        'Монах медленно открыл один глаз. Закрыл.',
-        'Больше не открывает.',
-        'Ты уже пробовал.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='statue'){
-      const msgs=[
-        'Это было бы неуважительно. Ты опускаешь палку.',
-        'Нет.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='water'){
-      const msgs=[
-        'Палка коснулась воды. Круги разошлись. Ничего больше.',
-        'Снова круги. Вода не запоминает.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='bush'){
-      return n===0
-        ? 'Ты уже всё взял из этих кустов.'
-        : 'Там точно ничего нет.';
-    }
-    if(zone==='rocks'){
-      const msgs=[
-        'Постучал палкой по камню. Камень промолчал.',
-        'Снова. Камень по-прежнему молчит.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-  }
-
-  if(zone==='rocks'){
-    if(itemId==='jar') return 'Банка и камни смотрят друг на друга. Никто первым не начинает.';
-  }
-  if(zone==='bottle'){
-    if(itemId==='stick') return 'Ты потыкал палкой в банку. Банка устояла.';
-    if(itemId==='jar')   return 'Банка смотрит на банку. Что-то в этом есть.';
-  }
-
-  if(zone==='rocks'){
-    return [
-      'Камни. Банка. Ничего.',
-      'Снова камни.',
-    ][Math.min(n,1)];
-  }
-  return null; // no interaction defined
-}
-
-
-// ── ITEM × ZONE INTERACTION SYSTEM ───────────────────────────────────────────
-const interactCounts = {};
-function interactKey(itemId, zone){ return itemId+'|'+zone; }
-function getInteractCount(itemId, zone){ return interactCounts[interactKey(itemId,zone)]||0; }
-function bumpInteract(itemId, zone){ const k=interactKey(itemId,zone); interactCounts[k]=(interactCounts[k]||0)+1; }
-
-function itemOnZone(itemId, zone){
-  const n = getInteractCount(itemId, zone);
-  bumpInteract(itemId, zone);
-
-  if(itemId==='jar'){
-    if(zone==='cat'){
-      return [
-        'Коты, конечно, жидкость, но не этот.',
-        'Ну нет. Он туда не пойдёт.',
-        'Смотрит на банку. Потом на тебя. Уходит.',
-        'Ты всё ещё пробуешь? Уважаю упорство.',
-        'Безнадёжно.',
-      ][Math.min(n,4)];
-    }
-    if(zone==='monk'){
-      return [
-        'Ты у него денег просишь? У монаха, серьёзно?',
-        'Не реагирует. Вообще.',
-        'Он всё уже отпустил. В том числе это.',
-        'Тишина — тоже ответ.',
-      ][Math.min(n,3)];
-    }
-    if(zone==='statue'){
-      return [
-        'Будда смотрит на банку. Банка смотрит на Будду.',
-        'Тишина. Очень красноречивая.',
-        'Думаешь, он оценил? Вряд ли.',
-      ][Math.min(n,2)];
-    }
-    if(zone==='water'){
-      return [
-        'В отражении банка выглядит глубже, чем есть.',
-        'Вода не удивлена.',
-        'Отражение не двигается. Ты двигаешься.',
-      ][Math.min(n,2)];
-    }
-    if(zone==='bush'){
-      return [
-        'Банка и куст. Ничего не произошло.',
-        'Снова ничего. Куст держится.',
-      ][Math.min(n,1)];
-    }
-  }
-
-  if(itemId==='stick'){
-    if(zone==='cat'){
-      return [
-        'Кот посмотрел на палку. Не впечатлился.',
-        'Зевнул. Демонстративно.',
-        'Ушёл. Даже не оглянулся.',
-        'Нет.',
-      ][Math.min(n,3)];
-    }
-    if(zone==='monk'){
-      return [
-        'Открыл один глаз. Закрыл.',
-        'Больше не откроет. Это было последнее предупреждение.',
-        'Глубокое молчание. Ты проиграл.',
-      ][Math.min(n,2)];
-    }
-    if(zone==='statue'){
-      return [
-        'Ты поднял палку — и сам же убрал. Правильно.',
-        'Снова? Нет.',
-      ][Math.min(n,1)];
-    }
-    if(zone==='water'){
-      return [
-        'Палка и вода. Вода победила, как всегда.',
-        'Круги на воде. Красиво, если честно.',
-        'Ничего нового.',
-      ][Math.min(n,2)];
-    }
-    if(zone==='bush'){
-      return [
-        'Поковырял кусты палкой. Там пусто.',
-        'Всё так же пусто.',
-        'Куст тебя не боится.',
-      ][Math.min(n,2)];
-    }
-    if(zone==='cat'){
-      return [
-        'Кот посмотрел на палку. Не впечатлился.',
-        'Зевнул.',
-        'Нет.',
-      ][Math.min(n,2)];
-    }
-  }
-
-  if(zone==='rocks'){
-    if(itemId==='jar'){
-      return [
-        'Камни холодные. Банка тёплая. Вот и всё.',
-        'Камни молчат. Банка тоже.',
-      ][Math.min(n,1)];
-    }
-    if(itemId==='stick'){
-      return [
-        'Постучал палкой по камню. Камень не оценил.',
-        'Звук глухой. Как будто камню всё равно.',
-        'Ничего.',
-      ][Math.min(n,2)];
-    }
-    return [
-      'Камни. Просто камни.',
-      'Ничего не изменилось.',
-    ][Math.min(n,1)];
-  }
-  return null; // no interaction
-}
 
 
 // ── ITEM × ZONE INTERACTION SYSTEM ───────────────────────────────────────────
@@ -512,73 +336,165 @@ function itemOnZone(itemId, zone){
   bumpInteract(itemId, zone);
 
   if(itemId==='jar'){
-    if(zone==='cat'){
-      const msgs=[
-        'Коты, конечно, жидкость, но не этот.',
-        'Ну нет. Он туда не пойдёт.',
-        'Смотрит на тебя. Смотрит на банку. Уходит.',
-        'Безнадёжно.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='monk'){
-      const msgs=[
-        'У монаха денег просишь? У монаха, серьёзно?',
-        'Монах не реагирует. Он давно всё отпустил.',
-        'Даже банку.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='statue'){
-      const msgs=[
-        'Банка смотрит на Будду. Будда смотрит в вечность.',
-        'Банка не комментирует.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='water'){
-      const msgs=[
-        'В отражении банка кажется глубже.',
-        'Вода не удивлена.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='bush'){
-      return 'В кустах ничего нового.';
-    }
+    if(zone==='cat') return [
+      'Коты, конечно, жидкость, но не этот.',
+      'Ну нет. Он туда не пойдёт.',
+      'Смотрит на банку. Потом на тебя. Уходит.',
+      'Ты всё ещё пробуешь? Уважаю упорство.',
+      'Безнадёжно.',
+    ][Math.min(n,4)];
+    if(zone==='monk') return [
+      'Ты у него денег просишь? У монаха, серьёзно?',
+      'Не реагирует. Вообще.',
+      'Он всё уже отпустил. В том числе это.',
+      'Тишина — тоже ответ.',
+    ][Math.min(n,3)];
+    if(zone==='statue') return [
+      'Будда смотрит на банку. Банка смотрит на Будду.',
+      'Тишина. Очень красноречивая.',
+      'Думаешь, он оценил? Вряд ли.',
+    ][Math.min(n,2)];
+    if(zone==='water') return [
+      'В отражении банка выглядит глубже, чем есть.',
+      'Вода не удивлена.',
+      'Отражение не двигается. Ты двигаешься.',
+    ][Math.min(n,2)];
+    if(zone==='bush') return [
+      'Банка и куст. Ничего не произошло.',
+      'Снова ничего. Куст держится.',
+    ][Math.min(n,1)];
   }
 
   if(itemId==='stick'){
-    if(zone==='cat'){
-      const msgs=[
-        'Кот не впечатлён.',
-        'Зевнул.',
-        'Нет.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
+    if(zone==='cat') return [
+      'Кот посмотрел на палку. Не впечатлился.',
+      'Зевнул. Демонстративно.',
+      'Ушёл. Даже не оглянулся.',
+      'Нет.',
+    ][Math.min(n,3)];
+    if(zone==='monk') return [
+      'Открыл один глаз. Закрыл.',
+      'Больше не откроет. Это было последнее предупреждение.',
+      'Глубокое молчание. Ты проиграл.',
+    ][Math.min(n,2)];
+    if(zone==='statue') return [
+      'Ты поднял палку — и сам же убрал. Правильно.',
+      'Снова? Нет.',
+    ][Math.min(n,1)];
+    if(zone==='water') return [
+      'Палка и вода. Вода победила, как всегда.',
+      'Круги на воде. Красиво, если честно.',
+      'Ничего нового.',
+    ][Math.min(n,2)];
+    if(zone==='bush') return [
+      'Поковырял кусты палкой. Там пусто.',
+      'Всё так же пусто.',
+      'Куст тебя не боится.',
+    ][Math.min(n,2)];
+  }
+
+  if(zone==='rocks'){
+    if(itemId==='jar') return [
+      'Камни холодные. Банка тёплая. Вот и всё.',
+      'Камни молчат. Банка тоже.',
+    ][Math.min(n,1)];
+    if(itemId==='stick') return [
+      'Постучал палкой по камню. Камень не оценил.',
+      'Звук глухой. Как будто камню всё равно.',
+      'Ничего.',
+    ][Math.min(n,2)];
+    return ['Камни. Просто камни.','Ничего не изменилось.'][Math.min(n,1)];
+  }
+
+  if(zone==='bottle'){
+    if(itemId==='stick'){
+      // Stick + jar → glowstick + empty jar
+      const jar=getItem('jar');
+      if(!jar){ return 'Тут нечем светить.'; }
+      // Transform
+      const stickIdx=inventory.findIndex(i=>i&&i.id==='stick');
+      if(stickIdx>=0){
+        inventory[stickIdx]={id:'glowstick',name:'светящаяся палка',icon:'🪄',label:'светопалка',
+          description:'Палка касалась банки со светлячками. Теперь светится сама. Тихо и ровно.'};
+      }
+      jar.caught=0; jar.glowing=false; jar.label='банка'; jar.icon='🫙';
+      jar.description='Пустая банка. Светлячки улетели, жижка осталась в палке.';
+      if(selectedSlot>=0&&inventory[selectedSlot]&&inventory[selectedSlot].id==='stick'){
+        // keep selected
+      }
+      renderHotbar(); updateItemCursor();
+      showS2Msg('Палка коснулась банки — и впитала весь свет. Банка снова пустая.');
+      return null; // already showed msg
     }
-    if(zone==='monk'){
-      const msgs=[
-        'Открыл один глаз. Закрыл.',
-        'Больше не открывает.',
-      ];
-      return msgs[Math.min(n, msgs.length-1)];
-    }
-    if(zone==='statue'){
-      return 'Это было бы неуважительно.';
-    }
-    if(zone==='water'){
-      return 'Палка и вода. Вода и палка. Ничего особенного.';
-    }
-    if(zone==='bush'){
-      return 'Здесь уже взял палку. Хватит.';
+    if(itemId==='jar') return 'Банка смотрит на банку. Что-то в этом есть.';
+  }
+
+  if(zone==='water'){
+    if(itemId==='jar'){
+      const jar=getItem('jar');
+      if(!jar) return null;
+      if(jar.released||jar.hasWater) return 'Банка уже с водой.';
+      jar.hasWater=true; jar.label='с водой'; jar.icon='🫙';
+      jar.description='Банка с водой. Холодная. Тяжелее, чем кажется.';
+      renderHotbar(); updateItemCursor();
+      showMsg('Ты зачерпнул воды. Банка стала тяжелее.');
+      return null;
     }
   }
 
-  return null; // no interaction
-}
+  if(zone==='rock1'||zone==='rock2'||zone==='rock3'){
+    const jar=itemId==='jar'?getItem('jar'):null;
+    if(itemId==='jar'&&jar&&jar.hasWater){
+      // Water jar on rock 1 → activate, jar breaks
+      rockStates[zone]=true;
+      const jarIdx=inventory.findIndex(i=>i&&i.id==='jar');
+      if(jarIdx>=0) inventory[jarIdx]=null;
+      if(selectedSlot===jarIdx) selectedSlot=-1;
+      renderHotbar(); updateItemCursor();
+      showS2Msg('Вода впитывается в камень. Банка трескается от холода — и рассыпается.');
+      return null;
+    }
+    if(itemId==='dirt'){
+      rockStates[zone]=true;
+      const dirtIdx=inventory.findIndex(i=>i&&i.id==='dirt');
+      if(dirtIdx>=0) inventory[dirtIdx]=null;
+      if(selectedSlot===dirtIdx) selectedSlot=-1;
+      renderHotbar(); updateItemCursor();
+      showS2Msg('Земля ложится на камень. Что-то меняется.');
+      return null;
+    }
+    if(itemId==='glowstick'){
+      rockStates[zone]=true;
+      showS2Msg('Свет из палки переходит в камень. Камень начинает тихо светиться.');
+      return null;
+    }
+    // Default: rock with no useful item
+    const rockTexts=['Обычный камень. Холодный.','Поверхность шершавая.','Что-то в нём есть.'];
+    return rockTexts[getInteractCount(itemId,zone)%3];
+  }
 
-// Try item interaction on a zone, show message if defined
+  if(zone==='cat'){
+    if(itemId==='bread'||itemId==='durian'){
+      const foodIdx=inventory.findIndex(i=>i&&i.id===itemId);
+      if(foodIdx>=0) inventory[foodIdx]=null;
+      if(selectedSlot===foodIdx) selectedSlot=-1;
+      catBurying=true; catBuryTimer=0;
+      renderHotbar(); updateItemCursor();
+      const msg=itemId==='durian'
+        ? 'Кот понюхал рис с дурианом. На секунду завис. И начал закапывать — быстро, инстинктивно.'
+        : 'Кот понюхал сухарик. Поморщился. И всё равно начал закапывать — инстинкт.';
+      showMsg(msg);
+      return null;
+    }
+  }
+
+  // Bread doesn't do anything on other zones
+  if(itemId==='bread'){
+    return ['Что делать с сухариком здесь?','Нет.',' '][Math.min(getInteractCount(itemId,zone)%3, 2)];
+  }
+
+  return null;
+}
 function tryItemOnZone(zone){
   const item = getSelectedItem();
   if(!item) return false;
@@ -611,7 +527,9 @@ function loop(){
     hero.x=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,hero.x));
   } else {if(tick%44===0)hero.sitFrame++;}
   if(hero.praying){pTick++;if(pTick%28===0)spawnSym();}else pTick=0;
-  pSyms.forEach(s=>{s.vx+=(s.ax||0);s.x+=s.vx;s.vy*=0.998;s.y+=s.vy;s.age++;});
+  // Cat burying animation timer
+  if(catBurying){ catBuryTimer++; if(catBuryTimer>180){catBurying=false;dirtReady=true;showMsg('Кот закончил закапывать. Осталась кучка земли.');} }
+  pSyms.forEach(s=>{s.vx+=(s.ax||0);s.vx*=0.96;s.x+=s.vx;s.vy*=0.998;s.y+=s.vy;s.age++;});
   pSyms=pSyms.filter(s=>s.age<s.life);
   ctx.clearRect(0,0,W,H);
   mainFlies.forEach(f=>{
@@ -670,9 +588,14 @@ gc.addEventListener('mousemove',e=>{
   const zone=hitZone(cx,cy);
   // When item selected, only show pointer for bush/cat/monk, not scene transitions
   if(selectedSlot>=0){
-    gc.style.cursor=(zone==='cat'||zone==='monk'||zone==='bush')?'pointer':'default';
+    const interactZones=['cat','monk','bush','water','statue','tree'];
+    gc.style.cursor=interactZones.includes(zone)?'pointer':'default';
   } else {
-    gc.style.cursor=zone?'pointer':'default';
+    // Bush: no pointer after both items taken
+    const bushDone = stickPickedUp && bushBreadPickedUp;
+    const dirtGone = dirtPickedUp || (!dirtReady && !catBurying);
+    const noPointer = (zone==='bush'&&bushDone) || (zone==='dirt'&&dirtGone);
+    gc.style.cursor=(zone && !noPointer)?'pointer':'default';
   }
 });
 function onMainTap(cx,cy){
@@ -686,6 +609,14 @@ function onMainTap(cx,cy){
     if(response){showMsg(response);return;}
   }
 
+  if(zone==='dirt' && dirtReady && !dirtPickedUp){
+    if(selectedSlot>=0){showMsg('Руки заняты.');return;}
+    dirtPickedUp=true; dirtReady=false;
+    addItem({id:'dirt',name:'земля',icon:'🫧',label:'земля',
+      description:'Свежая земля. Кот постарался.'});
+    showMsg('Ты подобрал горстку земли.');
+    return;
+  }
   if(zone==='bush') {pickUpStick();return;}
   if(zone==='cat')  {showMsg(catMsg());return;}
   if(zone==='monk') {showMsg(monkMsg());return;}
@@ -727,28 +658,58 @@ const TREE_W=1376,TREE_H=768,BOT_PX=283,BOT_PY=317,BOT_PW=94,BOT_PH=119;
 function getBottleRect(){return{x:BOT_PX*(s2W/TREE_W),y:BOT_PY*(s2H/TREE_H),w:BOT_PW*(s2W/TREE_W),h:BOT_PH*(s2H/TREE_H)};}
 function bottleHit(cx,cy){if(jarPickedUp)return false;const b=getBottleRect();return cx>=b.x-8&&cx<=b.x+b.w+8&&cy>=b.y-8&&cy<=b.y+b.h+8;}
 function animScene2(){s2Ctx.clearRect(0,0,s2W,s2H);if(!jarPickedUp&&bottleImg.complete&&bottleImg.naturalWidth){const b=getBottleRect();s2Ctx.drawImage(bottleImg,b.x,b.y,b.w,b.h);}s2AnimId=requestAnimationFrame(animScene2);}
-s2Canvas.addEventListener('mousemove',e=>{const r=s2Canvas.getBoundingClientRect();s2Canvas.style.cursor=bottleHit(e.clientX-r.left,e.clientY-r.top)?'pointer':'default';});
+
+const ROCKS = [
+  {fx:0.09, fy:0.73, fw:0.12, fh:0.14, name:'rock1'},
+  {fx:0.48, fy:0.60, fw:0.10, fh:0.11, name:'rock2'},
+  {fx:0.66, fy:0.58, fw:0.10, fh:0.11, name:'rock3'},
+];
+const rockStates = {rock1:false, rock2:false, rock3:false};
+function getRockRect(r){ return {x:r.fx*s2W,y:r.fy*s2H,w:r.fw*s2W,h:r.fh*s2H}; }
+function hitRock(cx,cy){ return ROCKS.find(r=>{ const rr=getRockRect(r); return cx>=rr.x&&cx<=rr.x+rr.w&&cy>=rr.y&&cy<=rr.y+rr.h; })||null; }
+
+s2Canvas.addEventListener('mousemove',e=>{
+  const r=s2Canvas.getBoundingClientRect();
+  const cx=e.clientX-r.left,cy=e.clientY-r.top;
+  const rock=hitRock(cx,cy);
+  const sel=getSelectedItem();
+  const canInteract=bottleHit(cx,cy)||rock;
+  s2Canvas.style.cursor=canInteract?'pointer':'default';
+});
 function onS2Tap(cx,cy){
   if(activeScreen!=='scene2')return;
   const sel=getSelectedItem();
-  // Rocks hit test — bottom-left area of tree scene
-  const rocksHit=cx<s2W*0.25&&cy>s2H*0.72;
-  if(sel&&rocksHit){
-    const r=itemOnZone(sel.id,'rocks');
-    if(r){showS2Msg(r);return;}
+  // Rock hit
+  const rock=hitRock(cx,cy);
+  if(rock){
+    if(sel){
+      const r=itemOnZone(sel.id, rock.name);
+      if(r){showS2Msg(r);}
+    } else {
+      // No item — show generic rock text
+      const n=getInteractCount('none',rock.name);
+      bumpInteract('none',rock.name);
+      const texts=['Холодный камень.','Тяжёлый.','Не двигается.'];
+      showS2Msg(texts[n%3]);
+    }
+    return;
   }
+  // Bottle
   if(bottleHit(cx,cy)){
     if(sel){
       const r=itemOnZone(sel.id,'bottle');
       if(r){showS2Msg(r);return;}
+      return;
     }
     pickUpJar();return;
   }
 }
 s2Canvas.addEventListener('click',e=>{const r=s2Canvas.getBoundingClientRect();onS2Tap(e.clientX-r.left,e.clientY-r.top);});
 s2Canvas.addEventListener('touchend',e=>{e.preventDefault();if(!e.changedTouches.length)return;const r=s2Canvas.getBoundingClientRect();onS2Tap(e.changedTouches[0].clientX-r.left,e.changedTouches[0].clientY-r.top);},{passive:false});
+function showS2Msg(text,dur=2800){s2MsgEl.textContent=text;s2MsgEl.style.display='block';setTimeout(()=>s2MsgEl.style.display='none',dur);}
 function pickUpJar(){
   if(jarPickedUp)return;
+  if(selectedSlot>=0){showS2Msg('Руки заняты.');return;}
   jarPickedUp=true;
   addItem({id:'jar',name:'банка',icon:'🫙',label:'банка',caught:0,glowing:false,description:'Пустая стеклянная банка. Поймай в неё что-нибудь.'});
   updateItemCursor();
@@ -764,6 +725,63 @@ const wishCanvas=document.getElementById('wish-anim');
 const wCtx=wishCanvas.getContext('2d');
 const bMsgEl=document.getElementById('buddha-msg');
 let bFlies=[],wishPlaying=false,bMsgTimer=null,bW=0,bH=0;
+
+
+// ── FIREFLY DIALOG SCENE ───────────────────────────────────────────────────────
+let earUsed = false;        // stick used on ear
+let dialogActive = false;
+let dialogStep = 0;
+let durianReady = false;
+let durianPickedUp = false;
+
+const DIALOG = [
+  // block 1
+  {s:'А', t:'Если дерево падает в лесу и никто не слышит — это карма?'},
+  {s:'Б', t:'Это физика.'},
+  {s:'А', t:'А карма?'},
+  {s:'Б', t:'Карма — это когда ты был тем деревом в прошлой жизни.'},
+  {s:'А', t:'И упал?'},
+  {s:'Б', t:'И никто не слышал.'},
+  {s:'А', t:'Грустно.'},
+  {s:'Б', t:'Зато тихо.'},
+  // block 2
+  {s:'А', t:'Я думал: если всё иллюзия — этот рис тоже иллюзия?'},
+  {s:'Б', t:'Попробуй не есть.'},
+  {s:'А', t:'*(пауза)* Нет, буду есть.'},
+  {s:'Б', t:'Вот и ответ.'},
+  // block 3
+  {s:'А', t:'Чего ты хочешь?'},
+  {s:'Б', t:'Ничего.'},
+  {s:'А', t:'Это нирвана?'},
+  {s:'Б', t:'Нет, я просто наелся.'},
+  // block 4
+  {s:'А', t:'Есть теория: мы живём снова и снова, пока не научимся.'},
+  {s:'Б', t:'Чему?'},
+  {s:'А', t:'Не знаю. Чему-то важному.'},
+  {s:'Б', t:'И сколько жизней уже?'},
+  {s:'А', t:'Столько, что мы всё ещё светлячки в ухе Будды.'},
+  {s:'Б', t:'*(долгая пауза)* Может, урок простой. Мы просто не смотрим туда.'},
+  {s:'А', t:'Я смотрю в миску. Вполне себе красиво.'},
+  // block 5
+  {s:'А', t:'Смерть — это дверь.'},
+  {s:'Б', t:'Куда?'},
+  {s:'А', t:'На другую сторону.'},
+  {s:'Б', t:'Там есть рис с фруктами?'},
+  {s:'А', t:'Не знаю.'},
+  {s:'Б', t:'Тогда зачем торопиться.'},
+  {s:'А', t:'Ты не торопишься.'},
+  {s:'Б', t:'Именно. Я наслаждаюсь процессом.'},
+  {s:'А', t:'Это буддизм?'},
+  {s:'Б', t:'Это рис. Но иногда разницы нет.'},
+  // ending
+  {s:'', t:'*(Встают одновременно. Смотрят на миску.)*'},
+  {s:'А', t:'Осталось немного.'},
+  {s:'Б', t:'Всегда остаётся немного.'},
+  {s:'А', t:'Это метафора?'},
+  {s:'Б', t:'Нет. Просто не доели.'},
+  {s:'', t:'*(Убегают. Миска остаётся.)*'},
+  {s:'', t:'В ухе тихо. На столе — почти пустая миска с дурианом. Запах странный.', last:true},
+];
 
 function initBuddhaScreen(){
   const rect=document.getElementById('buddha-screen').getBoundingClientRect();
@@ -831,18 +849,40 @@ function drawBubbles() {
   for(let i=bubbles.length-1;i>=0;i--){if(bubbles[i].age>=bubbles[i].life)bubbles.splice(i,1);}
 }
 
+function earHit(cx,cy){ return !earUsed&&cx>bW*0.72&&cx<bW*0.92&&cy>bH*0.38&&cy<bH*0.65; }
+function isDurianClickable(cx,cy){ return durianReady&&!durianPickedUp&&cx>bW*0.38&&cx<bW*0.62&&cy>bH*0.38&&cy<bH*0.52; }
 bCanvas.addEventListener('mousemove',e=>{
-  if(wishPlaying){bCanvas.style.cursor='default';return;}
+  if(wishPlaying||dialogActive){bCanvas.style.cursor='default';return;}
   const sel=getSelectedItem();
-  if(!sel||sel.id!=='jar'||sel.released){bCanvas.style.cursor='default';return;}
   const r=bCanvas.getBoundingClientRect(),cx=e.clientX-r.left,cy=e.clientY-r.top;
+  if(earHit(cx,cy)&&sel&&sel.id==='glowstick'){bCanvas.style.cursor='pointer';return;}
+  if(isDurianClickable(cx,cy)&&!sel){bCanvas.style.cursor='pointer';return;}
+  if(!sel||sel.id!=='jar'||sel.released){bCanvas.style.cursor='default';return;}
   bCanvas.style.cursor=bFlies.some(f=>f.alive&&Math.sqrt((f.x-cx)**2+(f.y-cy)**2)<f.sz*5+14)?'pointer':'default';
 });
 
+function durianHit(cx,cy){
+  // Durian is on table in center of screen
+  return durianReady&&!durianPickedUp&&
+    cx>bW*0.38&&cx<bW*0.62&&cy>bH*0.38&&cy<bH*0.52;
+}
 function onBuddhaTap(cx,cy){
-  if(activeScreen!=='buddha'||wishPlaying)return;
-  // Jar must be SELECTED in hotbar to catch fireflies
+  if(activeScreen!=='buddha'||wishPlaying||dialogActive)return;
   const sel=getSelectedItem();
+  // Glowstick on ear → start dialog
+  if(earHit(cx,cy)&&sel&&sel.id==='glowstick'){
+    earUsed=true;
+    startFireflyDialog();
+    return;
+  }
+  // Pick up durian
+  if(durianHit(cx,cy)&&!sel){
+    durianPickedUp=true; durianReady=false;
+    addItem({id:'durian',name:'дуриан',icon:'🍛',label:'дуриан',
+      description:'Рис с кусочками дуриана. Запах невозможный. Кот, наверное, оценит.'});
+    showBMsg('Ты взял миску. Запах странный, но терпимо.');
+    return;
+  }
   if(!sel||sel.id!=='jar')return;
   const jar=sel;
   if(jar.released)return; // already released once
@@ -855,15 +895,15 @@ function onBuddhaTap(cx,cy){
       renderHotbar();
       // Narrative messages — irony → nostalgia → wish
       const catchMsgs = [
-        'Банкой. Ну да.',
-        'Ты серьёзно пришёл сюда с банкой.',
-        'Хотя. Было же такое.',
-        'Лето. Лагерь. Ты ждал танцы вечером — а всё равно вышел в траву.',
-        'Кто-то светил фонариком. Кто-то смеялся. Ты ловил.',
-        'Не пошёл тогда на танцы. Не знаешь почему.',
-        'Трава была тёплая. Темно, но не страшно.',
-        'Казалось, если не уходить — что-то останется.',
-        'Ничего не осталось. Но вот же — помнишь.',
+        'Ну, банкой. Классика.',
+        'Это было бы стыдно, если бы кто-то смотрел.',
+        'Хотя раньше в этом был смысл.',
+        'Летом. Первый раз увидел — замер.',
+        'Лагерь. Все ждали танцы, а я ушёл к реке.',
+        'Кто-то посветил светлячком в темноте. Все закричали.',
+        'Я тогда не пошёл на танцы. Остался. Не знаю зачем.',
+        'Трава была тёплой. Небо — близко. Время — нет.',
+        'Некоторые вещи просто остаются. Без причины.',
         null
       ];
       if(jar.caught<10){
@@ -1044,6 +1084,147 @@ function startWishAnim(jarRect, onDone){
       },400);
     }
   })();
+}
+
+
+// ── FIREFLY DIALOG ─────────────────────────────────────────────────────────────
+function startFireflyDialog(){
+  dialogActive=true;
+  dialogStep=0;
+  bCanvas.style.pointerEvents='auto';
+  // Create dialog overlay div
+  let dlg=document.getElementById('fly-dialog');
+  if(!dlg){
+    dlg=document.createElement('div');
+    dlg.id='fly-dialog';
+    dlg.style.cssText=`
+      position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;
+      align-items:center;justify-content:flex-end;padding-bottom:90px;
+      cursor:pointer;`;
+    document.getElementById('buddha-screen').appendChild(dlg);
+  }
+  dlg.style.display='flex';
+  advanceDialog();
+  dlg.addEventListener('click', advanceDialog);
+  dlg.addEventListener('touchend', e=>{e.preventDefault();advanceDialog();},{passive:false});
+}
+
+function advanceDialog(){
+  const dlg=document.getElementById('fly-dialog');
+  if(!dlg||!dialogActive)return;
+  if(dialogStep>=DIALOG.length){
+    // End dialog
+    dialogActive=false;
+    dlg.style.display='none';
+    dlg.replaceWith(dlg.cloneNode(false)); // remove listeners
+    // Remove glowstick from inventory
+    const gi=inventory.findIndex(i=>i&&i.id==='glowstick');
+    if(gi>=0){inventory[gi]=null; if(selectedSlot===gi)selectedSlot=-1;}
+    renderHotbar(); updateItemCursor();
+    durianReady=true;
+    showBMsg('В ухе тихо. На столе — почти пустая миска с дурианом. Запах странный.');
+    // Draw durian on canvas
+    drawDurianOnTable();
+    return;
+  }
+  const line=DIALOG[dialogStep];
+  dialogStep++;
+  // Render line
+  const isNarr=line.s==='';
+  const isA=line.s==='А';
+  dlg.innerHTML=`
+    <div style="
+      background:rgba(0,0,0,0.88);
+      border:1.5px solid ${isNarr?'rgba(240,192,64,0.4)':'#f0c040'};
+      border-radius:4px;padding:14px 22px;max-width:72%;
+      font-family:monospace;font-size:15px;line-height:1.7;
+      color:${isNarr?'rgba(240,192,64,0.7)':'#f0c040'};
+      text-align:${isNarr?'center':'left'};
+    ">
+      ${line.s?`<span style="color:${isA?'#ffe066':'#aaddff'};font-weight:bold;margin-right:8px">${line.s}:</span>`:''}
+      ${line.t}
+      ${line.last?'':'<div style="text-align:right;margin-top:8px;font-size:11px;opacity:0.5">нажми чтобы продолжить</div>'}
+    </div>
+    <canvas id="fly-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
+  `;
+  // Draw two fireflies at table on the fly-canvas
+  requestAnimationFrame(drawFlyTable);
+}
+
+let flyTableAnim=null;
+function drawFlyTable(){
+  const c=document.getElementById('fly-canvas');
+  if(!c||!dialogActive)return;
+  c.width=c.offsetWidth; c.height=c.offsetHeight;
+  const cx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  const t=Date.now()/1000;
+
+  // Table — center of screen
+  const tx=W*0.5,ty=H*0.45;
+  // Table surface
+  cx.fillStyle='rgba(60,35,15,0.85)';
+  cx.fillRect(tx-90,ty,180,8);
+  cx.fillRect(tx-80,ty,160,40);
+  // Table legs
+  cx.fillRect(tx-80,ty+40,10,30);
+  cx.fillRect(tx+70,ty+40,10,30);
+
+  // Bowl of rice
+  cx.fillStyle='rgba(200,190,160,0.9)';
+  cx.beginPath(); cx.ellipse(tx,ty-4,28,10,0,0,Math.PI*2); cx.fill();
+  cx.fillStyle='rgba(230,220,190,0.95)';
+  cx.beginPath(); cx.ellipse(tx,ty-6,20,7,0,0,Math.PI*2); cx.fill();
+  // Rice dots
+  for(let i=0;i<12;i++){
+    const rx=tx-14+Math.cos(i*0.8+1)*12,ry=ty-6+Math.sin(i*1.1)*4;
+    cx.fillStyle='rgba(255,250,235,0.9)';
+    cx.fillRect(rx-1.5,ry-1,3,2);
+  }
+  // Fruit bits (durian chunks — yellowish)
+  [[tx-8,ty-9],[tx+5,ty-11],[tx-2,ty-8]].forEach(([fx,fy])=>{
+    cx.fillStyle='rgba(210,190,80,0.85)';
+    cx.fillRect(fx-3,fy-3,6,6);
+    cx.fillStyle='rgba(180,155,40,0.7)';
+    cx.fillRect(fx-2,fy-2,4,4);
+  });
+
+  // Firefly А — left of table
+  const fax=tx-55, fay=ty-22+Math.sin(t*1.1)*2;
+  const fbx=tx+55, fby=ty-22+Math.sin(t*0.9+1)*2;
+  [[fax,fay,'А'],[fbx,fby,'Б']].forEach(([fx,fy,label],idx)=>{
+    const glow=0.5+0.5*Math.abs(Math.sin(t*2+idx));
+    // Body glow
+    cx.save();
+    cx.globalAlpha=glow*0.4;
+    const g=cx.createRadialGradient(fx,fy,0,fx,fy,18);
+    g.addColorStop(0,'rgba(255,240,100,0.9)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=g; cx.beginPath(); cx.arc(fx,fy,18,0,Math.PI*2); cx.fill();
+    cx.restore();
+    // Core
+    cx.fillStyle=`rgba(255,245,120,${glow.toFixed(2)})`;
+    cx.fillRect(fx-4,fy-4,8,8);
+    cx.fillStyle='rgba(255,255,220,0.9)';
+    cx.fillRect(fx-2,fy-2,4,4);
+    // Eyes
+    cx.fillStyle='rgba(0,0,0,0.8)';
+    if(idx===0){cx.fillRect(fx+2,fy-2,2,2);cx.fillRect(fx+2,fy+1,2,1);}
+    else{cx.fillRect(fx-4,fy-2,2,2);cx.fillRect(fx-4,fy+1,2,1);}
+    // Label
+    cx.font='bold 10px monospace';
+    cx.fillStyle='rgba(240,192,64,0.7)';
+    cx.textAlign='center';
+    cx.fillText(label,fx,fy-12);
+    cx.textAlign='left';
+  });
+
+  if(dialogActive) flyTableAnim=requestAnimationFrame(drawFlyTable);
+}
+
+function drawDurianOnTable(){
+  // Just show a message — durian appears as clickable item on buddha screen
+  // handled via durianReady flag in onBuddhaTap
 }
 
 function animBuddha(){
