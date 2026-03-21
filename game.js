@@ -39,6 +39,12 @@ function renderHotbar() {
       div.innerHTML = `<span class="slot-icon">${item.icon}</span>`;
     }
     div.onclick = () => {
+      const prev = getSelectedItem();
+      if(prev && prev.id !== item.id) {
+        // Item × item interaction
+        const result = itemOnItem(prev.id, item.id);
+        if(result) { showMsg(result, 2800); return; }
+      }
       selectedSlot = selectedSlot === i ? -1 : i;
       renderHotbar();
       updateItemCursor();
@@ -326,6 +332,44 @@ let monkMsgIdx = 0;
 function monkMsg() { return monkMsgs[monkMsgIdx++ % monkMsgs.length]; }
 
 
+
+// ── ITEM × ITEM INTERACTIONS ──────────────────────────────────────────────────
+function itemOnItem(activeId, targetId) {
+  // Normalise order: always stick+jar regardless of which was active
+  const isStickJar = (activeId==='stick'&&targetId==='jar')||(activeId==='jar'&&targetId==='stick');
+
+  if(isStickJar) {
+    const jar  = getItem('jar');
+    const stick = inventory.find(i=>i&&i.id==='stick');
+    if(!jar || !stick) return null;
+
+    // Jar must have something to give: glowing liquid OR fireflies inside
+    const hasLight = jar.glowing || (jar.caught||0) > 0;
+    if(!hasLight) {
+      return 'В банке ничего нет. Нечем светить.';
+    }
+
+    // Transform stick → glowstick
+    const stickIdx = inventory.findIndex(i=>i&&i.id==='stick');
+    inventory[stickIdx] = {
+      id:'glowstick', name:'светящаяся палка', icon:'🪄', label:'светопалка',
+      description:'Палка впитала свет из банки. Светится тихо и ровно.'
+    };
+    if(selectedSlot===stickIdx) selectedSlot=stickIdx;
+
+    // Jar becomes empty
+    jar.caught=0; jar.glowing=false; jar.released=false;
+    jar.hasWater=false; jar.label='банка'; jar.icon='🫙';
+    jar.description='Пустая банка. Свет ушёл в палку.';
+
+    renderHotbar(); updateItemCursor();
+    showMsg('Палка впитала свет из банки. Банка снова пустая.');
+    return null; // handled, no extra message needed
+  }
+
+  return null;
+}
+
 // ── ITEM × ZONE INTERACTION SYSTEM ───────────────────────────────────────────
 const interactCounts = {}; // key: "itemId:zone"
 function interactKey(itemId, zone){ return itemId+':'+zone; }
@@ -335,6 +379,27 @@ function bumpInteract(itemId, zone){ const k=interactKey(itemId,zone); interactC
 function itemOnZone(itemId, zone){
   const n = getInteractCount(itemId, zone);
   bumpInteract(itemId, zone);
+
+  // Glowing jar (has firefly liquid) — special messages everywhere
+  if(itemId==='jar'){
+    const jar=getItem('jar');
+    if(jar&&jar.glowing){
+      const gm={
+        cat:   ['Банка светит коту в лицо. Кот щурится.','Кот смотрит на свет. Долго.','Кот моргнул. Что-то изменилось. Или нет.'],
+        monk:  ['Монах открыл один глаз. Посмотрел на свет. Закрыл.','Свет из банки упал на его руки.','Монах улыбнулся. Едва заметно.'],
+        statue:['Отражение света на камне. Красиво и бессмысленно.','Будда и банка со светом. Кто кому светит — непонятно.'],
+        water: ['Свет из банки упал в воду. Вода стала чуть другой.','Отражение светится. Оба настоящие.'],
+        bush:  ['Куст в свете светлячков выглядит иначе. Как будто живёт.'],
+        tree:  ['Дерево большое. Банка маленькая. Свет один.'],
+        rock1: ['Что-то в камне отзывается на свет.','Камень холодный. Свет тёплый. Баланс.'],
+        rock2: ['Что-то в камне отзывается. Или показалось.','Второй камень принимает свет.'],
+        rock3: ['Третий камень. Третий свет. Совпадение?'],
+      };
+      const msgs=gm[zone];
+      if(msgs) return msgs[n%msgs.length];
+      return 'Свет из банки. Тихо.';
+    }
+  }
 
   if(itemId==='jar'){
     if(zone==='cat') return [
@@ -954,7 +1019,7 @@ gc.addEventListener('mousemove',e=>{
     } else {
       const onOrb=hitMeditationOrb(cx,cy);
       const onSym=inscriptionCharge<5&&pSyms.some(s=>symHit(cx,cy,s));
-      const onInsc=inscHitCanvas(cx,cy)&&inscriptionCharge>=5;
+      const onInsc=inscHitCanvas(cx,cy);
       gc.style.cursor=(onOrb||onSym||onInsc)?'pointer':'default';
     }
     return;
@@ -980,9 +1045,7 @@ function onMainTap(cx,cy){
     if(orb){collectOrb(orb);return;}
     // In meditation, tap without drag: orbs and zone messages only
     // Symbol drag is handled by mousedown/mouseup
-    if(inscHitCanvas(cx,cy) && inscriptionCharge>=5) {
-      openScene4(); return;
-    }
+    if(inscHitCanvas(cx,cy)) { openScene4(); return; }
     const orb2=hitMeditationOrb(cx,cy);
     if(orb2){collectOrb(orb2);return;}
     const zone=hitZone(cx,cy);
@@ -1325,15 +1388,15 @@ function onBuddhaTap(cx,cy){
       renderHotbar();
       // Narrative messages — irony → nostalgia → wish
       const catchMsgs = [
-        'Ну, банкой. Классика.',
-        'Это было бы стыдно, если бы кто-то смотрел.',
-        'Хотя раньше в этом был смысл.',
-        'Летом. Первый раз увидел — замер.',
-        'Лагерь. Все ждали танцы, а я ушёл к реке.',
-        'Кто-то посветил светлячком в темноте. Все закричали.',
-        'Я тогда не пошёл на танцы. Остался. Не знаю зачем.',
-        'Трава была тёплой. Небо — близко. Время — нет.',
-        'Некоторые вещи просто остаются. Без причины.',
+        'В детстве это было важно. Не помню почему.',
+        'Помню только — темно, трава тёплая, и очень надо поймать.',
+        'Сейчас тоже ловлю. Зачем — примерно так же непонятно.',
+        'Как и всё, что делаем.',
+        'Вот они в банке. Насколько им плохо прямо сейчас?',
+        'Если страдают — значит привязаны.',
+        'Без боли не было бы облегчения. Без клетки — свободы.',
+        'Может, я делаю им одолжение. Может, это и есть буддизм.',
+        'Или я просто оправдываю то что поймал их банкой.',
         null
       ];
       if(jar.caught<10){
@@ -1341,7 +1404,7 @@ function onBuddhaTap(cx,cy){
         if(msg)showBMsg(msg, 3200);
       }
       if(jar.caught>=10){
-        showBMsg('Загадай что-нибудь. Можно.',3200);
+        showBMsg('Ладно. Летите. Не знаю кому из нас это нужнее.',3200);
         // Get hotbar slot position for animation origin
         const jarSlotEl=document.querySelector('#hotbar .hotbar-slot.selected');
         const jarRect=jarSlotEl?jarSlotEl.getBoundingClientRect():null;
@@ -1584,7 +1647,7 @@ function createScene4El() {
 let s4AnimId=null, s4Tick=0;
 
 function openScene4() {
-  createScene4El();
+  if(!document.getElementById('scene4')) createScene4El();
   activeScreen='scene4';
   scene4Unlocked=true;
   const el=document.getElementById('scene4');
