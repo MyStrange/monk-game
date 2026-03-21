@@ -267,8 +267,8 @@ function spawnSym(){
     vx:wobble, vy:-(speed+0.4),
     ax:-wobble*0.04,
     life:160+Math.random()*80, age:0,
-    startSize:(10+Math.random()*8)*sc,
-    endSize:(24+Math.random()*16)*sc,
+    startSize:(18+Math.random()*12)*sc,
+    endSize:(44+Math.random()*24)*sc,
     rotV:(Math.random()-0.5)*0.015,
   });
 }
@@ -339,9 +339,9 @@ function itemOnZone(itemId, zone){
     if(zone==='cat') return [
       'Коты, конечно, жидкость, но не этот.',
       'Ну нет. Он туда не пойдёт.',
-      'Смотрит на банку. Потом на тебя. Уходит.',
-      'Ты всё ещё пробуешь? Уважаю упорство.',
-      'Безнадёжно.',
+      'Смотрит на банку. Потом на тебя. Моргает.',
+      'Ты всё ещё пробуешь? Кот флегматично присутствует.',
+      'Он остался. Просто игнорирует.',
     ][Math.min(n,4)];
     if(zone==='monk') return [
       'Ты у него денег просишь? У монаха, серьёзно?',
@@ -369,7 +369,7 @@ function itemOnZone(itemId, zone){
     if(zone==='cat') return [
       'Кот посмотрел на палку. Не впечатлился.',
       'Зевнул. Демонстративно.',
-      'Ушёл. Даже не оглянулся.',
+      'Перевёл взгляд. Остался.',
       'Нет.',
     ][Math.min(n,3)];
     if(zone==='monk') return [
@@ -408,23 +408,23 @@ function itemOnZone(itemId, zone){
 
   if(zone==='bottle'){
     if(itemId==='stick'){
-      // Stick + jar → glowstick + empty jar
       const jar=getItem('jar');
       if(!jar){ return 'Тут нечем светить.'; }
-      // Transform
+      if(!jar.released && jar.caught===0){ return 'В банке ничего нет. Нечем светить.'; }
+      // Transform: stick absorbs light from jar → glowstick
       const stickIdx=inventory.findIndex(i=>i&&i.id==='stick');
       if(stickIdx>=0){
         inventory[stickIdx]={id:'glowstick',name:'светящаяся палка',icon:'🪄',label:'светопалка',
-          description:'Палка касалась банки со светлячками. Теперь светится сама. Тихо и ровно.'};
+          description:'Палка впитала свет из банки. Светится тихо и ровно.'};
+        if(selectedSlot===stickIdx) selectedSlot=stickIdx; // keep selected
       }
-      jar.caught=0; jar.glowing=false; jar.label='банка'; jar.icon='🫙';
-      jar.description='Пустая банка. Светлячки улетели, жижка осталась в палке.';
-      if(selectedSlot>=0&&inventory[selectedSlot]&&inventory[selectedSlot].id==='stick'){
-        // keep selected
-      }
+      // Jar becomes empty
+      jar.caught=0; jar.glowing=false; jar.released=false;
+      jar.hasWater=false; jar.label='банка'; jar.icon='🫙';
+      jar.description='Пустая банка. Свет ушёл в палку.';
       renderHotbar(); updateItemCursor();
       showS2Msg('Палка коснулась банки — и впитала весь свет. Банка снова пустая.');
-      return null; // already showed msg
+      return null;
     }
     if(itemId==='jar') return 'Банка смотрит на банку. Что-то в этом есть.';
   }
@@ -444,6 +444,9 @@ function itemOnZone(itemId, zone){
 
   if(zone==='rock1'||zone==='rock2'||zone==='rock3'){
     const jar=itemId==='jar'?getItem('jar'):null;
+    if(itemId==='jar'&&jar&&!jar.hasWater&&!jar.released&&(jar.caught||0)===0){
+      return ['Банка ещё пригодится. Не надо её разбивать.','Точно не сюда.','Пустая банка камню не поможет.'][Math.min(getInteractCount(itemId,zone)%3,2)];
+    }
     if(itemId==='jar'&&jar&&jar.hasWater){
       // Water jar on rock 1 → activate, jar breaks
       rockStates[zone]=true;
@@ -503,6 +506,332 @@ function tryItemOnZone(zone){
   return false;
 }
 
+
+// ── MEDITATION MODE ────────────────────────────────────────────────────────────
+// Visual: canvas gets warm golden overlay + world slows down
+// Special: hidden symbols appear, different dialogue texts, energy orbs collectible
+
+let meditationPhase = 0;     // 0-1 transition progress
+let meditationEnergy = 0;    // clicks collected in meditation
+let meditationOrbs = [];     // floating energy orbs visible only in meditation
+let lastMeditationSpawn = 0;
+
+const MEDITATE_MSGS = {
+  cat: [
+    'Кот тоже медитирует. Вы оба знаете.',
+    'В состоянии покоя кот — просто форма, принявшая кота.',
+    'Между вами нет разницы. Оба сидите. Оба дышите.',
+    'Кот достиг просветления раньше. Он просто не говорит об этом.',
+  ],
+  monk: [
+    'Два монаха. Один знает что делает. Второй — нет.',
+    'Вы медитируете вместе, не зная об этом.',
+    'Монах чувствует твоё присутствие. Ему это не мешает.',
+    'Пустота смотрит на пустоту.',
+  ],
+  statue: [
+    'В медитации статуя кажется ближе.',
+    'Ты и Будда сейчас занимаетесь одним и тем же.',
+    'Разница между тобой и статуей — только материал.',
+    'Улыбка становится яснее. Или это игра света.',
+  ],
+  tree: [
+    'Дерево медитирует тысячу лет. Ты только начал.',
+    'За деревом что-то есть. Ты это чувствуешь.',
+  ],
+  water: [
+    'Вода не думает. Ты думаешь о воде. Это твоя проблема.',
+    'В медитации отражение точнее оригинала.',
+  ],
+  bush: [
+    'Куст тоже часть этого момента.',
+    'Ты взял из него всё что мог.',
+  ],
+  orb: [
+    'Энергия.',
+    'Ещё.',
+    'Собираешь.',
+    'Хорошо.',
+  ],
+};
+
+function getMeditateMsg(zone) {
+  const msgs = MEDITATE_MSGS[zone];
+  if (!msgs) return null;
+  const n = getInteractCount('meditate', zone);
+  bumpInteract('meditate', zone);
+  return msgs[n % msgs.length];
+}
+
+function spawnMeditationOrb() {
+  // Orbs appear at random positions, drift slowly
+  meditationOrbs.push({
+    x: 100 + Math.random() * (BG_W - 200),
+    y: 200 + Math.random() * 500,
+    phase: Math.random() * Math.PI * 2,
+    sz: 6 + Math.random() * 8,
+    dx: (Math.random() - 0.5) * 0.3,
+    dy: (Math.random() - 0.5) * 0.2,
+    collected: false,
+    alpha: 0, // fade in
+  });
+}
+
+function drawMeditationLayer() {
+  if (!hero.praying) {
+    if (meditationPhase > 0) meditationPhase = Math.max(0, meditationPhase - 0.02);
+    return;
+  }
+  meditationPhase = Math.min(1, meditationPhase + 0.015);
+
+  // Warm golden overlay on entire scene
+  ctx.save();
+  ctx.globalAlpha = meditationPhase * 0.22;
+  ctx.fillStyle = 'rgba(255, 220, 80, 1)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // Vignette — darken edges
+  ctx.save();
+  ctx.globalAlpha = meditationPhase * 0.35;
+  const vg = ctx.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.85);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(20,10,0,1)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // Spawn orbs periodically
+  if (tick - lastMeditationSpawn > 120 && meditationOrbs.length < 8) {
+    spawnMeditationOrb();
+    lastMeditationSpawn = tick;
+  }
+
+  // Hidden inscription on pedestal — visible only in meditation
+  // Statue is roughly at BG x:700-820, inscription on base y:750-820
+  const inscAlpha = meditationPhase * (0.6 + 0.4*Math.abs(Math.sin(tick*0.02)));
+  if(inscAlpha > 0.05){
+    ctx.save();
+    ctx.globalAlpha = inscAlpha;
+    ctx.font = `bold ${Math.round(bw(28))}px serif`;
+    ctx.fillStyle = 'rgba(255,220,80,1)';
+    ctx.textAlign = 'center';
+    ctx.fillText('ธ', bx(760), by(810)); // Thai Om symbol
+    ctx.font = `${Math.round(bw(13))}px serif`;
+    ctx.globalAlpha = inscAlpha * 0.8;
+    ctx.fillStyle = 'rgba(255,240,140,1)';
+    ctx.fillText('สวนดอกไม้', bx(760), by(830)); // "flower garden"
+    ctx.restore();
+  }
+
+  // Aura around cat in meditation
+  const catCx = bx(cat.x + CAT_W/2), catCy = by(cat.y + CAT_H/2);
+  ctx.save();
+  ctx.globalAlpha = meditationPhase * 0.35 * (0.6+0.4*Math.abs(Math.sin(tick*0.03)));
+  const catAura = ctx.createRadialGradient(catCx, catCy, 0, catCx, catCy, bw(80));
+  catAura.addColorStop(0, 'rgba(255,230,80,0.6)');
+  catAura.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = catAura;
+  ctx.beginPath(); ctx.arc(catCx, catCy, bw(80), 0, Math.PI*2); ctx.fill();
+  // OM symbol above cat
+  ctx.globalAlpha = meditationPhase * 0.7;
+  ctx.font = `bold ${Math.round(bw(24))}px serif`;
+  ctx.fillStyle = 'rgba(255,220,60,1)';
+  ctx.textAlign = 'center';
+  ctx.fillText('ॐ', catCx, by(cat.y - 20));
+  ctx.restore();
+  ctx.textAlign = 'left';
+
+  // Water reflection glow in meditation
+  ctx.save();
+  ctx.globalAlpha = meditationPhase * 0.18;
+  ctx.fillStyle = 'rgba(100,180,255,1)';
+  ctx.fillRect(bx(200), by(950), bw(1400), bh(140));
+  ctx.restore();
+
+  // Draw orbs
+  meditationOrbs.forEach(orb => {
+    if (orb.collected) return;
+    orb.phase += 0.04;
+    orb.x += orb.dx; orb.y += orb.dy;
+    orb.alpha = Math.min(1, orb.alpha + 0.02);
+    if (orb.x < 80) orb.dx = Math.abs(orb.dx);
+    if (orb.x > BG_W-80) orb.dx = -Math.abs(orb.dx);
+    if (orb.y < 100) orb.dy = Math.abs(orb.dy);
+    if (orb.y > 700) orb.dy = -Math.abs(orb.dy);
+
+    const pulse = 0.5 + 0.5 * Math.abs(Math.sin(orb.phase));
+    const alpha = orb.alpha * meditationPhase * pulse;
+    const sz = orb.sz;
+
+    ctx.save();
+    // Glow
+    ctx.globalAlpha = alpha * 0.4;
+    const g = ctx.createRadialGradient(bx(orb.x), by(orb.y), 0, bx(orb.x), by(orb.y), bw(sz*5));
+    g.addColorStop(0, 'rgba(255,230,100,0.9)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(bx(orb.x), by(orb.y), bw(sz*5), 0, Math.PI*2); ctx.fill();
+    // Core
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = `rgba(255,240,120,${pulse.toFixed(2)})`;
+    ctx.fillRect(bx(orb.x)-bw(sz)/2, by(orb.y)-bh(sz)/2, bw(sz), bh(sz));
+    ctx.fillStyle = 'rgba(255,255,200,0.9)';
+    ctx.fillRect(bx(orb.x)-bw(sz)*0.2, by(orb.y)-bh(sz)*0.2, bw(sz)*0.4, bh(sz)*0.4);
+    ctx.restore();
+  });
+}
+
+function hitMeditationOrb(cx, cy) {
+  if (!hero.praying) return null;
+  return meditationOrbs.find(orb => {
+    if (orb.collected) return false;
+    const dx = cx - bx(orb.x), dy = cy - by(orb.y);
+    return Math.sqrt(dx*dx+dy*dy) < bw(orb.sz*5)+10;
+  }) || null;
+}
+
+function collectOrb(orb) {
+  orb.collected = true;
+  meditationEnergy++;
+  // Spawn a prayer symbol burst
+  for (let i = 0; i < 3; i++) spawnSym();
+  const msg = MEDITATE_MSGS.orb[Math.min(meditationEnergy-1, MEDITATE_MSGS.orb.length-1)];
+  showMsg(msg, 1500);
+}
+
+
+
+// ── SYMBOL DRAG + INSCRIPTION RESONANCE ───────────────────────────────────────
+let draggedSym = null;       // symbol currently held by player
+let dragX = 0, dragY = 0;   // current mouse/touch position
+let inscriptionCharge = 0;  // 0-5, symbols delivered
+let resonanceFlashes = [];  // flash animations on delivery
+let inscriptionGlow = 0;    // current glow intensity
+let scene4Unlocked = false;
+
+// Hit test for a prayer symbol (pSyms entry) at canvas coords
+function symHit(cx, cy, s) {
+  const sc = Math.min(W/BG_W, H/BG_H);
+  const sz = s.startSize + (s.endSize - s.startSize) * (s.age/s.life);
+  return Math.abs(cx - s.x) < sz*0.8 && Math.abs(cy - s.y) < sz*0.8;
+}
+
+// Hit test for inscription zone in canvas coords
+function inscHitCanvas(cx, cy) {
+  return cx >= bx(INSCRIPTION_ZONE.x) &&
+         cx <= bx(INSCRIPTION_ZONE.x) + bw(INSCRIPTION_ZONE.w) &&
+         cy >= by(INSCRIPTION_ZONE.y) &&
+         cy <= by(INSCRIPTION_ZONE.y) + bh(INSCRIPTION_ZONE.h);
+}
+
+function deliverSymbol() {
+  inscriptionCharge++;
+  draggedSym = null;
+  // Spawn resonance flash
+  resonanceFlashes.push({
+    x: INSCRIPTION_ZONE.x + INSCRIPTION_ZONE.w/2,
+    y: INSCRIPTION_ZONE.y + INSCRIPTION_ZONE.h/2,
+    age: 0, life: 40,
+    chars: '✦ ธ ✦'.split(' '),
+  });
+  inscriptionGlow = 1.0;
+  if (inscriptionCharge >= 5) {
+    setTimeout(openScene4, 800);
+  } else {
+    showMsg(['Раз.','Два.','Три.','Четыре.','Пять.'][inscriptionCharge-1] + ' Надпись светится.', 1800);
+  }
+}
+
+function drawDraggedSym() {
+  if (!draggedSym) return;
+  const sc = Math.min(W/BG_W, H/BG_H);
+  const sz = (draggedSym.startSize + draggedSym.endSize) / 2;
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+  ctx.font = `bold ${Math.round(sz * 1.3)}px monospace`;
+  ctx.fillStyle = draggedSym.col;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Glow behind dragged symbol
+  ctx.shadowColor = '#ffe066';
+  ctx.shadowBlur = 16;
+  ctx.fillText(draggedSym.ch, dragX, dragY);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawResonanceFlashes() {
+  // Inscription glow
+  if (inscriptionGlow > 0 && hero.praying) {
+    const ix = bx(INSCRIPTION_ZONE.x + INSCRIPTION_ZONE.w/2);
+    const iy = by(INSCRIPTION_ZONE.y + INSCRIPTION_ZONE.h/2);
+    const chargeRatio = inscriptionCharge / 5;
+    ctx.save();
+    ctx.globalAlpha = inscriptionGlow * (0.5 + chargeRatio * 0.5);
+    const ig = ctx.createRadialGradient(ix, iy, 0, ix, iy, bw(80 + chargeRatio*60));
+    ig.addColorStop(0, `rgba(255,220,60,0.9)`);
+    ig.addColorStop(0.4, `rgba(255,180,0,0.4)`);
+    ig.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = ig;
+    ctx.beginPath(); ctx.arc(ix, iy, bw(80 + chargeRatio*60), 0, Math.PI*2); ctx.fill();
+    // Charge dots
+    for (let i=0; i<inscriptionCharge; i++) {
+      const da = (i/5)*Math.PI*2 - Math.PI/2;
+      const dx = ix + Math.cos(da)*bw(30), dy = iy + Math.sin(da)*bh(20);
+      ctx.globalAlpha = inscriptionGlow * 0.9;
+      ctx.fillStyle = '#ffe066';
+      ctx.fillRect(dx-3, dy-3, 6, 6);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(dx-1, dy-1, 2, 2);
+    }
+    ctx.restore();
+    inscriptionGlow = Math.max(0, inscriptionGlow - 0.012);
+  }
+
+  for (let i = resonanceFlashes.length-1; i >= 0; i--) {
+    const f = resonanceFlashes[i];
+    const t = f.age / f.life;
+    const alpha = t < 0.3 ? t/0.3 : 1-t;
+    const r = bw(30 + t*120);
+    const fx = bx(f.x), fy = by(f.y);
+    // Ring
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.strokeStyle = '#ffe066';
+    ctx.lineWidth = 3 * (1-t) + 1;
+    ctx.beginPath(); ctx.arc(fx, fy, r, 0, Math.PI*2); ctx.stroke();
+    // Second ring
+    ctx.globalAlpha = alpha * 0.4;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(fx, fy, r*0.6, 0, Math.PI*2); ctx.stroke();
+    // Floating chars
+    ctx.globalAlpha = alpha;
+    ctx.font = `bold ${Math.round(bw(20 + t*30))}px monospace`;
+    ctx.fillStyle = '#ffe066';
+    ctx.textAlign = 'center';
+    ctx.fillText('ธ', fx + Math.cos(t*Math.PI*4)*r*0.5, fy - r*0.3 - t*bh(40));
+    ctx.fillText('✦', fx - Math.cos(t*Math.PI*3)*r*0.4, fy + r*0.2 - t*bh(30));
+    ctx.textAlign = 'left';
+    ctx.restore();
+    f.age++;
+    if (f.age >= f.life) resonanceFlashes.splice(i, 1);
+  }
+}
+
+// Inscription zone — only in meditation
+const INSCRIPTION_ZONE = {x:700, y:770, w:130, h:80};
+let scene3Unlocked = false;
+
+function inscriptionHit(cx, cy) {
+  return hero.praying &&
+    cx >= bx(INSCRIPTION_ZONE.x) && cx <= bx(INSCRIPTION_ZONE.x) + bw(INSCRIPTION_ZONE.w) &&
+    cy >= by(INSCRIPTION_ZONE.y) && cy <= by(INSCRIPTION_ZONE.y) + bh(INSCRIPTION_ZONE.h);
+}
+
 // ── GAME LOOP ─────────────────────────────────────────────────────────────────
 let tick=0,catFrame=0,monkFrame=0;
 const keys={};
@@ -541,6 +870,9 @@ function loop(){
     ctx.fillStyle=`rgba(255,235,80,${(a*0.13).toFixed(2)})`;ctx.fillRect(bx(f.x)-sz*2,by(f.y)-sz/2,sz*4,sz);
   });
   drawCat(catFrame);drawRedMonk(monkFrame);drawHero();
+  drawMeditationLayer();
+  drawResonanceFlashes();
+  drawDraggedSym();
   pCtx.clearRect(0,0,W,H);
   pSyms.forEach(s=>{
     const p=s.age/s.life;
@@ -600,6 +932,49 @@ gc.addEventListener('mousemove',e=>{
 });
 function onMainTap(cx,cy){
   if(activeScreen!=='main')return;
+
+  // MEDITATION MODE — different behaviour
+  if(hero.praying){
+    // Collect orb
+    const orb=hitMeditationOrb(cx,cy);
+    if(orb){collectOrb(orb);return;}
+    // If holding a symbol → deliver to inscription
+    if(draggedSym) {
+      if(inscHitCanvas(cx,cy) && inscriptionCharge < 5) {
+        deliverSymbol();
+      } else {
+        // Drop symbol back
+        draggedSym = null;
+        gc.style.cursor = 'default';
+      }
+      return;
+    }
+    // Click on a prayer symbol → pick it up
+    const symIdx = pSyms.findIndex(s=>symHit(cx,cy,s));
+    if(symIdx >= 0 && inscriptionCharge < 5) {
+      draggedSym = pSyms[symIdx];
+      pSyms.splice(symIdx, 1); // remove from floating
+      dragX = cx; dragY = cy;
+      showMsg('Символ в руке. Перетащи на надпись.', 1500);
+      return;
+    }
+    // Inscription click without symbol → hint
+    if(inscHitCanvas(cx,cy)) {
+      if(inscriptionCharge === 0) showMsg('Надпись мерцает. Принеси ей символ.', 2000);
+      else showMsg(`Ещё ${5-inscriptionCharge}. Продолжай.`, 1800);
+      return;
+    }
+    // Orb collect
+    const orb2=hitMeditationOrb(cx,cy);
+    if(orb2){collectOrb(orb2);return;}
+    const zone=hitZone(cx,cy);
+    if(zone){
+      const msg=getMeditateMsg(zone);
+      if(msg){showMsg(msg,3000);return;}
+    }
+    return;
+  }
+
   const zone=hitZone(cx,cy);
   const sel=getSelectedItem();
 
@@ -631,6 +1006,14 @@ function onMainTap(cx,cy){
   if(!hero.praying){hero.targetX=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,ibx(cx)-HERO_WALK_W/2));hero.idle=false;}
 }
 gc.addEventListener('click',e=>{const r=gc.getBoundingClientRect();onMainTap(e.clientX-r.left,e.clientY-r.top);});
+gc.addEventListener('touchmove',e=>{
+  if(activeScreen!=='main'||!hero.praying)return;
+  e.preventDefault();
+  if(!e.touches.length)return;
+  const r=gc.getBoundingClientRect();
+  dragX=e.touches[0].clientX-r.left;
+  dragY=e.touches[0].clientY-r.top;
+},{passive:false});
 gc.addEventListener('touchend',e=>{e.preventDefault();if(!e.changedTouches.length)return;const r=gc.getBoundingClientRect();onMainTap(e.changedTouches[0].clientX-r.left,e.changedTouches[0].clientY-r.top);},{passive:false});
 
 // ── SCENE TRANSITIONS ─────────────────────────────────────────────────────────
@@ -660,9 +1043,9 @@ function bottleHit(cx,cy){if(jarPickedUp)return false;const b=getBottleRect();re
 function animScene2(){s2Ctx.clearRect(0,0,s2W,s2H);if(!jarPickedUp&&bottleImg.complete&&bottleImg.naturalWidth){const b=getBottleRect();s2Ctx.drawImage(bottleImg,b.x,b.y,b.w,b.h);}s2AnimId=requestAnimationFrame(animScene2);}
 
 const ROCKS = [
-  {fx:0.09, fy:0.73, fw:0.12, fh:0.14, name:'rock1'},
-  {fx:0.48, fy:0.60, fw:0.10, fh:0.11, name:'rock2'},
-  {fx:0.66, fy:0.58, fw:0.10, fh:0.11, name:'rock3'},
+  {fx:0.06, fy:0.68, fw:0.16, fh:0.18, name:'rock1'},  // left rock
+  {fx:0.44, fy:0.55, fw:0.14, fh:0.16, name:'rock2'},  // center rock
+  {fx:0.62, fy:0.53, fw:0.14, fh:0.16, name:'rock3'},  // right rock
 ];
 const rockStates = {rock1:false, rock2:false, rock3:false};
 function getRockRect(r){ return {x:r.fx*s2W,y:r.fy*s2H,w:r.fw*s2W,h:r.fh*s2H}; }
@@ -932,6 +1315,282 @@ function onBuddhaTap(cx,cy){
 }
 bCanvas.addEventListener('click',e=>{const r=bCanvas.getBoundingClientRect();onBuddhaTap(e.clientX-r.left,e.clientY-r.top);});
 bCanvas.addEventListener('touchend',e=>{e.preventDefault();if(!e.changedTouches.length)return;const r=bCanvas.getBoundingClientRect();onBuddhaTap(e.changedTouches[0].clientX-r.left,e.changedTouches[0].clientY-r.top);},{passive:false});
+
+
+// ── SCENE 3 — FIRE FLOWER FIELD ───────────────────────────────────────────────
+// Accessed via inscription on pedestal while meditating
+// Procedurally drawn: Thai jungle, plumeria, palms, fire flower
+
+function createScene3El() {
+  if(document.getElementById('scene3')) return;
+  const el = document.createElement('div');
+  el.id = 'scene3';
+  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:45;overflow:hidden;';
+
+  const canvas = document.createElement('canvas');
+  canvas.id = 'scene3-canvas';
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:default;image-rendering:pixelated;';
+
+  const back = document.createElement('button');
+  back.id = 'scene3-back';
+  back.className = 'back-btn';
+  back.textContent = '← Назад';
+  back.onclick = closeScene3;
+
+  const msg = document.createElement('div');
+  msg.id = 'scene3-msg';
+  msg.style.cssText = 'position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);border:1.5px solid #f0c040;color:#f0c040;font-family:monospace;font-size:14px;padding:12px 24px;border-radius:3px;text-align:center;max-width:75%;line-height:1.6;display:none;pointer-events:none;z-index:15;';
+
+  el.appendChild(canvas);
+  el.appendChild(back);
+  el.appendChild(msg);
+  document.getElementById('wrap').appendChild(el);
+}
+
+let s3W=0, s3H=0, s3AnimId=null, s3Tick=0;
+let fireFlowerPicked=false;
+
+function openScene3() {
+  createScene3El();
+  activeScreen='scene3';
+  scene3Unlocked=true;
+  const el=document.getElementById('scene3');
+  el.style.display='block';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const r=el.getBoundingClientRect();
+    s3W=document.getElementById('scene3-canvas').width=Math.round(r.width);
+    s3H=document.getElementById('scene3-canvas').height=Math.round(r.height);
+    if(!s3AnimId) animScene3();
+  }));
+}
+function closeScene3() {
+  activeScreen='main';
+  const el=document.getElementById('scene3');
+  if(el) el.style.display='none';
+  if(s3AnimId){cancelAnimationFrame(s3AnimId);s3AnimId=null;}
+}
+window.closeScene3=closeScene3;
+
+function drawScene3(c) {
+  s3Tick++;
+  const t=s3Tick;
+  c.clearRect(0,0,s3W,s3H);
+
+  // Sky gradient — dusk, warm
+  const sky=c.createLinearGradient(0,0,0,s3H*0.55);
+  sky.addColorStop(0,'#1a0a2e');
+  sky.addColorStop(0.4,'#4a1060');
+  sky.addColorStop(1,'#8b3a20');
+  c.fillStyle=sky; c.fillRect(0,0,s3W,s3H*0.6);
+
+  // Ground
+  const gnd=c.createLinearGradient(0,s3H*0.55,0,s3H);
+  gnd.addColorStop(0,'#1a3a10');
+  gnd.addColorStop(1,'#0d2008');
+  c.fillStyle=gnd; c.fillRect(0,s3H*0.55,s3W,s3H*0.45);
+
+  // Stars
+  for(let i=0;i<40;i++){
+    const sx=(i*137.5)%s3W, sy=(i*97.3)%s3H*0.45;
+    const sa=0.3+0.7*Math.abs(Math.sin(t*0.02+i));
+    c.fillStyle=`rgba(255,255,220,${sa.toFixed(2)})`;
+    c.fillRect(sx,sy,1+(i%2),1+(i%2));
+  }
+
+  // Palm silhouettes background
+  [[s3W*0.05,s3H*0.55],[s3W*0.88,s3H*0.52],[s3W*0.7,s3H*0.58]].forEach(([px,py],pi)=>{
+    c.fillStyle='rgba(5,15,5,0.9)';
+    // Trunk
+    c.fillRect(px-4,py-s3H*0.28,8,s3H*0.28);
+    // Fronds
+    for(let f=0;f<6;f++){
+      const fa=(f/6)*Math.PI*2+(t*0.005*(pi%2?1:-1));
+      const fx=px+Math.cos(fa)*s3H*0.12, fy=py-s3H*0.28+Math.sin(fa)*s3H*0.07;
+      c.fillRect(fx-3,fy-2,s3H*0.10,3);
+    }
+  });
+
+  // Plumeria flowers scattered
+  const plumerias=[[s3W*0.15,s3H*0.62],[s3W*0.3,s3H*0.65],[s3W*0.55,s3H*0.60],[s3W*0.75,s3H*0.63],[s3W*0.9,s3H*0.61]];
+  plumerias.forEach(([fx,fy],fi)=>{
+    const sway=Math.sin(t*0.03+fi)*3;
+    // Stem
+    c.fillStyle='#2a5a18'; c.fillRect(fx-2,fy,4,s3H*0.12);
+    // Petals — white/pink
+    for(let p=0;p<5;p++){
+      const pa=(p/5)*Math.PI*2+sway*0.05;
+      const px2=fx+Math.cos(pa)*12, py2=fy-8+Math.sin(pa)*8;
+      c.fillStyle=fi%2===0?'rgba(255,240,220,0.9)':'rgba(255,200,220,0.9)';
+      c.fillRect(px2-4,py2-4,8,8);
+      c.fillStyle='rgba(255,220,100,0.8)';
+      c.fillRect(px2-1,py2-1,3,3);
+    }
+  });
+
+  // Jungle foliage left/right
+  for(let i=0;i<12;i++){
+    const lx=(i%3)*s3W*0.06, ly=s3H*0.5+i*s3H*0.03;
+    c.fillStyle=`rgba(${10+i*2},${40+i*4},${10+i*2},0.85)`;
+    c.fillRect(lx,ly,s3W*0.08+i*4,s3H*0.08);
+    const rx=s3W-(lx+s3W*0.08+i*4);
+    c.fillRect(rx,ly,s3W*0.08+i*4,s3H*0.08);
+  }
+
+  // FIRE FLOWER — center, special, glowing
+  if(!fireFlowerPicked){
+    const ffx=s3W*0.5, ffy=s3H*0.58;
+    const flicker=0.6+0.4*Math.abs(Math.sin(t*0.08));
+    // Glow
+    c.save();
+    c.globalAlpha=0.4*flicker;
+    const fg=c.createRadialGradient(ffx,ffy,0,ffx,ffy,80);
+    fg.addColorStop(0,'rgba(255,140,0,0.9)');
+    fg.addColorStop(0.5,'rgba(255,60,0,0.3)');
+    fg.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=fg; c.beginPath(); c.arc(ffx,ffy,80,0,Math.PI*2); c.fill();
+    c.restore();
+    // Stem
+    c.fillStyle='#3a6a10'; c.fillRect(ffx-3,ffy,6,s3H*0.1);
+    // Petals — fire colored
+    for(let p=0;p<8;p++){
+      const pa=(p/8)*Math.PI*2+t*0.01;
+      const px2=ffx+Math.cos(pa)*18, py2=ffy-5+Math.sin(pa)*12;
+      const heat=p%3;
+      c.fillStyle=heat===0?`rgba(255,${80+flicker*60|0},0,0.95)`:
+                  heat===1?`rgba(255,${180+flicker*40|0},0,0.9)`:'rgba(255,240,100,0.85)';
+      c.fillRect(px2-5,py2-5,10,10);
+    }
+    // Center
+    c.fillStyle=`rgba(255,255,200,${flicker.toFixed(2)})`;
+    c.fillRect(ffx-4,ffy-4,8,8);
+    c.fillStyle='rgba(255,255,255,0.9)';
+    c.fillRect(ffx-2,ffy-2,4,4);
+  }
+}
+
+function fireFlowerHit(cx,cy){
+  return !fireFlowerPicked && Math.abs(cx-s3W*0.5)<40 && Math.abs(cy-s3H*0.58)<40;
+}
+
+function animScene3(){
+  const canvas=document.getElementById('scene3-canvas');
+  const c=canvas?canvas.getContext('2d'):null;
+  if(!c||activeScreen!=='scene3'){s3AnimId=null;return;}
+  drawScene3(c);
+  s3AnimId=requestAnimationFrame(animScene3);
+}
+
+// Scene 3 canvas interactions
+document.addEventListener('click',e=>{
+  if(activeScreen!=='scene3')return;
+  const canvas=document.getElementById('scene3-canvas');
+  if(!canvas||!e.target.closest('#scene3'))return;
+  const r=canvas.getBoundingClientRect();
+  const cx=e.clientX-r.left, cy=e.clientY-r.top;
+  if(fireFlowerHit(cx,cy)){
+    fireFlowerPicked=true;
+    addItem({id:'fireflower',name:'огненный цветок',icon:'🌺',label:'огнецвет',
+      description:'Цветок, который светится изнутри. Тёплый на ощупь. Не горит.'});
+    const msg=document.getElementById('scene3-msg');
+    if(msg){msg.textContent='Ты сорвал огненный цветок. Он тёплый. Почти живой.';msg.style.display='block';setTimeout(()=>msg.style.display='none',2800);}
+  }
+});
+document.addEventListener('mousemove',e=>{
+  if(activeScreen!=='scene3')return;
+  const canvas=document.getElementById('scene3-canvas');
+  if(!canvas)return;
+  const r=canvas.getBoundingClientRect();
+  canvas.style.cursor=fireFlowerHit(e.clientX-r.left,e.clientY-r.top)?'pointer':'default';
+});
+
+
+// ── SCENE 4 — FLIGHT / AERIAL VIEW ───────────────────────────────────────────
+function createScene4El() {
+  if(document.getElementById('scene4')) return;
+  const el = document.createElement('div');
+  el.id = 'scene4';
+  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:46;overflow:hidden;';
+
+  const bg = document.createElement('img');
+  bg.src = 'assets/bg/flight.jpeg';
+  bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;object-position:center;image-rendering:pixelated;';
+
+  const canvas = document.createElement('canvas');
+  canvas.id = 'scene4-canvas';
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated;';
+
+  const back = document.createElement('button');
+  back.id = 'scene4-back';
+  back.className = 'back-btn';
+  back.textContent = '← Назад';
+  back.onclick = closeScene4;
+
+  const msg = document.createElement('div');
+  msg.id = 'scene4-msg';
+  msg.style.cssText = 'position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);border:1.5px solid #f0c040;color:#f0c040;font-family:monospace;font-size:14px;padding:12px 24px;border-radius:3px;text-align:center;max-width:75%;line-height:1.6;display:none;pointer-events:none;z-index:15;';
+
+  el.appendChild(bg);
+  el.appendChild(canvas);
+  el.appendChild(back);
+  el.appendChild(msg);
+  document.getElementById('wrap').appendChild(el);
+}
+
+let s4AnimId=null, s4Tick=0;
+
+function openScene4() {
+  createScene4El();
+  activeScreen='scene4';
+  scene4Unlocked=true;
+  const el=document.getElementById('scene4');
+  el.style.display='block';
+  // Show arrival message
+  const msg=document.getElementById('scene4-msg');
+  if(msg){
+    msg.textContent='Ты поднялся. Сверху всё выглядит иначе.';
+    msg.style.display='block';
+    setTimeout(()=>msg.style.display='none',3000);
+  }
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const canvas=document.getElementById('scene4-canvas');
+    const r=el.getBoundingClientRect();
+    canvas.width=Math.round(r.width);
+    canvas.height=Math.round(r.height);
+    if(!s4AnimId) animScene4();
+  }));
+}
+function closeScene4() {
+  activeScreen='main';
+  const el=document.getElementById('scene4');
+  if(el) el.style.display='none';
+  if(s4AnimId){cancelAnimationFrame(s4AnimId);s4AnimId=null;}
+  // Reset so player can go back
+}
+window.closeScene4=closeScene4;
+
+function animScene4() {
+  if(activeScreen!=='scene4'){s4AnimId=null;return;}
+  s4Tick++;
+  const canvas=document.getElementById('scene4-canvas');
+  if(!canvas){s4AnimId=null;return;}
+  const c=canvas.getContext('2d');
+  const W4=canvas.width, H4=canvas.height;
+  c.clearRect(0,0,W4,H4);
+  // Subtle golden shimmer overlay — fireflies drifting
+  for(let i=0;i<20;i++){
+    const fx=((i*173+s4Tick*0.3)%W4);
+    const fy=((i*97+s4Tick*0.2)%H4);
+    const fa=0.2+0.6*Math.abs(Math.sin(s4Tick*0.04+i));
+    c.fillStyle=`rgba(255,240,100,${fa.toFixed(2)})`;
+    c.fillRect(fx-1,fy-1,3,3);
+  }
+  s4AnimId=requestAnimationFrame(animScene4);
+}
+
+// Back button for scene4
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&activeScreen==='scene4') closeScene4();
+});
 
 // ── WISH ANIMATION — fireflies rise from jar to top of screen ───────────────────
 function startWishAnim(jarRect, onDone){
