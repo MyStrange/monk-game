@@ -169,11 +169,13 @@ const redMonk={x:1120,y:GROUND_Y-MONK_H};
 
 // ── CLICK ZONES ───────────────────────────────────────────────────────────────
 const ZONES={
-  statue:{x:780,y:260,w:130,h:120},
+  statue:{x:750,y:320,w:100,h:120},  // Buddha face
   tree:  {x:1600,y:300,w:200,h:580},
   cat:   {x:cat.x,y:cat.y,w:CAT_W,h:CAT_H},
   monk:  {x:redMonk.x,y:redMonk.y,w:MONK_W,h:MONK_H},
   bush:  {x:30,y:820,w:220,h:180},  // left foreground bush
+  water: {x:200,y:950,w:1400,h:140}, // water with reflection
+  water: {x:200,y:950,w:1400,h:140}, // water reflection strip
 };
 function inZone(cx,cy,z){return cx>=bx(z.x)&&cx<=bx(z.x)+bw(z.w)&&cy>=by(z.y)&&cy<=by(z.y)+bh(z.h);}
 function hitZone(cx,cy){for(const[n,z]of Object.entries(ZONES)){if(inZone(cx,cy,z))return n;}return null;}
@@ -219,9 +221,21 @@ const thaiChars='ธมอนภวตสกรคทยชพระศษสห
 const golds=['#FFD700','#FFC200','#FFB800','#E8A800','#FFEC80','#FFF0A0','#D4AF37','#C8960C','#FFFACD','#FFE55C'];
 let pSyms=[],pTick=0;
 function spawnSym(){
-  const cx=hero.x+HERO_SIT_W/2,cy=GROUND_Y-HERO_SIT_H*0.7;
-  const angle=(Math.random()-0.5)*Math.PI*1.6,speed=0.4+Math.random()*0.7;
-  pSyms.push({x:bx(cx+(Math.random()-0.5)*60),y:by(cy),ch:thaiChars[Math.floor(Math.random()*thaiChars.length)],col:golds[Math.floor(Math.random()*golds.length)],vx:Math.sin(angle)*speed*2.5,vy:-(Math.cos(angle)*speed+0.5),life:140+Math.random()*80,age:0,size:(14+Math.random()*14)*Math.min(W/BG_W,H/BG_H)*3,rotV:(Math.random()-0.5)*0.03});
+  const cx=hero.x+HERO_SIT_W/2, cy=GROUND_Y-HERO_SIT_H*0.85;
+  const wobble=(Math.random()-0.5)*0.6;
+  const speed=0.5+Math.random()*0.5;
+  const sc=Math.min(W/BG_W,H/BG_H);
+  pSyms.push({
+    x:bx(cx+(Math.random()-0.5)*40), y:by(cy),
+    ch:thaiChars[Math.floor(Math.random()*thaiChars.length)],
+    col:golds[Math.floor(Math.random()*golds.length)],
+    vx:wobble, vy:-(speed+0.4),
+    ax:-wobble*0.04,
+    life:160+Math.random()*80, age:0,
+    startSize:(10+Math.random()*8)*sc,
+    endSize:(24+Math.random()*16)*sc,
+    rotV:(Math.random()-0.5)*0.015,
+  });
 }
 
 
@@ -257,6 +271,322 @@ const monkMsgs = [
 let monkMsgIdx = 0;
 function monkMsg() { return monkMsgs[monkMsgIdx++ % monkMsgs.length]; }
 
+
+// ── ITEM × ELEMENT INTERACTIONS ──────────────────────────────────────────────
+// Tracks how many times each item×zone combo has been triggered
+const interactCounts = {};
+function interactKey(itemId, zone){ return itemId+'×'+zone; }
+function getInteractCount(itemId, zone){ return interactCounts[interactKey(itemId,zone)]||0; }
+function bumpInteract(itemId, zone){ const k=interactKey(itemId,zone); interactCounts[k]=(interactCounts[k]||0)+1; }
+
+// Returns response text for item used on zone, or null if no interaction
+function itemOnZone(itemId, zone){
+  const n=getInteractCount(itemId,zone);
+  bumpInteract(itemId,zone);
+
+  if(itemId==='jar'){
+    if(zone==='cat'){
+      const msgs=[
+        'Коты, конечно, жидкость, но не этот.',
+        'Он туда не пойдёт. Он это показал всем видом.',
+        'Кот посмотрел на банку. Потом на тебя. Выбрал смотреть в пустоту.',
+        'Нет.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='monk'){
+      const msgs=[
+        'Ты у него денег просишь? У монаха.',
+        'Монах не отвлекается на банки.',
+        'Он уже всё отпустил. И твою банку тоже.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='statue'){
+      const msgs=[
+        'Будда смотрит на банку. Банка смотрит на Будду. Никто не моргает.',
+        'Статуя молчит. Как обычно.',
+        'Ничего.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='water'){
+      const msgs=[
+        'В отражении банка выглядит глубже, чем есть.',
+        'Вода не удивлена.',
+        'Вода вообще ничем не удивляется.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+  }
+
+  if(itemId==='stick'){
+    if(zone==='cat'){
+      const msgs=[
+        'Кот скосил взгляд. Не впечатлён.',
+        'Ты помахал палкой. Кот зевнул и отвернулся.',
+        'Нет.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='monk'){
+      const msgs=[
+        'Монах медленно открыл один глаз. Закрыл.',
+        'Больше не открывает.',
+        'Ты уже пробовал.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='statue'){
+      const msgs=[
+        'Это было бы неуважительно. Ты опускаешь палку.',
+        'Нет.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='water'){
+      const msgs=[
+        'Палка коснулась воды. Круги разошлись. Ничего больше.',
+        'Снова круги. Вода не запоминает.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='bush'){
+      return n===0
+        ? 'Ты уже всё взял из этих кустов.'
+        : 'Там точно ничего нет.';
+    }
+    if(zone==='rocks'){
+      const msgs=[
+        'Постучал палкой по камню. Камень промолчал.',
+        'Снова. Камень по-прежнему молчит.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+  }
+
+  if(zone==='rocks'){
+    if(itemId==='jar') return 'Банка и камни смотрят друг на друга. Никто первым не начинает.';
+  }
+  if(zone==='bottle'){
+    if(itemId==='stick') return 'Ты потыкал палкой в банку. Банка устояла.';
+    if(itemId==='jar')   return 'Банка смотрит на банку. Что-то в этом есть.';
+  }
+
+  if(zone==='rocks'){
+    return [
+      'Камни. Банка. Ничего.',
+      'Снова камни.',
+    ][Math.min(n,1)];
+  }
+  return null; // no interaction defined
+}
+
+
+// ── ITEM × ZONE INTERACTION SYSTEM ───────────────────────────────────────────
+const interactCounts = {};
+function interactKey(itemId, zone){ return itemId+'|'+zone; }
+function getInteractCount(itemId, zone){ return interactCounts[interactKey(itemId,zone)]||0; }
+function bumpInteract(itemId, zone){ const k=interactKey(itemId,zone); interactCounts[k]=(interactCounts[k]||0)+1; }
+
+function itemOnZone(itemId, zone){
+  const n = getInteractCount(itemId, zone);
+  bumpInteract(itemId, zone);
+
+  if(itemId==='jar'){
+    if(zone==='cat'){
+      return [
+        'Коты, конечно, жидкость, но не этот.',
+        'Ну нет. Он туда не пойдёт.',
+        'Смотрит на банку. Потом на тебя. Уходит.',
+        'Ты всё ещё пробуешь? Уважаю упорство.',
+        'Безнадёжно.',
+      ][Math.min(n,4)];
+    }
+    if(zone==='monk'){
+      return [
+        'Ты у него денег просишь? У монаха, серьёзно?',
+        'Не реагирует. Вообще.',
+        'Он всё уже отпустил. В том числе это.',
+        'Тишина — тоже ответ.',
+      ][Math.min(n,3)];
+    }
+    if(zone==='statue'){
+      return [
+        'Будда смотрит на банку. Банка смотрит на Будду.',
+        'Тишина. Очень красноречивая.',
+        'Думаешь, он оценил? Вряд ли.',
+      ][Math.min(n,2)];
+    }
+    if(zone==='water'){
+      return [
+        'В отражении банка выглядит глубже, чем есть.',
+        'Вода не удивлена.',
+        'Отражение не двигается. Ты двигаешься.',
+      ][Math.min(n,2)];
+    }
+    if(zone==='bush'){
+      return [
+        'Банка и куст. Ничего не произошло.',
+        'Снова ничего. Куст держится.',
+      ][Math.min(n,1)];
+    }
+  }
+
+  if(itemId==='stick'){
+    if(zone==='cat'){
+      return [
+        'Кот посмотрел на палку. Не впечатлился.',
+        'Зевнул. Демонстративно.',
+        'Ушёл. Даже не оглянулся.',
+        'Нет.',
+      ][Math.min(n,3)];
+    }
+    if(zone==='monk'){
+      return [
+        'Открыл один глаз. Закрыл.',
+        'Больше не откроет. Это было последнее предупреждение.',
+        'Глубокое молчание. Ты проиграл.',
+      ][Math.min(n,2)];
+    }
+    if(zone==='statue'){
+      return [
+        'Ты поднял палку — и сам же убрал. Правильно.',
+        'Снова? Нет.',
+      ][Math.min(n,1)];
+    }
+    if(zone==='water'){
+      return [
+        'Палка и вода. Вода победила, как всегда.',
+        'Круги на воде. Красиво, если честно.',
+        'Ничего нового.',
+      ][Math.min(n,2)];
+    }
+    if(zone==='bush'){
+      return [
+        'Поковырял кусты палкой. Там пусто.',
+        'Всё так же пусто.',
+        'Куст тебя не боится.',
+      ][Math.min(n,2)];
+    }
+    if(zone==='cat'){
+      return [
+        'Кот посмотрел на палку. Не впечатлился.',
+        'Зевнул.',
+        'Нет.',
+      ][Math.min(n,2)];
+    }
+  }
+
+  if(zone==='rocks'){
+    if(itemId==='jar'){
+      return [
+        'Камни холодные. Банка тёплая. Вот и всё.',
+        'Камни молчат. Банка тоже.',
+      ][Math.min(n,1)];
+    }
+    if(itemId==='stick'){
+      return [
+        'Постучал палкой по камню. Камень не оценил.',
+        'Звук глухой. Как будто камню всё равно.',
+        'Ничего.',
+      ][Math.min(n,2)];
+    }
+    return [
+      'Камни. Просто камни.',
+      'Ничего не изменилось.',
+    ][Math.min(n,1)];
+  }
+  return null; // no interaction
+}
+
+
+// ── ITEM × ZONE INTERACTION SYSTEM ───────────────────────────────────────────
+const interactCounts = {}; // key: "itemId:zone"
+function interactKey(itemId, zone){ return itemId+':'+zone; }
+function getInteractCount(itemId, zone){ return interactCounts[interactKey(itemId,zone)]||0; }
+function bumpInteract(itemId, zone){ const k=interactKey(itemId,zone); interactCounts[k]=(interactCounts[k]||0)+1; }
+
+function itemOnZone(itemId, zone){
+  const n = getInteractCount(itemId, zone);
+  bumpInteract(itemId, zone);
+
+  if(itemId==='jar'){
+    if(zone==='cat'){
+      const msgs=[
+        'Коты, конечно, жидкость, но не этот.',
+        'Ну нет. Он туда не пойдёт.',
+        'Смотрит на тебя. Смотрит на банку. Уходит.',
+        'Безнадёжно.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='monk'){
+      const msgs=[
+        'У монаха денег просишь? У монаха, серьёзно?',
+        'Монах не реагирует. Он давно всё отпустил.',
+        'Даже банку.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='statue'){
+      const msgs=[
+        'Банка смотрит на Будду. Будда смотрит в вечность.',
+        'Банка не комментирует.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='water'){
+      const msgs=[
+        'В отражении банка кажется глубже.',
+        'Вода не удивлена.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='bush'){
+      return 'В кустах ничего нового.';
+    }
+  }
+
+  if(itemId==='stick'){
+    if(zone==='cat'){
+      const msgs=[
+        'Кот не впечатлён.',
+        'Зевнул.',
+        'Нет.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='monk'){
+      const msgs=[
+        'Открыл один глаз. Закрыл.',
+        'Больше не открывает.',
+      ];
+      return msgs[Math.min(n, msgs.length-1)];
+    }
+    if(zone==='statue'){
+      return 'Это было бы неуважительно.';
+    }
+    if(zone==='water'){
+      return 'Палка и вода. Вода и палка. Ничего особенного.';
+    }
+    if(zone==='bush'){
+      return 'Здесь уже взял палку. Хватит.';
+    }
+  }
+
+  return null; // no interaction
+}
+
+// Try item interaction on a zone, show message if defined
+function tryItemOnZone(zone){
+  const item = getSelectedItem();
+  if(!item) return false;
+  const text = itemOnZone(item.id, zone);
+  if(text){ showMsg(text); return true; }
+  return false;
+}
+
 // ── GAME LOOP ─────────────────────────────────────────────────────────────────
 let tick=0,catFrame=0,monkFrame=0;
 const keys={};
@@ -281,7 +611,7 @@ function loop(){
     hero.x=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,hero.x));
   } else {if(tick%44===0)hero.sitFrame++;}
   if(hero.praying){pTick++;if(pTick%28===0)spawnSym();}else pTick=0;
-  pSyms.forEach(s=>{s.x+=s.vx;s.y+=s.vy;s.vy*=0.995;s.age++;});
+  pSyms.forEach(s=>{s.vx+=(s.ax||0);s.x+=s.vx;s.vy*=0.998;s.y+=s.vy;s.age++;});
   pSyms=pSyms.filter(s=>s.age<s.life);
   ctx.clearRect(0,0,W,H);
   mainFlies.forEach(f=>{
@@ -295,8 +625,17 @@ function loop(){
   drawCat(catFrame);drawRedMonk(monkFrame);drawHero();
   pCtx.clearRect(0,0,W,H);
   pSyms.forEach(s=>{
-    const p=s.age/s.life,a=p<0.1?p/0.1:p>0.6?(1-p)/0.4:1;
-    pCtx.save();pCtx.globalAlpha=Math.max(0,a);pCtx.font=`bold ${Math.round(s.size)}px monospace`;pCtx.fillStyle=s.col;pCtx.translate(s.x,s.y);pCtx.rotate(s.rotV*s.age*0.4);pCtx.fillText(s.ch,0,0);pCtx.restore();
+    const p=s.age/s.life;
+    const a=p<0.12?p/0.12:p>0.65?(1-p)/0.35:1;
+    const sz=s.startSize+(s.endSize-s.startSize)*p;
+    pCtx.save();
+    pCtx.globalAlpha=Math.max(0,a);
+    pCtx.font=`bold ${Math.round(sz)}px monospace`;
+    pCtx.fillStyle=s.col;
+    pCtx.translate(s.x,s.y);
+    pCtx.rotate(s.rotV*s.age*0.3);
+    pCtx.fillText(s.ch,0,0);
+    pCtx.restore();
   });
   requestAnimationFrame(loop);
 }
@@ -339,11 +678,20 @@ gc.addEventListener('mousemove',e=>{
 function onMainTap(cx,cy){
   if(activeScreen!=='main')return;
   const zone=hitZone(cx,cy);
+  const sel=getSelectedItem();
+
+  // Item × element interaction takes priority
+  if(sel && zone){
+    const response=itemOnZone(sel.id, zone);
+    if(response){showMsg(response);return;}
+  }
+
   if(zone==='bush') {pickUpStick();return;}
   if(zone==='cat')  {showMsg(catMsg());return;}
   if(zone==='monk') {showMsg(monkMsg());return;}
-  // Block scene transitions when item is selected
-  if(selectedSlot>=0){
+
+  // Block scene transitions when item selected
+  if(sel){
     if(!hero.praying){hero.targetX=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,ibx(cx)-HERO_WALK_W/2));hero.idle=false;}
     return;
   }
@@ -380,7 +728,23 @@ function getBottleRect(){return{x:BOT_PX*(s2W/TREE_W),y:BOT_PY*(s2H/TREE_H),w:BO
 function bottleHit(cx,cy){if(jarPickedUp)return false;const b=getBottleRect();return cx>=b.x-8&&cx<=b.x+b.w+8&&cy>=b.y-8&&cy<=b.y+b.h+8;}
 function animScene2(){s2Ctx.clearRect(0,0,s2W,s2H);if(!jarPickedUp&&bottleImg.complete&&bottleImg.naturalWidth){const b=getBottleRect();s2Ctx.drawImage(bottleImg,b.x,b.y,b.w,b.h);}s2AnimId=requestAnimationFrame(animScene2);}
 s2Canvas.addEventListener('mousemove',e=>{const r=s2Canvas.getBoundingClientRect();s2Canvas.style.cursor=bottleHit(e.clientX-r.left,e.clientY-r.top)?'pointer':'default';});
-function onS2Tap(cx,cy){if(activeScreen!=='scene2')return;if(bottleHit(cx,cy))pickUpJar();}
+function onS2Tap(cx,cy){
+  if(activeScreen!=='scene2')return;
+  const sel=getSelectedItem();
+  // Rocks hit test — bottom-left area of tree scene
+  const rocksHit=cx<s2W*0.25&&cy>s2H*0.72;
+  if(sel&&rocksHit){
+    const r=itemOnZone(sel.id,'rocks');
+    if(r){showS2Msg(r);return;}
+  }
+  if(bottleHit(cx,cy)){
+    if(sel){
+      const r=itemOnZone(sel.id,'bottle');
+      if(r){showS2Msg(r);return;}
+    }
+    pickUpJar();return;
+  }
+}
 s2Canvas.addEventListener('click',e=>{const r=s2Canvas.getBoundingClientRect();onS2Tap(e.clientX-r.left,e.clientY-r.top);});
 s2Canvas.addEventListener('touchend',e=>{e.preventDefault();if(!e.changedTouches.length)return;const r=s2Canvas.getBoundingClientRect();onS2Tap(e.changedTouches[0].clientX-r.left,e.changedTouches[0].clientY-r.top);},{passive:false});
 function pickUpJar(){
@@ -491,15 +855,15 @@ function onBuddhaTap(cx,cy){
       renderHotbar();
       // Narrative messages — irony → nostalgia → wish
       const catchMsgs = [
-        'Банкой на светлячка? Что может быть посредственнее.',
-        'Невероятно скучное занятие.',
-        'Хотя раньше так не казалось.',
-        'Помню, как первый раз увидел светлячка в траве, летом...',
-        'Мы тогда были в детском лагере и я всё ждал танцы вечером...',
-        'А потом кто-то поймал светлячка и посветил в темноте — и все засмеялись.',
-        'Я не пошёл на танцы той ночью. Остался в траве.',
-        'Не знаю зачем. Просто не хотелось уходить.',
-        'Некоторые вещи запоминаешь не потому что они важные. А просто.',
+        'Банкой. Ну да.',
+        'Ты серьёзно пришёл сюда с банкой.',
+        'Хотя. Было же такое.',
+        'Лето. Лагерь. Ты ждал танцы вечером — а всё равно вышел в траву.',
+        'Кто-то светил фонариком. Кто-то смеялся. Ты ловил.',
+        'Не пошёл тогда на танцы. Не знаешь почему.',
+        'Трава была тёплая. Темно, но не страшно.',
+        'Казалось, если не уходить — что-то останется.',
+        'Ничего не осталось. Но вот же — помнишь.',
         null
       ];
       if(jar.caught<10){
@@ -507,7 +871,7 @@ function onBuddhaTap(cx,cy){
         if(msg)showBMsg(msg, 3200);
       }
       if(jar.caught>=10){
-        showBMsg('Загадай желание. Они унесут.',3200);
+        showBMsg('Загадай что-нибудь. Можно.',3200);
         // Get hotbar slot position for animation origin
         const jarSlotEl=document.querySelector('#hotbar .hotbar-slot.selected');
         const jarRect=jarSlotEl?jarSlotEl.getBoundingClientRect():null;
