@@ -787,6 +787,7 @@ function collectOrb(orb) {
 let draggedSym = null;       // symbol currently held by player
 let dragX = 0, dragY = 0;   // current mouse/touch position
 let inscriptionCharge = 0;  // 0-5, symbols delivered
+let inscriptionReady = false; // true when 5 delivered, click opens scene
 let resonanceFlashes = [];  // flash animations on delivery
 let inscriptionGlow = 0;    // current glow intensity
 let scene4Unlocked = false;
@@ -830,6 +831,8 @@ function deliverSymbol() {
       }, i*200);
     }
     showMsg('Надпись горит. Нажми на неё.', 4000);
+    // Also allow click anywhere on inscription to open — set a flag
+    inscriptionReady = true;
   } else {
     showMsg(['Один.','Два.','Три.','Четыре.'][inscriptionCharge-1] + ' Надпись светится.', 1800);
   }
@@ -999,7 +1002,7 @@ document.addEventListener('keydown',e=>{
   if(STAND_K.has(e.key)){standUp();return;}
   if(LEFT_K.has(e.key)){keys['l']=true;hero.targetX=null;}
   if(RIGHT_K.has(e.key)){keys['r']=true;hero.targetX=null;}
-  if(e.key==='Escape'){closeBuddha();closeScene2();selectedSlot=-1;renderHotbar();updateItemCursor();draggedSym=null;}
+  if(e.key==='Escape'){closeBuddha();closeScene2();closeScene3();closeScene4();if(hero.praying)standUp();selectedSlot=-1;renderHotbar();updateItemCursor();draggedSym=null;}
 });
 document.addEventListener('keyup',e=>{
   if(LEFT_K.has(e.key)){keys['l']=false;if(!keys['r'])hero.idle=true;}
@@ -1045,7 +1048,7 @@ function onMainTap(cx,cy){
     if(orb){collectOrb(orb);return;}
     // In meditation, tap without drag: orbs and zone messages only
     // Symbol drag is handled by mousedown/mouseup
-    if(inscHitCanvas(cx,cy)) { openScene4(); return; }
+    if(inscHitCanvas(cx,cy)) { if(inscriptionReady||inscriptionCharge>=5) openScene4(); else showMsg(inscriptionCharge===0?'Надпись мерцает. Принеси ей символ молитвы.':'Ещё '+( 5-inscriptionCharge)+'. Продолжай.', 2000); return; }
     const orb2=hitMeditationOrb(cx,cy);
     if(orb2){collectOrb(orb2);return;}
     const zone=hitZone(cx,cy);
@@ -1106,8 +1109,9 @@ gc.addEventListener('mouseup',e=>{
   if(activeScreen!=='main'||!hero.praying||!draggedSym)return;
   const r=gc.getBoundingClientRect();
   const cx=e.clientX-r.left,cy=e.clientY-r.top;
-  if(inscHitCanvas(cx,cy)&&inscriptionCharge<5){
-    deliverSymbol();
+  if(inscHitCanvas(cx,cy)){
+    if(inscriptionCharge<5) deliverSymbol();
+    else { draggedSym=null; openScene4(); }
   } else {
     draggedSym=null;
   }
