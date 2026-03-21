@@ -1132,22 +1132,19 @@ function advanceDialog(){
   // Render line
   const isNarr=line.s==='';
   const isA=line.s==='А';
-  dlg.innerHTML=`
-    <div style="
-      background:rgba(0,0,0,0.88);
-      border:1.5px solid ${isNarr?'rgba(240,192,64,0.4)':'#f0c040'};
-      border-radius:4px;padding:14px 22px;max-width:72%;
-      font-family:monospace;font-size:15px;line-height:1.7;
-      color:${isNarr?'rgba(240,192,64,0.7)':'#f0c040'};
-      text-align:${isNarr?'center':'left'};
-    ">
-      ${line.s?`<span style="color:${isA?'#ffe066':'#aaddff'};font-weight:bold;margin-right:8px">${line.s}:</span>`:''}
-      ${line.t}
-      ${line.last?'':'<div style="text-align:right;margin-top:8px;font-size:11px;opacity:0.5">нажми чтобы продолжить</div>'}
-    </div>
-    <canvas id="fly-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
-  `;
-  // Draw two fireflies at table on the fly-canvas
+  const borderCol = isNarr ? 'rgba(240,192,64,0.4)' : '#f0c040';
+  const textCol   = isNarr ? 'rgba(240,192,64,0.7)' : '#f0c040';
+  const alignStr  = isNarr ? 'center' : 'left';
+  const speakerCol = isA ? '#ffe066' : '#aaddff';
+  const speakerHtml = line.s
+    ? '<span style="color:'+speakerCol+';font-weight:bold;margin-right:8px">'+line.s+':</span>'
+    : '';
+  const hintHtml = line.last ? '' : '<div style="text-align:right;margin-top:8px;font-size:11px;opacity:0.5">нажми чтобы продолжить</div>';
+  dlg.innerHTML =
+    '<div style="background:rgba(0,0,0,0.88);border:1.5px solid '+borderCol+';border-radius:4px;padding:14px 22px;max-width:72%;font-family:monospace;font-size:15px;line-height:1.7;color:'+textCol+';text-align:'+alignStr+';">'+
+      speakerHtml + line.t + hintHtml +
+    '</div>'+
+    '<canvas id="fly-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>';  // Draw two fireflies at table on the fly-canvas
   requestAnimationFrame(drawFlyTable);
 }
 
