@@ -117,46 +117,67 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0a0812;display:flex
 #mobile-controls{
   display:none;
   position:fixed;bottom:90px;right:16px;
-  flex-direction:column;gap:8px;z-index:250;
+  flex-direction:column;gap:10px;z-index:250;
+  align-items:center;
 }
 .mob-btn{
-  width:52px;height:52px;
-  background:rgba(0,0,0,0.75);
-  border:1.5px solid rgba(240,192,64,0.7);
+  width:48px;height:48px;
+  background:rgba(0,0,0,0.6);
+  border:1px solid rgba(240,192,64,0.45);
   border-radius:50%;
-  color:#f0c040;font-size:22px;
+  color:#f0c040;
   cursor:pointer;user-select:none;
   -webkit-tap-highlight-color:transparent;
   touch-action:manipulation;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s, border-color .15s, box-shadow .15s;
 }
-.mob-btn:active{background:rgba(240,192,64,0.2);}
+.mob-btn:active{background:rgba(240,192,64,0.18);}
+
 .mob-pray{
-  font-size:26px;
+  font-size:28px;
   font-family:serif;
   line-height:1;
-  letter-spacing:0;
+  width:52px;height:52px;
+  border-width:1.5px;
 }
 .mob-pray.active{
-  background:rgba(240,192,64,0.22);
+  background:rgba(240,192,64,0.18);
   border-color:#f0c040;
-  box-shadow:0 0 14px rgba(240,192,64,0.5);
+  box-shadow:0 0 16px rgba(240,192,64,0.55), inset 0 0 8px rgba(240,192,64,0.15);
 }
 
 /* ── Fullscreen button ── */
 #fullscreen-btn{
-  position:fixed;top:14px;right:14px;
-  background:rgba(0,0,0,0.7);color:#f0c040;
-  border:1.5px solid rgba(240,192,64,0.5);
-  font-size:18px;width:38px;height:38px;
-  cursor:pointer;border-radius:4px;z-index:300;
+  position:fixed;
+  background:transparent;
+  color:rgba(240,192,64,0.55);
+  border:none;
+  font-size:20px;
+  width:38px;height:38px;
+  cursor:pointer;
+  z-index:300;
   -webkit-tap-highlight-color:transparent;
   touch-action:manipulation;
   display:flex;align-items:center;justify-content:center;
+  padding:0;
+  transition:color .2s;
 }
-#fullscreen-btn:active{background:rgba(240,192,64,0.2);}
+#fullscreen-btn:active{color:#f0c040;}
 
-/* Show mobile controls only on touch */
+/* Desktop: top-right corner */
+@media (pointer:fine){
+  #fullscreen-btn{top:14px;right:14px;}
+}
+
+/* Mobile: above the pray button, same right alignment */
 @media (pointer:coarse){
+  #fullscreen-btn{
+    bottom:152px;right:16px;
+    width:52px;height:52px;
+    font-size:18px;
+    color:rgba(240,192,64,0.45);
+  }
   #mobile-controls{display:flex;}
   .hotbar-slot{width:62px;height:62px;}
   .hotbar-slot .slot-icon{font-size:32px;}
