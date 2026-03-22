@@ -43,7 +43,8 @@ function renderHotbar() {
       if(prev && prev.id !== item.id) {
         // Item × item interaction
         const result = itemOnItem(prev.id, item.id);
-        if(result) { showMsg(result, 2800); return; }
+        if(typeof result === 'string') { showMsg(result, 2800); return; }
+        if(result === false) { return; } // handled successfully — keep current selection
       }
       selectedSlot = selectedSlot === i ? -1 : i;
       renderHotbar();
@@ -94,32 +95,93 @@ function renderJarIcon(item) {
 }
 
 function renderStickIcon(glowing=false) {
-  const col1 = glowing ? '#ffe066' : '#8b5e3c';
-  const col2 = glowing ? '#fff4aa' : '#a0714f';
-  const col3 = glowing ? '#ffcc00' : '#6b4226';
-  const glow = glowing ? '<rect x="4" y="4" width="40" height="46" fill="rgba(255,230,80,0.08)"/>' : '';
-  const spark = glowing ? `
-    <rect x="28" y="6" width="2" height="2" fill="#fff8aa"><animate attributeName="opacity" values="0;1;0" dur="0.7s" repeatCount="indefinite"/></rect>
-    <rect x="22" y="10" width="2" height="2" fill="#ffe066"><animate attributeName="opacity" values="0;1;0" dur="1.1s" repeatCount="indefinite"/></rect>
-    <rect x="32" y="14" width="2" height="2" fill="#ffffff"><animate attributeName="opacity" values="0;1;0" dur="0.9s" repeatCount="indefinite"/></rect>` : '';
+  if (glowing) {
+    return `<svg width="48" height="54" viewBox="0 0 48 54" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+      <!-- glow tip -->
+      <rect x="30" y="0" width="6" height="6" fill="rgba(255,230,80,0.25)"/>
+      <rect x="32" y="1" width="3" height="3" fill="#fff8cc"><animate attributeName="opacity" values="0.6;1;0.6" dur="0.5s" repeatCount="indefinite"/></rect>
+      <rect x="29" y="2" width="2" height="2" fill="#ffe066"><animate attributeName="opacity" values="0;1;0" dur="0.65s" repeatCount="indefinite"/></rect>
+      <rect x="35" y="1" width="2" height="3" fill="#ffcc00"><animate attributeName="opacity" values="1;0.2;1" dur="0.8s" repeatCount="indefinite"/></rect>
+      <!-- body segments: diagonal top-right → bottom-left, golden -->
+      <!-- seg 1 -->
+      <rect x="30" y="6"  width="6" height="5" fill="#d49a28"/>
+      <rect x="30" y="6"  width="1" height="5" fill="#f8d860"/>
+      <rect x="35" y="6"  width="1" height="5" fill="#8c6010"/>
+      <!-- knot -->
+      <rect x="28" y="11" width="8" height="2" fill="#7a5008"/>
+      <rect x="28" y="11" width="8" height="1" fill="#b08020"/>
+      <!-- seg 2 -->
+      <rect x="24" y="13" width="6" height="5" fill="#d49a28"/>
+      <rect x="24" y="13" width="1" height="5" fill="#f8d860"/>
+      <rect x="29" y="13" width="1" height="5" fill="#8c6010"/>
+      <!-- seg 3 -->
+      <rect x="20" y="18" width="6" height="5" fill="#d49a28"/>
+      <rect x="20" y="18" width="1" height="5" fill="#f8d860"/>
+      <rect x="25" y="18" width="1" height="5" fill="#8c6010"/>
+      <!-- knot -->
+      <rect x="18" y="23" width="8" height="2" fill="#7a5008"/>
+      <rect x="18" y="23" width="8" height="1" fill="#b08020"/>
+      <!-- seg 4 -->
+      <rect x="14" y="25" width="6" height="5" fill="#d49a28"/>
+      <rect x="14" y="25" width="1" height="5" fill="#f8d860"/>
+      <rect x="19" y="25" width="1" height="5" fill="#8c6010"/>
+      <!-- seg 5 -->
+      <rect x="10" y="30" width="6" height="5" fill="#d49a28"/>
+      <rect x="10" y="30" width="1" height="5" fill="#f8d860"/>
+      <rect x="15" y="30" width="1" height="5" fill="#8c6010"/>
+      <!-- knot -->
+      <rect x="8"  y="35" width="8" height="2" fill="#7a5008"/>
+      <rect x="8"  y="35" width="8" height="1" fill="#b08020"/>
+      <!-- seg 6 -->
+      <rect x="6"  y="37" width="6" height="5" fill="#c08820"/>
+      <rect x="6"  y="37" width="1" height="5" fill="#e8c840"/>
+      <rect x="11" y="37" width="1" height="5" fill="#7a5008"/>
+      <!-- tip bottom -->
+      <rect x="6"  y="42" width="4" height="4" fill="#a07018"/>
+      <rect x="6"  y="44" width="2" height="2" fill="#7a5008"/>
+    </svg>`;
+  }
   return `<svg width="48" height="54" viewBox="0 0 48 54" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    ${glow}
-    <!-- stick body: diagonal from top-right to bottom-left -->
-    <rect x="30" y="4"  width="6" height="6"  fill="${col1}"/>
-    <rect x="26" y="8"  width="6" height="4"  fill="${col1}"/>
-    <rect x="24" y="10" width="4" height="4"  fill="${col2}"/>
-    <rect x="20" y="14" width="6" height="4"  fill="${col1}"/>
-    <rect x="18" y="16" width="4" height="4"  fill="${col2}"/>
-    <rect x="14" y="20" width="6" height="4"  fill="${col1}"/>
-    <rect x="12" y="22" width="4" height="4"  fill="${col2}"/>
-    <rect x="8"  y="26" width="6" height="4"  fill="${col1}"/>
-    <rect x="6"  y="28" width="4" height="4"  fill="${col2}"/>
-    <rect x="4"  y="32" width="6" height="4"  fill="${col3}"/>
-    <rect x="4"  y="36" width="4" height="6"  fill="${col3}"/>
+    <!-- stick: warm wood, diagonal top-right to bottom-left -->
+    <!-- tip top -->
+    <rect x="32" y="4"  width="4" height="3" fill="#6b3c14"/>
+    <rect x="33" y="4"  width="2" height="2" fill="#9a5a28"/>
+    <!-- seg 1 -->
+    <rect x="30" y="7"  width="6" height="5" fill="#7a4418"/>
+    <rect x="30" y="7"  width="1" height="5" fill="#b06830"/>
+    <rect x="35" y="7"  width="1" height="5" fill="#4a2408"/>
     <!-- knot -->
-    <rect x="22" y="12" width="2" height="2"  fill="${col3}"/>
-    <rect x="16" y="20" width="2" height="2"  fill="${col3}"/>
-    ${spark}
+    <rect x="28" y="12" width="8" height="2" fill="#3e1c06"/>
+    <rect x="28" y="12" width="8" height="1" fill="#6a3410"/>
+    <!-- seg 2 -->
+    <rect x="24" y="14" width="6" height="5" fill="#7a4418"/>
+    <rect x="24" y="14" width="1" height="5" fill="#b06830"/>
+    <rect x="29" y="14" width="1" height="5" fill="#4a2408"/>
+    <!-- seg 3 -->
+    <rect x="20" y="19" width="6" height="5" fill="#7a4418"/>
+    <rect x="20" y="19" width="1" height="5" fill="#b06830"/>
+    <rect x="25" y="19" width="1" height="5" fill="#4a2408"/>
+    <!-- knot -->
+    <rect x="18" y="24" width="8" height="2" fill="#3e1c06"/>
+    <rect x="18" y="24" width="8" height="1" fill="#6a3410"/>
+    <!-- seg 4 -->
+    <rect x="14" y="26" width="6" height="5" fill="#7a4418"/>
+    <rect x="14" y="26" width="1" height="5" fill="#b06830"/>
+    <rect x="19" y="26" width="1" height="5" fill="#4a2408"/>
+    <!-- seg 5 -->
+    <rect x="10" y="31" width="6" height="5" fill="#7a4418"/>
+    <rect x="10" y="31" width="1" height="5" fill="#b06830"/>
+    <rect x="15" y="31" width="1" height="5" fill="#4a2408"/>
+    <!-- knot -->
+    <rect x="8"  y="36" width="8" height="2" fill="#3e1c06"/>
+    <rect x="8"  y="36" width="8" height="1" fill="#6a3410"/>
+    <!-- seg 6 -->
+    <rect x="6"  y="38" width="6" height="5" fill="#6a3810"/>
+    <rect x="6"  y="38" width="1" height="5" fill="#9a5420"/>
+    <rect x="11" y="38" width="1" height="5" fill="#3e1c06"/>
+    <!-- tip bottom -->
+    <rect x="6"  y="43" width="4" height="4" fill="#4a2408"/>
+    <rect x="7"  y="45" width="2" height="2" fill="#3e1c06"/>
   </svg>`;
 }
 
@@ -276,11 +338,11 @@ const redMonk={x:1120,y:GROUND_Y-MONK_H};
 
 // ── CLICK ZONES ───────────────────────────────────────────────────────────────
 const ZONES={
-  statue:{x:700,y:300,w:120,h:130},  // Buddha face
+  statue:{x:680,y:160,w:160,h:200},  // Buddha face — raised
   tree:  {x:1600,y:300,w:200,h:580},
   cat:   {x:cat.x,y:cat.y,w:CAT_W,h:CAT_H},
   monk:  {x:redMonk.x,y:redMonk.y,w:MONK_W,h:MONK_H},
-  bush:  {x:30,y:820,w:220,h:180},   // left foreground bush
+  bush:  {x:0,y:720,w:300,h:280},    // left foreground bush — enlarged
   water: {x:200,y:950,w:1400,h:140}, // water with reflection
   dirt:  {x:870,y:890,w:100,h:80},    // dirt pile after cat buries
 };
@@ -434,10 +496,10 @@ function itemOnItem(activeId, targetId) {
 
     renderHotbar(); updateItemCursor();
     showMsg('Палка впитала свет. Крышка куда-то делась — банка теперь открытая.');
-    return null; // handled, no extra message needed
+    return false; // handled successfully
   }
 
-  return null;
+  return null; // no match
 }
 
 // ── ITEM × ZONE INTERACTION SYSTEM ───────────────────────────────────────────
@@ -2290,8 +2352,8 @@ function startWishAnim(jarRect, onDone){
       wave1Freq:0.012+Math.random()*0.018, wave1Amp:18+Math.random()*28, wave1Ph:Math.random()*Math.PI*2,
       wave2Freq:0.025+Math.random()*0.025, wave2Amp:8+Math.random()*12,  wave2Ph:Math.random()*Math.PI*2,
       flickPhase:Math.random()*Math.PI*2, flickSpeed:0.07+Math.random()*0.05,
-      sz:5+Math.random()*4, age:0, delay:i*20, life:320+Math.random()*100,
-      cr,cg,cb, trail:[], trailLen:28,
+      sz:5+Math.random()*4, age:0, delay:i*8, life:128+Math.random()*40,
+      cr,cg,cb, trail:[], trailLen:14,
     };
   });
 
