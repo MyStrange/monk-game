@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Монах и лес</title>
+<!-- PWA / iOS standalone -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Монах и лес">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0812">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Единый хотбар поверх всех сцен -->
+<div id="hotbar"></div>
+<!-- Контекстное меню для предметов -->
+<div id="item-menu"></div>
+
+<div id="wrap">
+  <img id="bg-img" src="assets/bg/main.png">
+  <canvas id="game-canvas"></canvas>
+  <canvas id="prayer-canvas"></canvas>
+  <div id="msg-box"></div>
+
+  <!-- Scene 2: tree / roots -->
+  <div id="scene2">
+    <img id="scene2-bg" src="assets/bg/tree.png">
+    <canvas id="scene2-canvas"></canvas>
+    <div id="scene2-msg"></div>
+    <button id="scene2-back" class="back-btn" onclick="closeScene2()">← Назад</button>
+  </div>
+
+  <!-- Buddha close-up -->
+  <div id="buddha-screen">
+    <img id="buddha-bg" src="assets/bg/buddha.jpeg">
+    <canvas id="buddha-canvas"></canvas>
+    <canvas id="wish-anim"></canvas>
+    <div id="buddha-msg"></div>
+    <button id="buddha-back" class="back-btn" onclick="closeBuddha()">← Вернуться в лес</button>
+  </div>
+</div>
+
+<!-- Mobile controls — shown only on touch -->
+<div id="mobile-controls">
+  <button id="btn-pray" class="mob-btn mob-pray" ontouchstart="mobilePrayToggle(event)" ontouchend="e=>e.preventDefault()">มี</button>
+</div>
+
+<!-- Sound toggle -->
+<button id="sound-btn" onclick="toggleSound()" title="Звук">🔊</button>
+<!-- Fullscreen button — desktop only -->
+<button id="fullscreen-btn" onclick="toggleFullscreen()">⛶</button>
+
+<script src="game.js"></script>
+</body>
+</html>
