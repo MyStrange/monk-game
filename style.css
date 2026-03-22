@@ -6,7 +6,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0a0812;display:flex
 #wrap{position:relative;display:inline-block;line-height:0}
 #bg-img{display:block;max-width:100vw;max-height:100vh;width:auto;height:auto;image-rendering:pixelated}
 
-/* ── Mobile camera: scene fills full height, scrolls horizontally ── */
+/* ── Mobile camera ── */
 @media (pointer:coarse){
   html,body{align-items:flex-start;justify-content:flex-start;overflow:hidden;}
   #wrap{display:block;height:100vh;width:auto;}
@@ -31,7 +31,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0a0812;display:flex
 #buddha-msg{bottom:120px;top:auto;transform:translateX(-50%);font-size:15px;max-width:80%;z-index:20}
 
 @media (pointer:coarse){
-  #msg-box,#scene2-msg{font-size:11px;padding:7px 14px;max-width:65%;bottom:80px;}
+  #msg-box,#scene2-msg{font-size:11px;padding:7px 14px;max-width:60%;bottom:80px;}
   #buddha-msg{font-size:12px;padding:7px 14px;}
 }
 
@@ -45,7 +45,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0a0812;display:flex
 }
 .back-btn:active{background:rgba(240,192,64,0.25)}
 
-/* ── Global hotbar ── */
+/* ── Hotbar — desktop: bottom center ── */
 #hotbar{
   position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
   display:none;gap:8px;z-index:200;pointer-events:auto;
@@ -71,22 +71,32 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0a0812;display:flex
   opacity:0.75;white-space:nowrap;overflow:hidden;
   max-width:64px;text-align:center;margin-top:2px;
 }
-.hotbar-slot.jar-glowing .slot-icon{
-  animation:jarGlow 2s ease-in-out infinite;
-}
+.hotbar-slot.jar-glowing .slot-icon{animation:jarGlow 2s ease-in-out infinite;}
 @keyframes jarGlow{
   0%,100%{filter:drop-shadow(0 0 3px #88ee66) drop-shadow(0 0 6px #44aa33)}
   50%{filter:drop-shadow(0 0 8px #bbff88) drop-shadow(0 0 14px #66cc44)}
 }
 
-/* ── Item cursor follower ── */
+/* ── Mobile hotbar — vertical on right side, centered vertically ── */
+@media (pointer:coarse){
+  #hotbar{
+    left:auto;right:16px;bottom:auto;
+    top:50%;transform:translateY(-50%);
+    flex-direction:column;gap:6px;
+  }
+  .hotbar-slot{width:54px;height:54px;}
+  .hotbar-slot .slot-icon{font-size:24px;}
+  .hotbar-slot .slot-label{display:none;}
+}
+
+/* ── Item cursor ── */
 #item-cursor{
-  position:fixed;pointer-events:none;z-index:500;
-  display:none;
-  transform:translate(-120%, -50%);
+  position:fixed;pointer-events:none;z-index:500;display:none;
+  transform:translate(-120%,-50%);
   filter:drop-shadow(0 0 8px rgba(240,192,64,0.6));
   image-rendering:pixelated;
 }
+@media (pointer:coarse){#item-cursor{display:none!important;}}
 
 /* ── Item context menu ── */
 #item-menu{
@@ -100,7 +110,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0a0812;display:flex
 
 /* ── Scene 2 ── */
 #scene2{position:absolute;inset:0;display:none;z-index:40;overflow:hidden}
-#scene2-bg{display:block;width:100%;height:100%;object-fit:cover;object-position:center;image-rendering:pixelated}
+#scene2-bg{display:block;width:100%;height:100%;object-fit:cover;object-position:center top;image-rendering:pixelated}
 #scene2-canvas{position:absolute;inset:0;width:100%;height:100%;cursor:default;image-rendering:pixelated}
 
 /* ── Buddha screen ── */
@@ -116,81 +126,67 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0a0812;display:flex
 /* ── Mobile controls ── */
 #mobile-controls{
   display:none;
-  position:fixed;bottom:90px;right:16px;
-  flex-direction:column;gap:10px;z-index:250;
-  align-items:center;
+  position:fixed;bottom:20px;right:16px;
+  flex-direction:column;gap:10px;z-index:250;align-items:center;
 }
-.mob-btn{
-  width:48px;height:48px;
-  background:rgba(0,0,0,0.6);
-  border:1px solid rgba(240,192,64,0.45);
-  border-radius:50%;
-  color:#f0c040;
-  cursor:pointer;user-select:none;
-  -webkit-tap-highlight-color:transparent;
-  touch-action:manipulation;
-  display:flex;align-items:center;justify-content:center;
-  transition:background .15s, border-color .15s, box-shadow .15s;
-}
-.mob-btn:active{background:rgba(240,192,64,0.18);}
 
+/* ── Pray button ── */
 .mob-pray{
-  font-size:28px;
-  font-family:serif;
-  line-height:1;
-  width:52px;height:52px;
-  border-width:1.5px;
-}
-.mob-pray.active{
-  background:rgba(240,192,64,0.18);
-  border-color:#f0c040;
-  box-shadow:0 0 16px rgba(240,192,64,0.55), inset 0 0 8px rgba(240,192,64,0.15);
-}
-
-/* ── Fullscreen button ── */
-#fullscreen-btn{
-  position:fixed;
-  background:transparent;
-  color:rgba(240,192,64,0.55);
-  border:none;
-  font-size:20px;
-  width:38px;height:38px;
-  cursor:pointer;
-  z-index:300;
-  -webkit-tap-highlight-color:transparent;
-  touch-action:manipulation;
+  width:56px;height:56px;
+  background:rgba(10,8,18,0.8);
+  border:1.5px solid rgba(240,192,64,0.45);
+  border-radius:50%;
+  color:#f0c040;font-size:26px;font-family:serif;
+  cursor:pointer;user-select:none;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
   display:flex;align-items:center;justify-content:center;
-  padding:0;
-  transition:color .2s;
+  transition:background .2s,border-color .2s,box-shadow .2s;
+  position:relative;
 }
-#fullscreen-btn:active{color:#f0c040;}
-
-/* Desktop: top-right corner */
-@media (pointer:fine){
-  #fullscreen-btn{top:14px;right:14px;}
+.mob-pray::before{
+  content:'';position:absolute;inset:5px;
+  border-radius:50%;border:1px solid rgba(240,192,64,0.18);
+  pointer-events:none;transition:border-color .2s;
 }
+.mob-pray:active{background:rgba(240,192,64,0.12);}
+.mob-pray.active{
+  background:rgba(240,192,64,0.1);border-color:#f0c040;
+  box-shadow:0 0 18px rgba(240,192,64,0.4),0 0 5px rgba(240,192,64,0.25);
+}
+.mob-pray.active::before{border-color:rgba(240,192,64,0.35);}
 
-/* Mobile: above the pray button, same right alignment */
+/* ── Sound button ── */
+#sound-btn{
+  position:fixed;top:14px;left:14px;
+  background:transparent;border:none;
+  color:rgba(240,192,64,0.45);font-size:18px;
+  width:36px;height:36px;cursor:pointer;z-index:300;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  display:flex;align-items:center;justify-content:center;
+  padding:0;transition:color .2s;
+}
+#sound-btn:hover,#sound-btn:active{color:#f0c040;}
+#sound-btn.muted{color:rgba(240,192,64,0.2);}
+
+/* ── Fullscreen button — desktop only ── */
+#fullscreen-btn{
+  position:fixed;top:14px;right:14px;
+  background:transparent;border:none;
+  color:rgba(240,192,64,0.45);font-size:20px;
+  width:36px;height:36px;cursor:pointer;z-index:300;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  display:flex;align-items:center;justify-content:center;
+  padding:0;transition:color .2s;
+}
+#fullscreen-btn:hover,#fullscreen-btn:active{color:#f0c040;}
+
 @media (pointer:coarse){
-  #fullscreen-btn{
-    bottom:152px;right:16px;
-    width:52px;height:52px;
-    font-size:18px;
-    color:rgba(240,192,64,0.45);
-  }
+  #fullscreen-btn{display:none;}
   #mobile-controls{display:flex;}
-  .hotbar-slot{width:62px;height:62px;}
-  .hotbar-slot .slot-icon{font-size:32px;}
 }
 
-/* Hide item cursor on touch devices */
-@media (pointer:coarse){
-  #item-cursor{display:none!important;}
-}
-
-/* Prevent text selection on touch */
-#wrap, canvas{
+/* Prevent text selection */
+#wrap,canvas{
   -webkit-tap-highlight-color:transparent;
-  -webkit-touch-callout:none;
-  user-select:none;
+  -webkit-touch-callout:none;user-select:none;
 }
