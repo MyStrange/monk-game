@@ -1962,6 +1962,9 @@ function onBuddhaTap(cx,cy){
   // Glowstick on ear → start dialog
   if(earHit(cx,cy)&&sel&&sel.id==='glowstick'){
     earUsed=true;
+    const gi=inventory.findIndex(i=>i&&i.id==='glowstick');
+    if(gi>=0){inventory[gi]=null;if(selectedSlot===gi)selectedSlot=-1;}
+    renderHotbar();
     showBMsg('Палка осветила что-то внутри. Туда раньше не заглядывали. Ну и правильно делали.');
     setTimeout(()=>startFireflyDialog(), 2800);
     return;
@@ -2686,14 +2689,9 @@ function advanceDialog(){
     if(flyRoomAnimId){ cancelAnimationFrame(flyRoomAnimId); flyRoomAnimId=null; }
     el.style.display='none';
     el.replaceWith(el.cloneNode(false));
-    // Remove glowstick
-    const gi=inventory.findIndex(i=>i&&i.id==='glowstick');
-    if(gi>=0){inventory[gi]=null; if(selectedSlot===gi)selectedSlot=-1;}
-    // Add durian to inventory directly
-    addItem({id:'durian',name:'рис с дурианом',icon:'🍛',label:'дуриан',
-      description:'Рис с кусочками дуриана. Запах невозможный. Кот, наверное, оценит.'});
+    // Add durian
+    addItem(makeItem('durian'));
     durianReady=false;
-    updateItemCursor();
     showBMsg('Палка осталась там — она была нужна им, не тебе. На столе стоит миска с рисом. Запах странный.');
     return;
   }
