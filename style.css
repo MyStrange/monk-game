@@ -113,6 +113,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0a0812;display:flex
   max-width:240px;line-height:1.6;
 }
 
+/* ── Generic scene message (scene3, scene4, etc.) ── */
+.scene-msg{
+  position:absolute;bottom:80px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,0.85);border:1.5px solid #f0c040;
+  color:#f0c040;font-family:monospace;font-size:14px;
+  padding:12px 24px;border-radius:3px;text-align:center;
+  max-width:75%;line-height:1.6;display:none;pointer-events:none;z-index:15;
+}
+
 /* ── Scene 2 ── */
 #scene2{position:absolute;inset:0;display:none;z-index:40;overflow:hidden}
 #scene2-bg{display:block;width:100%;height:100%;object-fit:cover;object-position:center top;image-rendering:pixelated}

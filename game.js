@@ -1139,8 +1139,15 @@ function inscriptionHit(cx, cy) {
 // ── GAME LOOP ─────────────────────────────────────────────────────────────────
 let tick=0,catFrame=0,monkFrame=0;
 const keys={};
-let msgTimer=null;
-function showMsg(text,dur=2500){msgBox.textContent=text;msgBox.style.display='block';clearTimeout(msgTimer);msgTimer=setTimeout(()=>msgBox.style.display='none',dur);}
+const _msgTimers = new Map();
+function showMsgIn(el, text, dur) {
+  clearTimeout(_msgTimers.get(el));
+  el.textContent = text; el.style.display = 'block';
+  _msgTimers.set(el, setTimeout(() => el.style.display = 'none', dur));
+}
+function showMsg(text, dur=2500)   { showMsgIn(msgBox,  text, dur); }
+function showS2Msg(text, dur=2800) { showMsgIn(s2MsgEl, text, dur); }
+function showBMsg(text, dur=3200)  { showMsgIn(bMsgEl,  text, dur); }
 function standUp(){
   hero.praying=false;hero.idle=true;pSyms=[];
   mParticles=[];
@@ -1698,7 +1705,7 @@ function onS2Tap(cx,cy){
 }
 s2Canvas.addEventListener('click',e=>{const r=s2Canvas.getBoundingClientRect();onS2Tap(e.clientX-r.left,e.clientY-r.top);});
 s2Canvas.addEventListener('touchend',e=>{e.preventDefault();if(!e.changedTouches.length)return;const r=s2Canvas.getBoundingClientRect();onS2Tap(e.changedTouches[0].clientX-r.left,e.changedTouches[0].clientY-r.top);},{passive:false});
-function showS2Msg(text,dur=2800){s2MsgEl.textContent=text;s2MsgEl.style.display='block';setTimeout(()=>s2MsgEl.style.display='none',dur);}
+// showS2Msg → defined above via showMsgIn
 function pickUpJar(){
   if(jarPickedUp)return;
   if(selectedSlot>=0){showS2Msg('Руки заняты.');return;}
@@ -1716,7 +1723,7 @@ const bCtx=bCanvas.getContext('2d');
 const wishCanvas=document.getElementById('wish-anim');
 const wCtx=wishCanvas.getContext('2d');
 const bMsgEl=document.getElementById('buddha-msg');
-let bFlies=[],wishPlaying=false,bMsgTimer=null,bW=0,bH=0;
+let bFlies=[],wishPlaying=false,bW=0,bH=0;
 
 
 // ── FIREFLY DIALOG SCENE ───────────────────────────────────────────────────────
@@ -1790,7 +1797,7 @@ function spawnBFlies(){
     return{x:60+Math.random()*(bW-120),y:40+Math.random()*(bH*0.75),phase:Math.random()*Math.PI*2,dx:(Math.random()-0.5)*0.9,dy:(Math.random()-0.5)*0.5,sz,alive:true};
   });
 }
-function showBMsg(text,dur=3200){clearTimeout(bMsgTimer);bMsgEl.textContent=text;bMsgEl.style.display='block';bMsgTimer=setTimeout(()=>bMsgEl.style.display='none',dur);}
+// showBMsg → defined above via showMsgIn
 
 // Speech bubbles — appear near caught firefly, float up and fade
 const bubbles = [];
@@ -1885,7 +1892,7 @@ function onBuddhaTap(cx,cy){
       f.alive=false;
       jar.caught=(jar.caught||0)+1;
       spawnBubble(f.x, f.y);
-      renderHotbar();
+      renderHotbar(); updateItemCursor();
       // Narrative messages — irony → nostalgia → wish
       const catchMsgs = [
         'В детстве это было важно. Не помню почему.',
@@ -1951,7 +1958,7 @@ function createScene3El() {
 
   const msg = document.createElement('div');
   msg.id = 'scene3-msg';
-  msg.style.cssText = 'position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);border:1.5px solid #f0c040;color:#f0c040;font-family:monospace;font-size:14px;padding:12px 24px;border-radius:3px;text-align:center;max-width:75%;line-height:1.6;display:none;pointer-events:none;z-index:15;';
+  msg.className = 'scene-msg';
 
   el.appendChild(canvas);
   el.appendChild(back);
@@ -2104,7 +2111,7 @@ document.addEventListener('click',e=>{
     addItem({id:'fireflower',name:'огненный цветок',icon:'🌺',label:'огнецвет',
       description:'Цветок, который светится изнутри. Тёплый на ощупь. Не горит.'});
     const msg=document.getElementById('scene3-msg');
-    if(msg){msg.textContent='Ты сорвал огненный цветок. Он тёплый. Почти живой.';msg.style.display='block';setTimeout(()=>msg.style.display='none',2800);}
+    if(msg) showMsgIn(msg, 'Ты сорвал огненный цветок. Он тёплый. Почти живой.', 2800);
   }
 });
 document.addEventListener('mousemove',e=>{
@@ -2137,7 +2144,7 @@ function createScene4El() {
 
   const msg = document.createElement('div');
   msg.id = 'scene4-msg';
-  msg.style.cssText = 'position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);border:1.5px solid #f0c040;color:#f0c040;font-family:monospace;font-size:14px;padding:12px 24px;border-radius:3px;text-align:center;max-width:75%;line-height:1.6;display:none;pointer-events:none;z-index:15;';
+  msg.className = 'scene-msg';
 
   el.appendChild(canvas);
   el.appendChild(back);
@@ -2163,11 +2170,7 @@ function openScene4() {
   }
   // Message
   const msg=document.getElementById('scene4-msg');
-  if(msg){
-    msg.textContent='Ты поднялся. Сверху всё выглядит иначе.';
-    msg.style.display='block';
-    setTimeout(()=>msg.style.display='none',3000);
-  }
+  if(msg) showMsgIn(msg, 'Ты поднялся. Сверху всё выглядит иначе.', 3000);
   // Resize canvas properly after layout
   requestAnimationFrame(()=>{
     if(!canvas) return;

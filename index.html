@@ -13,6 +13,16 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon.png">
 <link rel="stylesheet" href="style.css">
+<!-- Preload critical assets -->
+<link rel="preload" as="image" href="assets/bg/main.png">
+<link rel="preload" as="image" href="assets/sprites/cat.png">
+<link rel="preload" as="image" href="assets/sprites/monk_red.png">
+<link rel="preload" as="image" href="assets/sprites/hero_left.png">
+<link rel="preload" as="image" href="assets/sprites/hero_right.png">
+<link rel="preload" as="image" href="assets/sprites/hero_sit.png">
+<link rel="preload" as="image" href="assets/bg/tree.png">
+<link rel="preload" as="image" href="assets/bg/buddha.jpeg">
+<link rel="preload" as="image" href="assets/bg/flyroom.jpeg">
 </head>
 <body>
 
@@ -22,7 +32,7 @@
 <div id="item-menu"></div>
 
 <div id="wrap">
-  <img id="bg-img" src="assets/bg/main.png">
+  <img id="bg-img" src="assets/bg/main.png" fetchpriority="high">
   <canvas id="game-canvas"></canvas>
   <canvas id="prayer-canvas"></canvas>
   <div id="msg-box"></div>
@@ -55,6 +65,6 @@
 <!-- Fullscreen button — desktop only -->
 <button id="fullscreen-btn" onclick="toggleFullscreen()">⛶</button>
 
-<script src="game.js?v=5"></script>
+<script src="game.js?v=6" defer></script>
 </body>
 </html>
