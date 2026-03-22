@@ -34,6 +34,33 @@
 
 let activeScreen = 'main';
 
+// ── LOADING / ERROR OVERLAY ────────────────────────────────────────────────────
+// showLoading(text?)  — показать оверлей с анимацией
+// hideLoading()       — скрыть (плавный fade-out)
+// showError(text)     — показать ошибку (клик закрывает)
+function showLoading(text = 'загружается') {
+  const el = document.getElementById('loading-overlay');
+  if (!el) return;
+  el.classList.remove('hidden', 'error');
+  el.querySelector('#loading-text').textContent = text;
+  el.style.display = 'flex';
+}
+function hideLoading() {
+  const el = document.getElementById('loading-overlay');
+  if (!el) return;
+  el.classList.add('hidden');
+  setTimeout(() => { if (el.classList.contains('hidden')) el.style.display = 'none'; }, 450);
+}
+function showError(text) {
+  const el = document.getElementById('loading-overlay');
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.classList.add('error');
+  el.querySelector('#loading-text').textContent = text;
+  el.style.display = 'flex';
+  el.onclick = () => { el.onclick = null; hideLoading(); };
+}
+
 // ── INVENTORY ─────────────────────────────────────────────────────────────────
 const SLOTS = 5;
 const inventory = Array(SLOTS).fill(null);
@@ -1369,8 +1396,9 @@ gc.addEventListener('touchend',e=>{
   else draggedSym=null;
 },{passive:true});
 
-bgEl.onload=()=>{syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();};
-if(bgEl.complete){syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();}
+bgEl.onerror=()=>showError('не удалось загрузить игру');
+bgEl.onload=()=>{hideLoading();syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();};
+if(bgEl.complete&&bgEl.naturalWidth){hideLoading();syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();}
 
 // ── AMBIENT MUSIC ─────────────────────────────────────────────────────────────
 let audioCtx = null, ambientStarted = false;
@@ -2613,7 +2641,11 @@ function startFireflyDialog(){
     el.addEventListener('touchend', e=>{e.preventDefault();advanceDialog();},{passive:false});
   };
   if (bgImg.complete && bgImg.naturalWidth) { startDialog(); }
-  else { bgImg.onload = startDialog; }
+  else {
+    showLoading('светлячки думают');
+    bgImg.onerror = () => showError('не удалось загрузить сцену');
+    bgImg.onload = () => { hideLoading(); startDialog(); };
+  }
 }
 
 let flyRoomAnimId = null;

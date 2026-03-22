@@ -134,6 +134,56 @@
 
 ---
 
+## Визуальный стиль — строгие правила
+
+### Иконки предметов — только пиксель-арт SVG, никаких эмодзи
+Все предметы отображаются через функции `renderXIcon()`, возвращающие SVG-строку.
+- В `ITEM_DEFS` поле `icon` — только для fallback или внутреннего использования
+- В `renderHotbar()` и `updateItemCursor()` — ВСЕГДА проверяй есть ли render-функция
+- Каждый новый предмет требует `renderXIcon()` перед добавлением в игру
+
+**Текущие SVG render-функции:**
+| Предмет | Функция |
+|---|---|
+| `jar`, `jar_open` | `renderJarIcon(item)` |
+| `stick`, `glowstick` | `renderStickIcon(glowing)` |
+| `durian` | `renderDurianIcon()` |
+| `bread`, `dirt`, `fireflower` | ⚠️ пока эмодзи — нужно заменить на SVG |
+
+**Шаблон для нового предмета:**
+```js
+function renderXIcon() {
+  return `<svg width="48" height="48" viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- pixel rects only, no paths/curves -->
+  </svg>`;
+}
+```
+Пиксель-арт = только `<rect>` элементы. Никаких `<path>`, `<circle>`, `<polygon>`.
+Палитра: тёмные оттенки + один яркий акцент. Смотри `renderStickIcon()` как эталон.
+
+Добавить ветку в `renderHotbar()`:
+```js
+} else if (item.id === 'x') {
+  div.innerHTML = `<span class="slot-icon">${renderXIcon()}</span>`;
+```
+
+### Загрузка и ошибки
+Всегда использовать единую систему:
+```js
+showLoading('текст')   // показать оверлей с анимацией
+hideLoading()           // скрыть (fade)
+showError('текст')      // ошибка — клик закрывает
+```
+При загрузке новых assets (картинки для сцен):
+```js
+showLoading('название сцены');
+img.onerror = () => showError('не удалось загрузить сцену');
+img.onload  = () => { hideLoading(); /* продолжить */ };
+```
+
+---
+
 ## Тон игры — для всех текстов
 
 Тихий, поэтичный, философский, чуть ироничный. Персонаж наблюдает, а не объясняет.
