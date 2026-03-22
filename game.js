@@ -2655,9 +2655,9 @@ function animFlyRoom(){
   cx.clearRect(0,0,W,H);
 
   // Two firefly glows at their approximate positions in the image
-  // Left fly А: ~35% x, 58% y of image — sitting left of table
-  // Right fly Б: ~65% x, 58% y — sitting right
-  [[0.35, 0.60, 0], [0.65, 0.60, 1]].forEach(([fx,fy,idx])=>{
+  // Left fly А: ~35% x, 68% y of image — sitting left of table
+  // Right fly Б: ~65% x, 68% y — sitting right
+  [[0.35, 0.68, 0], [0.65, 0.68, 1]].forEach(([fx,fy,idx])=>{
     const glow = 0.4 + 0.6*Math.abs(Math.sin(t*1.8+idx*1.3));
     const x = W*fx, y = H*fy;
     cx.save();
@@ -2723,8 +2723,8 @@ function advanceDialog(){
     const leftPct  = isA ? '3%'   : 'auto';
     const rightPct = isA ? 'auto' : '3%';
     const maxW = '36%';
-    // Vertical: firefly at 60% from top → bubble top edge at ~22%, bottom at ~52%
-    const topPct = '22%';
+    // Vertical: firefly at 68% from top → bubble top edge at ~46%, bottom just above fly
+    const topPct = '46%';
     // Triangle tail at bottom of bubble, pointing down.
     // Two layers: outer (border colour) + inner (fill) to avoid gap.
     const tailLeft = isA ? '60%' : '28%'; // tail closer to firefly side
