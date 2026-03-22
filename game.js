@@ -87,13 +87,13 @@ function addItem(item) {
 // render() is optional — jar/stick/durian have their own render functions.
 // Use makeItem(id, overrides) to instantiate.
 const ITEM_DEFS = {
-  stick:      { id:'stick',      label:'палка',      icon:'🪵', description:'Сухая ветка. Чуть влажная снизу. Пахнет листьями.',            look:'Кривая, но надёжная. Из таких делают посохи и неприятности.' },
-  glowstick:  { id:'glowstick',  label:'светопалка', icon:'🪄', description:'Палка впитала свет из банки. Светится тихо и ровно.',           look:'Светится. Обещание выполнено.' },
-  jar:        { id:'jar',        label:'банка',                 description:'Пустая стеклянная банка с крышкой. Поймай в неё что-нибудь.',    look:'Хорошая банка. Для чего-нибудь пригодится.' },
-  jar_open:   { id:'jar_open',   label:'банка',                 description:'Банка без крышки. Крышка ушла вместе со светом.',                look:'Открытая банка. Что-то из неё ушло.' },
-  dirt:       { id:'dirt',       label:'земля',      icon:'🫧', description:'Свежая земля. Кот постарался.',                                  look:'Тёплая. Кот закопал сюда что-то с усилием.' },
-  durian:     { id:'durian',     label:'дуриан',                description:'Рис с кусочками дуриана. Запах невозможный. Кот оценит.',        look:'Сложно описать запах. Лучше не пробовать.' },
-  fireflower: { id:'fireflower', label:'огнецвет',   icon:'🌺', description:'Цветок, светящийся изнутри. Тёплый на ощупь. Не горит.',        look:'Живёт в темноте и светит. Хорошая стратегия.' },
+  stick:      { id:'stick',      label:'палка',     description:'Кривая, но надёжная. Из таких делают посохи и неприятности.' },
+  glowstick:  { id:'glowstick',  label:'светопалка',description:'Палка впитала свет из банки. Светится тихо и ровно.' },
+  jar:        { id:'jar',        label:'банка',     description:'Пустая стеклянная банка с крышкой. Поймай в неё что-нибудь.' },
+  jar_open:   { id:'jar_open',   label:'банка',     description:'Банка без крышки. Крышка ушла вместе со светом.' },
+  dirt:       { id:'dirt',       label:'земля',     description:'Свежая земля. Тёплая. Кот закопал сюда что-то с усилием.' },
+  durian:     { id:'durian',     label:'дуриан',    description:'Рис с кусочками дуриана. Запах невозможный. Кот оценит.' },
+  fireflower: { id:'fireflower', label:'огнецвет',  description:'Цветок, светящийся изнутри. Тёплый на ощупь. Не горит.' },
 };
 // makeItem(id, overrides) — creates item instance from registry
 function makeItem(id, overrides={}) {
@@ -823,7 +823,9 @@ function itemOnZone(itemId, zone){
       if(foodIdx>=0){inventory[foodIdx]=null;if(selectedSlot===foodIdx)selectedSlot=-1;}
       catBurying=true; catBuryTimer=0;
       renderHotbar();
-      showMsg('Кот понюхал рис с дурианом. На секунду завис. И начал закапывать — быстро, инстинктивно.');
+      playCatMeow();
+      showMsg('Кот даже не принюхивается, он сразу орёт.');
+      setTimeout(()=>showMsg('Начинает неистово закапывать.'), 2200);
       return null;
     }
   }
@@ -1291,6 +1293,40 @@ function standUp(){
   if(btn) btn.classList.remove('active');
 }
 
+function playCatMeow() {
+  if (!audioCtx || soundMuted) return;
+  const t = audioCtx.currentTime;
+  // Layer 1: main meow — sawtooth with pitch envelope
+  const osc1 = audioCtx.createOscillator();
+  const filt = audioCtx.createBiquadFilter();
+  const g1   = audioCtx.createGain();
+  osc1.type = 'sawtooth';
+  osc1.frequency.setValueAtTime(480, t);
+  osc1.frequency.linearRampToValueAtTime(860, t+0.10);
+  osc1.frequency.linearRampToValueAtTime(1020, t+0.18);
+  osc1.frequency.linearRampToValueAtTime(680, t+0.42);
+  osc1.frequency.linearRampToValueAtTime(520, t+0.60);
+  filt.type = 'bandpass'; filt.frequency.value = 1100; filt.Q.value = 2.5;
+  g1.gain.setValueAtTime(0, t);
+  g1.gain.linearRampToValueAtTime(0.22, t+0.04);
+  g1.gain.setValueAtTime(0.22, t+0.35);
+  g1.gain.linearRampToValueAtTime(0, t+0.65);
+  osc1.connect(filt); filt.connect(g1); g1.connect(masterGain);
+  osc1.start(t); osc1.stop(t+0.7);
+  // Layer 2: high whine overtone — adds complainy edge
+  const osc2 = audioCtx.createOscillator();
+  const g2   = audioCtx.createGain();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(1600, t+0.05);
+  osc2.frequency.linearRampToValueAtTime(2100, t+0.20);
+  osc2.frequency.linearRampToValueAtTime(1400, t+0.55);
+  g2.gain.setValueAtTime(0, t);
+  g2.gain.linearRampToValueAtTime(0.06, t+0.08);
+  g2.gain.linearRampToValueAtTime(0, t+0.60);
+  osc2.connect(g2); g2.connect(masterGain);
+  osc2.start(t+0.05); osc2.stop(t+0.7);
+}
+
 function playPrayerSound() {
   if (!audioCtx || soundMuted) return;
   const now = audioCtx.currentTime;
@@ -1667,7 +1703,7 @@ gc.addEventListener('mousemove',e=>{
     } else {
       const onOrb=hitMeditationOrb(cx,cy);
       const onSym=inscriptionCharge<5&&pSyms.some(s=>symHit(cx,cy,s));
-      const onInsc=inscHitCanvas(cx,cy);
+      const onInsc=inscriptionReady&&inscHitCanvas(cx,cy);
       gc.style.cursor=(onOrb||onSym||onInsc)?'pointer':'default';
     }
     return;
@@ -2770,7 +2806,7 @@ function advanceDialog(){
   if(isNarr){
     // Narrator line — centered, subtle
     speech.innerHTML = `<div style="
-      position:absolute;left:50%;bottom:18%;transform:translateX(-50%);
+      position:absolute;left:50%;top:12%;transform:translateX(-50%);
       background:rgba(0,0,0,0.72);border:1px solid rgba(240,192,64,0.3);
       border-radius:4px;padding:10px 20px;
       font-family:monospace;font-size:13px;color:rgba(240,192,64,0.65);
@@ -2778,34 +2814,43 @@ function advanceDialog(){
       white-space:pre-wrap;
     ">${line.t}</div>`;
   } else {
-    // Positional bubble: А left (~28% from left), Б right (~72%)
-    // Bubble appears just above the firefly's head in the image
-    const leftPct  = isA ? '5%'  : 'auto';
-    const rightPct = isA ? 'auto': '5%';
-    const bottomPct = '22%'; // above the table area in the image
-    const maxW = '38%';
-    const align = isA ? 'left' : 'right';
-    const borderCol = isA ? 'rgba(255,220,80,0.6)' : 'rgba(160,210,255,0.6)';
+    // Fireflies are at ~35% x / 65% x, ~60% y in the image.
+    // Bubble sits ABOVE the firefly; triangle at BOTTOM pointing down toward fly.
+    // А = left firefly, Б = right firefly
+    const borderCol = isA ? 'rgba(255,220,80,0.7)' : 'rgba(160,210,255,0.7)';
     const textCol   = isA ? '#ffe066' : '#c8e8ff';
-    // Tail direction — triangle at TOP of bubble pointing UP toward firefly
-    const tailStyle = isA
-      ? 'border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:10px solid rgba(0,0,0,0.78);position:absolute;top:-10px;right:18px;'
-      : 'border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:10px solid rgba(0,0,0,0.78);position:absolute;top:-10px;right:18px;';
+    const bgCol = 'rgba(0,0,0,0.82)';
+    // Horizontal anchor: А bubble sits left of centre, Б sits right
+    const leftPct  = isA ? '3%'   : 'auto';
+    const rightPct = isA ? 'auto' : '3%';
+    const maxW = '36%';
+    // Vertical: firefly at 60% from top → bubble top edge at ~22%, bottom at ~52%
+    const topPct = '22%';
+    // Triangle tail at bottom of bubble, pointing down.
+    // Two layers: outer (border colour) + inner (fill) to avoid gap.
+    const tailLeft = isA ? '60%' : '28%'; // tail closer to firefly side
+    const tailOuter = `width:0;height:0;
+      border-left:9px solid transparent;border-right:9px solid transparent;
+      border-top:11px solid ${borderCol};
+      position:absolute;bottom:-11px;left:${tailLeft};transform:translateX(-50%);`;
+    const tailInner = `width:0;height:0;
+      border-left:7px solid transparent;border-right:7px solid transparent;
+      border-top:9px solid ${bgCol};
+      position:absolute;bottom:-8px;left:${tailLeft};transform:translateX(-50%);`;
 
     speech.innerHTML = `<div style="
       position:absolute;
-      left:${leftPct};right:${rightPct};bottom:${bottomPct};
+      left:${leftPct};right:${rightPct};top:${topPct};
       max-width:${maxW};
-      background:rgba(0,0,0,0.78);
+      background:${bgCol};
       border:1.5px solid ${borderCol};
       border-radius:6px;
       padding:10px 14px;
-      font-family:monospace;font-size:14px;
+      font-family:monospace;font-size:13px;
       color:${textCol};
-      text-align:${align};
       line-height:1.6;
       white-space:pre-wrap;
-    ">${line.t}<div style="${tailStyle}"></div></div>`;
+    ">${line.t}<div style="${tailOuter}"></div><div style="${tailInner}"></div></div>`;
   }
 }
 
