@@ -1,6 +1,36 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // MONK GAME — game.js
 // ═══════════════════════════════════════════════════════════════════════════
+//
+// ARCHITECTURE OVERVIEW
+// ─────────────────────
+// DATA LAYER (top of file):
+//   ITEM_DEFS   — registry of all items (id, label, description, look text)
+//   SCENE_DEFS  — registry of all scenes (canLeave, leaveBlockMsg)
+//   ITEM_COMBO  — item×item combinations (sorted key, condition, apply)
+//   ZONE_MSGS   — item×zone flavor messages (no state change)
+//   getZoneMsg  — helper to look up a flavor message
+//
+// INTERACTION RULES
+// ─────────────────
+// 1. Click hotbar slot with nothing selected → select item
+// 2. Click hotbar slot with same item selected → deselect
+// 3. Click hotbar slot with DIFFERENT item selected → itemOnItem(a, b)
+//    - Returns string → show error message, keep selection
+//    - Returns false  → success, deselect all
+//    - Returns null   → no combo, toggle selection normally
+// 4. Click canvas zone with item selected → itemOnZone(itemId, zone)
+//    - Returns string → show message (flavor or error)
+//    - Returns null   → success (action done, message shown inside)
+// 5. Click canvas zone with nothing selected → bare zone behavior
+//
+// ADDING NEW CONTENT
+// ──────────────────
+// New item:   add to ITEM_DEFS, then use makeItem(id) to create instances
+// New combo:  add to ITEM_COMBO with sorted key (e.g. 'jar+stick')
+// New flavor: add to ZONE_MSGS with key 'itemId:zone'
+// New scene:  add to SCENE_DEFS
+// New action: add handler inside itemOnZone
 
 let activeScreen = 'main';
 
@@ -19,6 +49,114 @@ function addItem(item) {
   inventory[idx] = item;
   renderHotbar();
   return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA LAYER
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── ITEM REGISTRY ──────────────────────────────────────────────────────────
+// Single source of truth for all items.
+// render() is optional — jar/stick/durian have their own render functions.
+// Use makeItem(id, overrides) to instantiate.
+const ITEM_DEFS = {
+  stick:      { id:'stick',      label:'палка',      icon:'🪵', description:'Сухая ветка. Чуть влажная снизу. Пахнет листьями.',            look:'Кривая, но надёжная. Из таких делают посохи и неприятности.' },
+  glowstick:  { id:'glowstick',  label:'светопалка', icon:'🪄', description:'Палка впитала свет из банки. Светится тихо и ровно.',           look:'Светится. Обещание выполнено.' },
+  bread:      { id:'bread',      label:'сухарик',    icon:'🍞', description:'Старый сухарь. Выглядит грустно. Котам нравится.',             look:'Кто-то оставил здесь. Намеренно или нет.' },
+  jar:        { id:'jar',        label:'банка',                 description:'Пустая стеклянная банка с крышкой. Поймай в неё что-нибудь.',    look:'Хорошая банка. Для чего-нибудь пригодится.' },
+  jar_open:   { id:'jar_open',   label:'банка',                 description:'Банка без крышки. Крышка ушла вместе со светом.',                look:'Открытая банка. Что-то из неё ушло.' },
+  dirt:       { id:'dirt',       label:'земля',      icon:'🫧', description:'Свежая земля. Кот постарался.',                                  look:'Тёплая. Кот закопал сюда что-то с усилием.' },
+  durian:     { id:'durian',     label:'дуриан',                description:'Рис с кусочками дуриана. Запах невозможный. Кот оценит.',        look:'Сложно описать запах. Лучше не пробовать.' },
+  fireflower: { id:'fireflower', label:'огнецвет',   icon:'🌺', description:'Цветок, светящийся изнутри. Тёплый на ощупь. Не горит.',        look:'Живёт в темноте и светит. Хорошая стратегия.' },
+};
+// makeItem(id, overrides) — creates item instance from registry
+function makeItem(id, overrides={}) {
+  const d = ITEM_DEFS[id];
+  if(!d){ console.warn('makeItem: unknown id:', id); return {id,...overrides}; }
+  return {...d, ...overrides};
+}
+
+// ── SCENE REGISTRY ─────────────────────────────────────────────────────────
+// canLeave() is checked before any scene close. leaveBlockMsg shown if blocked.
+const SCENE_DEFS = {
+  main:   { id:'main',   bg:'assets/bg/main.png',     canLeave:()=>true },
+  scene2: { id:'scene2', bg:'assets/bg/tree.png',     canLeave:()=>true },
+  buddha: { id:'buddha', bg:'assets/bg/buddha.jpeg',
+    canLeave:()=>{ const j=getItem('jar'); return !(j&&(j.caught||0)>0); },
+    leaveBlockMsg:'В банке ещё светлячки. Выпусти их сначала.',
+  },
+  scene3: { id:'scene3', canLeave:()=>true },
+  scene4: { id:'scene4', canLeave:()=>true },
+};
+function canLeaveScene(id){ const d=SCENE_DEFS[id]; return !d||d.canLeave(); }
+function getLeaveBlockMsg(id){ return (SCENE_DEFS[id]||{}).leaveBlockMsg||''; }
+
+// ── ITEM × ITEM COMBINATIONS ───────────────────────────────────────────────
+// Key = item ids sorted alphabetically joined with '+'.
+// condition() → true if combo is possible, false to show failMsg.
+// apply()     → perform transformation, call renderHotbar/showMsg inside.
+const ITEM_COMBO = {
+  'jar+stick': {
+    condition(){ const j=getItem('jar'); return !!(j&&(j.glowing||(j.caught||0)>0)); },
+    failMsg:'В банке ничего нет. Нечем светить.',
+    apply(){
+      const si=inventory.findIndex(i=>i&&i.id==='stick');
+      const jar=getItem('jar');
+      if(si<0||!jar) return;
+      inventory[si]=makeItem('glowstick');
+      Object.assign(jar,makeItem('jar_open'),{caught:0,glowing:false,released:false,hasWater:false});
+      renderHotbar(); updateItemCursor();
+      showMsg('Палка впитала свет. Крышка куда-то делась — банка теперь открытая.');
+    },
+  },
+};
+function comboKey(a,b){ return [a,b].sort().join('+'); }
+
+// ── ITEM × ZONE FLAVOR MESSAGES ────────────────────────────────────────────
+// Pure text responses — no state changes.
+// Key format: 'itemId:zone'  or  'jar_glowing:zone' for glowing jar.
+// Arrays rotate with interaction count. Use Math.min(n, arr.length-1) for cap.
+const ZONE_MSGS = {
+  // ── jar (empty/no glow) ──
+  'jar:cat':      ['Коты, конечно, жидкость, но не этот.','Ну нет. Он туда не пойдёт.','Смотрит на банку. Потом на тебя. Моргает.','Ты всё ещё пробуешь? Кот флегматично присутствует.','Он остался. Просто игнорирует.'],
+  'jar:monk':     ['Ты у него денег просишь? У монаха, серьёзно?','Не реагирует. Вообще.','Он всё уже отпустил. В том числе это.','Тишина — тоже ответ.'],
+  'jar:statue':   ['Будда смотрит на банку. Банка смотрит на Будду.','Тишина. Очень красноречивая.','Думаешь, он оценил? Вряд ли.'],
+  'jar:bush':     ['Банка и куст. Ничего не произошло.','Снова ничего. Куст держится.'],
+  'jar:tree':     ['Дерево большое. Банка маленькая. Свет один.'],
+  'jar:rock':     ['Банка ещё пригодится. Не надо её разбивать.','Точно не сюда.','Пустая банка камню не поможет.'],
+  'jar:bottle':   ['Банка смотрит на банку. Что-то в этом есть.'],
+  // ── jar (glowing) — prefix jar_glowing ──
+  'jar_glowing:cat':    ['Банка светит коту в лицо. Кот щурится.','Кот смотрит на свет. Долго.','Кот моргнул. Что-то изменилось. Или нет.'],
+  'jar_glowing:monk':   ['Монах открыл один глаз. Посмотрел на свет. Закрыл.','Свет из банки упал на его руки.','Монах улыбнулся. Едва заметно.'],
+  'jar_glowing:statue': ['Отражение света на камне. Красиво и бессмысленно.','Будда и банка со светом. Кто кому светит — непонятно.'],
+  'jar_glowing:water':  ['Свет из банки упал в воду. Вода стала чуть другой.','Отражение светится. Оба настоящие.'],
+  'jar_glowing:bush':   ['Куст в свете светлячков выглядит иначе. Как будто живёт.'],
+  'jar_glowing:tree':   ['Дерево большое. Банка маленькая. Свет один.'],
+  'jar_glowing:rock1':  ['Что-то в камне отзывается на свет.','Камень холодный. Свет тёплый. Баланс.'],
+  'jar_glowing:rock2':  ['Что-то в камне отзывается. Или показалось.','Второй камень принимает свет.'],
+  'jar_glowing:rock3':  ['Третий камень. Третий свет. Совпадение?'],
+  'jar_glowing:_':      'Свет из банки. Тихо.',
+  // ── stick ──
+  'stick:cat':    ['Кот посмотрел на палку. Не впечатлился.','Зевнул. Демонстративно.','Перевёл взгляд. Остался.','Нет.'],
+  'stick:monk':   ['Открыл один глаз. Закрыл.','Больше не откроет. Это было последнее предупреждение.','Глубокое молчание. Ты проиграл.'],
+  'stick:statue': ['Ты поднял палку — и сам же убрал. Правильно.','Снова? Нет.'],
+  'stick:water':  ['Палка и вода. Вода победила, как всегда.','Круги на воде. Красиво, если честно.','Ничего нового.'],
+  'stick:bush':   ['Поковырял кусты палкой. Там пусто.','Всё так же пусто.','Куст тебя не боится.'],
+  'stick:rock':   ['Постучал палкой по камню. Камень не оценил.','Звук глухой. Как будто камню всё равно.','Ничего.'],
+  // ── rocks fallback ──
+  'rock:_':       ['Обычный камень. Холодный.','Поверхность шершавая.','Что-то в нём есть.'],
+};
+// Resolve a flavor message. Returns string or null (= action handled or no msg).
+function getZoneMsg(itemId, zone, n) {
+  const jar=(itemId==='jar'||itemId==='jar_open')?getItem(itemId):null;
+  if(jar&&jar.glowing){
+    const m=ZONE_MSGS[`jar_glowing:${zone}`];
+    if(m) return Array.isArray(m)?m[n%m.length]:m;
+    const def=ZONE_MSGS['jar_glowing:_']; return def||null;
+  }
+  const m=ZONE_MSGS[`${itemId}:${zone}`]||ZONE_MSGS[`${itemId}:rock`]||null;
+  if(!m) return null;
+  return Array.isArray(m)?m[Math.min(n,m.length-1)]:m;
 }
 
 function renderHotbar() {
@@ -511,39 +649,11 @@ function monkMsg() { return monkMsgs[monkMsgIdx++ % monkMsgs.length]; }
 
 // ── ITEM × ITEM INTERACTIONS ──────────────────────────────────────────────────
 function itemOnItem(activeId, targetId) {
-  // Normalise order: always stick+jar regardless of which was active
-  const isStickJar = (activeId==='stick'&&targetId==='jar')||(activeId==='jar'&&targetId==='stick');
-
-  if(isStickJar) {
-    const jar  = getItem('jar');
-    const stick = inventory.find(i=>i&&i.id==='stick');
-    if(!jar || !stick) return null;
-
-    // Jar must have something to give: glowing liquid OR fireflies inside
-    const hasLight = jar.glowing || (jar.caught||0) > 0;
-    if(!hasLight) {
-      return 'В банке ничего нет. Нечем светить.';
-    }
-
-    // Transform stick → glowstick
-    const stickIdx = inventory.findIndex(i=>i&&i.id==='stick');
-    inventory[stickIdx] = {
-      id:'glowstick', name:'светящаяся палка', icon:'🪄', label:'светопалка',
-      description:'Палка впитала свет из банки. Светится тихо и ровно.'
-    };
-    if(selectedSlot===stickIdx) selectedSlot=stickIdx;
-
-    // Jar becomes open (lid went with the light)
-    jar.id='jar_open'; jar.caught=0; jar.glowing=false; jar.released=false;
-    jar.hasWater=false; jar.label='банка'; jar.icon='jar_open';
-    jar.description='Банка без крышки. Крышка ушла вместе со светом.';
-
-    renderHotbar(); updateItemCursor();
-    showMsg('Палка впитала свет. Крышка куда-то делась — банка теперь открытая.');
-    return false; // handled successfully
-  }
-
-  return null; // no match
+  const combo = ITEM_COMBO[comboKey(activeId, targetId)];
+  if(!combo) return null;
+  if(!combo.condition()) return combo.failMsg || null;
+  combo.apply();
+  return false;
 }
 
 // ── ITEM × ZONE INTERACTION SYSTEM ───────────────────────────────────────────
@@ -556,142 +666,43 @@ function itemOnZone(itemId, zone){
   const n = getInteractCount(itemId, zone);
   bumpInteract(itemId, zone);
 
-  // Glowing jar (has firefly liquid) — special messages everywhere
-  if(itemId==='jar'||itemId==='jar_open'){
-    const jar=getItem(itemId);
-    if(jar&&jar.glowing){
-      const gm={
-        cat:   ['Банка светит коту в лицо. Кот щурится.','Кот смотрит на свет. Долго.','Кот моргнул. Что-то изменилось. Или нет.'],
-        monk:  ['Монах открыл один глаз. Посмотрел на свет. Закрыл.','Свет из банки упал на его руки.','Монах улыбнулся. Едва заметно.'],
-        statue:['Отражение света на камне. Красиво и бессмысленно.','Будда и банка со светом. Кто кому светит — непонятно.'],
-        water: ['Свет из банки упал в воду. Вода стала чуть другой.','Отражение светится. Оба настоящие.'],
-        bush:  ['Куст в свете светлячков выглядит иначе. Как будто живёт.'],
-        tree:  ['Дерево большое. Банка маленькая. Свет один.'],
-        rock1: ['Что-то в камне отзывается на свет.','Камень холодный. Свет тёплый. Баланс.'],
-        rock2: ['Что-то в камне отзывается. Или показалось.','Второй камень принимает свет.'],
-        rock3: ['Третий камень. Третий свет. Совпадение?'],
-      };
-      const msgs=gm[zone];
-      if(msgs) return msgs[n%msgs.length];
-      return 'Свет из банки. Тихо.';
-    }
-  }
-
-  if(itemId==='jar'){
-    if(zone==='cat') return [
-      'Коты, конечно, жидкость, но не этот.',
-      'Ну нет. Он туда не пойдёт.',
-      'Смотрит на банку. Потом на тебя. Моргает.',
-      'Ты всё ещё пробуешь? Кот флегматично присутствует.',
-      'Он остался. Просто игнорирует.',
-    ][Math.min(n,4)];
-    if(zone==='monk') return [
-      'Ты у него денег просишь? У монаха, серьёзно?',
-      'Не реагирует. Вообще.',
-      'Он всё уже отпустил. В том числе это.',
-      'Тишина — тоже ответ.',
-    ][Math.min(n,3)];
-    if(zone==='statue') return [
-      'Будда смотрит на банку. Банка смотрит на Будду.',
-      'Тишина. Очень красноречивая.',
-      'Думаешь, он оценил? Вряд ли.',
-    ][Math.min(n,2)];
-    if(zone==='water') return [
-      'В отражении банка выглядит глубже, чем есть.',
-      'Вода не удивлена.',
-      'Отражение не двигается. Ты двигаешься.',
-    ][Math.min(n,2)];
-    if(zone==='bush') return [
-      'Банка и куст. Ничего не произошло.',
-      'Снова ничего. Куст держится.',
-    ][Math.min(n,1)];
-  }
-
-  if(itemId==='stick'){
-    if(zone==='cat') return [
-      'Кот посмотрел на палку. Не впечатлился.',
-      'Зевнул. Демонстративно.',
-      'Перевёл взгляд. Остался.',
-      'Нет.',
-    ][Math.min(n,3)];
-    if(zone==='monk') return [
-      'Открыл один глаз. Закрыл.',
-      'Больше не откроет. Это было последнее предупреждение.',
-      'Глубокое молчание. Ты проиграл.',
-    ][Math.min(n,2)];
-    if(zone==='statue') return [
-      'Ты поднял палку — и сам же убрал. Правильно.',
-      'Снова? Нет.',
-    ][Math.min(n,1)];
-    if(zone==='water') return [
-      'Палка и вода. Вода победила, как всегда.',
-      'Круги на воде. Красиво, если честно.',
-      'Ничего нового.',
-    ][Math.min(n,2)];
-    if(zone==='bush') return [
-      'Поковырял кусты палкой. Там пусто.',
-      'Всё так же пусто.',
-      'Куст тебя не боится.',
-    ][Math.min(n,2)];
-  }
-
-  if(zone==='rocks'){
-    if(itemId==='jar') return [
-      'Камни холодные. Банка тёплая. Вот и всё.',
-      'Камни молчат. Банка тоже.',
-    ][Math.min(n,1)];
-    if(itemId==='stick') return [
-      'Постучал палкой по камню. Камень не оценил.',
-      'Звук глухой. Как будто камню всё равно.',
-      'Ничего.',
-    ][Math.min(n,2)];
-    return ['Камни. Просто камни.','Ничего не изменилось.'][Math.min(n,1)];
-  }
-
+  // ── Bottle zone (scene2 — jar glowing on shelf) ────────────────────────────
   if(zone==='bottle'){
     if(itemId==='stick'){
       const jar=getItem('jar');
-      if(!jar){ return 'Тут нечем светить.'; }
-      if(!jar.released && jar.caught===0){ return 'В банке ничего нет. Нечем светить.'; }
-      // Transform: stick absorbs light from jar → glowstick
-      const stickIdx=inventory.findIndex(i=>i&&i.id==='stick');
-      if(stickIdx>=0){
-        inventory[stickIdx]={id:'glowstick',name:'светящаяся палка',icon:'🪄',label:'светопалка',
-          description:'Палка впитала свет из банки. Светится тихо и ровно.'};
-        if(selectedSlot===stickIdx) selectedSlot=stickIdx; // keep selected
-      }
-      // Jar becomes empty
-      jar.caught=0; jar.glowing=false; jar.released=false;
-      jar.hasWater=false; jar.label='банка'; jar.icon='🫙';
-      jar.description='Пустая банка. Свет ушёл в палку.';
+      if(!jar) return 'Тут нечем светить.';
+      if(!jar.released && (jar.caught||0)===0) return 'В банке ничего нет. Нечем светить.';
+      const si=inventory.findIndex(i=>i&&i.id==='stick');
+      if(si>=0){ inventory[si]=makeItem('glowstick'); }
+      Object.assign(jar, makeItem('jar_open'), {caught:0,glowing:false,released:false,hasWater:false});
       renderHotbar(); updateItemCursor();
       showS2Msg('Палка коснулась банки — и впитала весь свет. Банка снова пустая.');
       return null;
     }
-    if(itemId==='jar') return 'Банка смотрит на банку. Что-то в этом есть.';
   }
 
+  // ── Water zone ─────────────────────────────────────────────────────────────
   if(zone==='water'){
     if(itemId==='jar_open'||itemId==='jar'){
       const jar=getItem(itemId);
       if(!jar) return null;
       if(jar.id==='jar'&&!jar.glowing&&!jar.released) return 'У банки крышка. Воду не зачерпнёшь.';
       if(jar.hasWater) return 'Банка уже с водой.';
-      jar.hasWater=true; jar.label='с водой'; jar.icon='jar_open';
-      jar.description='Открытая банка с водой. Холодная. Не расплещи.';
+      jar.hasWater=true;
+      Object.assign(jar, {label:'с водой', description:'Открытая банка с водой. Холодная. Не расплещи.'});
       renderHotbar(); updateItemCursor();
       showMsg('Ты зачерпнул воды. Банка стала тяжелее.');
       return null;
     }
   }
 
+  // ── Rock zones (scene2) ────────────────────────────────────────────────────
   if(zone==='rock1'||zone==='rock2'||zone==='rock3'){
     const jar=(itemId==='jar'||itemId==='jar_open')?getItem(itemId):null;
     if(itemId==='jar'&&jar&&!jar.hasWater&&!jar.released&&(jar.caught||0)===0){
-      return ['Банка ещё пригодится. Не надо её разбивать.','Точно не сюда.','Пустая банка камню не поможет.'][Math.min(getInteractCount(itemId,zone)%3,2)];
+      return ['Банка ещё пригодится. Не надо её разбивать.','Точно не сюда.','Пустая банка камню не поможет.'][n%3];
     }
     if((itemId==='jar_open'||itemId==='jar')&&jar&&jar.hasWater){
-      // Water jar on rock 1 → activate, jar breaks
       rockStates[zone]=true;
       const jarIdx=inventory.findIndex(i=>i&&(i.id==='jar_open'||i.id==='jar')&&i.hasWater);
       if(jarIdx>=0){inventory[jarIdx]=null;if(selectedSlot===jarIdx)selectedSlot=-1;}
@@ -702,8 +713,7 @@ function itemOnZone(itemId, zone){
     if(itemId==='dirt'){
       rockStates[zone]=true;
       const dirtIdx=inventory.findIndex(i=>i&&i.id==='dirt');
-      if(dirtIdx>=0) inventory[dirtIdx]=null;
-      if(selectedSlot===dirtIdx) selectedSlot=-1;
+      if(dirtIdx>=0){inventory[dirtIdx]=null;if(selectedSlot===dirtIdx)selectedSlot=-1;}
       renderHotbar(); updateItemCursor();
       showS2Msg('Земля ложится на камень. Что-то меняется.');
       return null;
@@ -713,32 +723,27 @@ function itemOnZone(itemId, zone){
       showS2Msg('Свет из палки переходит в камень. Камень начинает тихо светиться.');
       return null;
     }
-    // Default: rock with no useful item
-    const rockTexts=['Обычный камень. Холодный.','Поверхность шершавая.','Что-то в нём есть.'];
-    return rockTexts[getInteractCount(itemId,zone)%3];
   }
 
+  // ── Cat zone ───────────────────────────────────────────────────────────────
   if(zone==='cat'){
     if(itemId==='bread'||itemId==='durian'){
       const foodIdx=inventory.findIndex(i=>i&&i.id===itemId);
-      if(foodIdx>=0) inventory[foodIdx]=null;
-      if(selectedSlot===foodIdx) selectedSlot=-1;
+      if(foodIdx>=0){inventory[foodIdx]=null;if(selectedSlot===foodIdx)selectedSlot=-1;}
       catBurying=true; catBuryTimer=0;
       renderHotbar(); updateItemCursor();
-      const msg=itemId==='durian'
+      showMsg(itemId==='durian'
         ? 'Кот понюхал рис с дурианом. На секунду завис. И начал закапывать — быстро, инстинктивно.'
-        : 'Кот понюхал сухарик. Поморщился. И всё равно начал закапывать — инстинкт.';
-      showMsg(msg);
+        : 'Кот понюхал сухарик. Поморщился. И всё равно начал закапывать — инстинкт.');
       return null;
     }
   }
 
-  // Bread doesn't do anything on other zones
-  if(itemId==='bread'){
-    return ['Что делать с сухариком здесь?','Нет.',' '][Math.min(getInteractCount(itemId,zone)%3, 2)];
-  }
+  // ── Bread fallback ────────────────────────────────────────────────────────
+  if(itemId==='bread') return ['Что делать с сухариком здесь?','Нет.',' '][n%3];
 
-  return null;
+  // ── Flavor messages from ZONE_MSGS table ──────────────────────────────────
+  return getZoneMsg(itemId, zone, n);
 }
 function tryItemOnZone(zone){
   const item = getSelectedItem();
