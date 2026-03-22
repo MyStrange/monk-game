@@ -137,6 +137,7 @@ document.addEventListener('mousemove', e => {
 });
 
 function updateItemCursor() {
+  if (isMobile()) { itemCursorEl.style.display = 'none'; itemCursorEl.innerHTML = ''; return; }
   const item = getSelectedItem();
   if (item) {
     itemCursorEl.style.display = 'block';
@@ -196,8 +197,42 @@ const HERO_L_CR=317/348, HERO_R_CR=344/348;
 
 const BG_W=2000,BG_H=1116;
 let W=0,H=0;
-function syncSize(){const r=bgEl.getBoundingClientRect();W=gc.width=pc.width=Math.round(r.width);H=gc.height=pc.height=Math.round(r.height);}
+function syncSize(){
+  const r=bgEl.getBoundingClientRect();
+  W=gc.width=pc.width=Math.round(r.width);
+  H=gc.height=pc.height=Math.round(r.height);
+  // Snap camera to hero on resize
+  camX = 0;
+}
 const bx=v=>v/BG_W*W, by=v=>v/BG_H*H, bw=v=>v/BG_W*W, bh=v=>v/BG_H*H, ibx=v=>v/W*BG_W;
+
+// ── MOBILE DETECTION ──────────────────────────────────────────────────────────
+const isMobile = () => window.matchMedia('(pointer:coarse)').matches;
+
+// ── CAMERA (mobile only) ──────────────────────────────────────────────────────
+let camX = 0;
+function updateCamera() {
+  if (!isMobile()) { document.getElementById('wrap').style.transform = ''; return; }
+  const wrap = document.getElementById('wrap');
+  const wrapW = wrap.offsetWidth;
+  const vpW = window.innerWidth;
+  if (wrapW <= vpW) { wrap.style.transform = ''; return; }
+  const heroScreenX = bx(hero.x + HERO_WALK_W / 2);
+  const targetCamX = heroScreenX - vpW / 2;
+  const maxCam = wrapW - vpW;
+  camX += (Math.max(0, Math.min(maxCam, targetCamX)) - camX) * 0.12;
+  wrap.style.transform = `translateX(${-Math.round(camX)}px)`;
+}
+
+// ── FULLSCREEN ────────────────────────────────────────────────────────────────
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen && document.exitFullscreen();
+  }
+}
+window.toggleFullscreen = toggleFullscreen;
 
 const GROUND_Y=920;
 const SIT_H=240,HERO_SIT_H=SIT_H,HERO_SIT_W=Math.round(400*(SIT_H/464));
@@ -930,7 +965,11 @@ let tick=0,catFrame=0,monkFrame=0;
 const keys={};
 let msgTimer=null;
 function showMsg(text,dur=2500){msgBox.textContent=text;msgBox.style.display='block';clearTimeout(msgTimer);msgTimer=setTimeout(()=>msgBox.style.display='none',dur);}
-function standUp(){hero.praying=false;hero.idle=true;pSyms=[];}
+function standUp(){
+  hero.praying=false;hero.idle=true;pSyms=[];
+  const btn=document.getElementById('btn-pray');
+  if(btn) btn.classList.remove('active');
+}
 
 function loop(){
   tick++;
@@ -981,12 +1020,23 @@ function loop(){
   });
   // Draw dragged symbol on top of everything
   if(draggedSym) drawDraggedSym();
+  updateCamera();
   requestAnimationFrame(loop);
 }
 
 // ── MOBILE HELPERS ────────────────────────────────────────────────────────────
-function mobileSit()  { if(activeScreen==='main'&&!hero.praying) hero.praying=true; }
-function mobileStand(){ if(activeScreen==='main'&&hero.praying)  standUp(); }
+function mobilePrayToggle(e) {
+  e && e.preventDefault();
+  if (activeScreen !== 'main') return;
+  if (hero.praying) { standUp(); } else { hero.praying = true; }
+  // Update button visual
+  const btn = document.getElementById('btn-pray');
+  if (btn) btn.classList.toggle('active', hero.praying);
+}
+window.mobilePrayToggle = mobilePrayToggle;
+// Keep legacy exports for any residual refs
+function mobileSit()  { if(activeScreen==='main'&&!hero.praying){ hero.praying=true; const b=document.getElementById('btn-pray');if(b)b.classList.add('active');} }
+function mobileStand(){ if(activeScreen==='main'&& hero.praying){ standUp(); const b=document.getElementById('btn-pray');if(b)b.classList.remove('active');} }
 window.mobileSit=mobileSit;
 window.mobileStand=mobileStand;
 
@@ -1013,7 +1063,7 @@ gc.addEventListener('touchmove',e=>{
   // Horizontal swipe = walk
   if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>12){
     hero.facing=dx>0?1:-1;
-    hero.x=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,hero.x+dx*0.4));
+    hero.x=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,hero.x+dx*0.5));
     hero.idle=false; hero.targetX=null;
     if(tick%8===0) hero.walkFrame++;
     swipeStartX=e.touches[0].clientX; // rolling delta
