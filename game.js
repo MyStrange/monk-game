@@ -35,6 +35,8 @@ function renderHotbar() {
       div.innerHTML = `<span class="slot-icon">${renderJarIcon(item)}</span>`;
     } else if (item.id === 'stick' || item.id === 'glowstick') {
       div.innerHTML = `<span class="slot-icon">${renderStickIcon(item.id==='glowstick')}</span>`;
+    } else if (item.id === 'durian') {
+      div.innerHTML = `<span class="slot-icon">${renderDurianIcon()}</span>`;
     } else {
       div.innerHTML = `<span class="slot-icon">${item.icon}</span>`;
     }
@@ -44,7 +46,7 @@ function renderHotbar() {
         // Item × item interaction
         const result = itemOnItem(prev.id, item.id);
         if(typeof result === 'string') { showMsg(result, 2800); return; }
-        if(result === false) { return; } // handled successfully — keep current selection
+        if(result === false) { selectedSlot=-1; renderHotbar(); updateItemCursor(); return; }
       }
       selectedSlot = selectedSlot === i ? -1 : i;
       renderHotbar();
@@ -91,6 +93,45 @@ function renderJarIcon(item) {
     <rect x="12" y="16" width="2"  height="2"  fill="rgba(220,255,210,0.3)"/>
     ${waterHtml}
     ${dots.join('')}
+  </svg>`;
+}
+
+function renderDurianIcon() {
+  return `<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- rice base (white-ish) -->
+    <rect x="8"  y="18" width="32" height="16" fill="#f0ece0"/>
+    <rect x="10" y="16" width="28" height="4"  fill="#f8f4ea"/>
+    <!-- rice texture dots -->
+    <rect x="12" y="20" width="2" height="2" fill="#e0dcd0"/>
+    <rect x="18" y="22" width="2" height="2" fill="#e0dcd0"/>
+    <rect x="26" y="20" width="2" height="2" fill="#e0dcd0"/>
+    <rect x="32" y="22" width="2" height="2" fill="#e0dcd0"/>
+    <rect x="22" y="24" width="2" height="2" fill="#e0dcd0"/>
+    <rect x="14" y="26" width="2" height="2" fill="#e0dcd0"/>
+    <rect x="30" y="26" width="2" height="2" fill="#e0dcd0"/>
+    <!-- durian chunks (orange-yellow) -->
+    <rect x="14" y="18" width="6" height="4" fill="#e8a020"/>
+    <rect x="14" y="18" width="6" height="2" fill="#f0c040"/>
+    <rect x="15" y="19" width="2" height="2" fill="#ffd060"/>
+    <rect x="28" y="20" width="6" height="4" fill="#e8a020"/>
+    <rect x="28" y="20" width="6" height="2" fill="#f0c040"/>
+    <rect x="29" y="21" width="2" height="2" fill="#ffd060"/>
+    <rect x="21" y="17" width="6" height="4" fill="#e8a020"/>
+    <rect x="21" y="17" width="6" height="2" fill="#f0c040"/>
+    <rect x="22" y="18" width="2" height="2" fill="#ffd060"/>
+    <!-- bowl rim -->
+    <rect x="6"  y="32" width="36" height="4" fill="#c8a878"/>
+    <rect x="6"  y="32" width="36" height="2" fill="#e0c090"/>
+    <!-- bowl body -->
+    <rect x="8"  y="34" width="32" height="6" fill="#b89060"/>
+    <rect x="10" y="36" width="28" height="4" fill="#a07848"/>
+    <rect x="12" y="38" width="24" height="4" fill="#906838"/>
+    <!-- bowl bottom -->
+    <rect x="16" y="40" width="16" height="4" fill="#7a5428"/>
+    <rect x="20" y="42" width="8"  height="2" fill="#6a4420"/>
+    <!-- bowl highlight -->
+    <rect x="8"  y="34" width="4" height="8" fill="rgba(255,255,255,0.12)"/>
+    <rect x="6"  y="32" width="2" height="2" fill="rgba(255,255,255,0.2)"/>
   </svg>`;
 }
 
@@ -206,6 +247,9 @@ function updateItemCursor() {
       itemCursorEl.style.fontSize = '';
     } else if (item.id === 'stick' || item.id === 'glowstick') {
       itemCursorEl.innerHTML = renderStickIcon(item.id==='glowstick');
+      itemCursorEl.style.fontSize = '';
+    } else if (item.id === 'durian') {
+      itemCursorEl.innerHTML = renderDurianIcon();
       itemCursorEl.style.fontSize = '';
     } else {
       itemCursorEl.innerHTML = '';
@@ -1645,7 +1689,11 @@ function openScene2(){
 function closeScene2(){activeScreen='main';document.getElementById('scene2').style.display='none';if(s2AnimId){cancelAnimationFrame(s2AnimId);s2AnimId=null;}}
 window.closeScene2=closeScene2;
 function openBuddha(){activeScreen='buddha';document.getElementById('buddha-screen').style.display='flex';initBuddhaScreen();}
-function closeBuddha(){activeScreen='main';document.getElementById('buddha-screen').style.display='none';}
+function closeBuddha(){
+  const jar=getItem('jar');
+  if(jar&&(jar.caught||0)>0){showBMsg('В банке ещё светлячки. Выпусти их сначала.',2800);return;}
+  activeScreen='main';document.getElementById('buddha-screen').style.display='none';
+}
 window.closeBuddha=closeBuddha;
 
 // ═══ SCENE 2 ═══════════════════════════════════════════════════════════════════
@@ -1848,7 +1896,7 @@ function drawBubbles() {
   for(let i=bubbles.length-1;i>=0;i--){if(bubbles[i].age>=bubbles[i].life)bubbles.splice(i,1);}
 }
 
-function earHit(cx,cy){ return !earUsed&&cx>bW*0.55&&cx<bW*0.78&&cy>bH*0.38&&cy<bH*0.65; }
+function earHit(cx,cy){ return !earUsed&&cx>bW*0.60&&cx<bW*0.73&&cy>bH*0.44&&cy<bH*0.60; }
 function isDurianClickable(cx,cy){ return durianReady&&!durianPickedUp&&cx>bW*0.38&&cx<bW*0.62&&cy>bH*0.38&&cy<bH*0.52; }
 bCanvas.addEventListener('mousemove',e=>{
   if(wishPlaying||dialogActive){bCanvas.style.cursor='default';return;}
@@ -2541,9 +2589,14 @@ function startFireflyDialog(){
     animFlyRoom();
   });
 
-  advanceDialog();
-  el.addEventListener('click', advanceDialog);
-  el.addEventListener('touchend', e=>{e.preventDefault();advanceDialog();},{passive:false});
+  const bgImg = document.getElementById('fly-room-bg');
+  const startDialog = () => {
+    advanceDialog();
+    el.addEventListener('click', advanceDialog);
+    el.addEventListener('touchend', e=>{e.preventDefault();advanceDialog();},{passive:false});
+  };
+  if (bgImg.complete && bgImg.naturalWidth) { startDialog(); }
+  else { bgImg.onload = startDialog; }
 }
 
 let flyRoomAnimId = null;
@@ -2629,10 +2682,10 @@ function advanceDialog(){
     const align = isA ? 'left' : 'right';
     const borderCol = isA ? 'rgba(255,220,80,0.6)' : 'rgba(160,210,255,0.6)';
     const textCol   = isA ? '#ffe066' : '#c8e8ff';
-    // Tail direction
+    // Tail direction — triangle at TOP of bubble pointing UP toward firefly
     const tailStyle = isA
-      ? 'border-left:8px solid transparent;border-right:8px solid transparent;border-top:10px solid rgba(0,0,0,0.78);position:absolute;bottom:-10px;left:18px;'
-      : 'border-left:8px solid transparent;border-right:8px solid transparent;border-top:10px solid rgba(0,0,0,0.78);position:absolute;bottom:-10px;right:18px;';
+      ? 'border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:10px solid rgba(0,0,0,0.78);position:absolute;top:-10px;right:18px;'
+      : 'border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:10px solid rgba(0,0,0,0.78);position:absolute;top:-10px;right:18px;';
 
     speech.innerHTML = `<div style="
       position:absolute;
