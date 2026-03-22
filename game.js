@@ -263,8 +263,10 @@ function showFullscreenHint() {
 window.toggleFullscreen = toggleFullscreen;
 
 const GROUND_Y=920;
-const SIT_H=240,HERO_SIT_H=SIT_H,HERO_SIT_W=Math.round(400*(SIT_H/464));
-const MONK_H=SIT_H,MONK_W=Math.round(MONK_FW*(MONK_H/MONK_FH));
+const MONK_H=240,MONK_W=Math.round(MONK_FW*(MONK_H/MONK_FH));
+// Hero sit — same height as red monk so they match visually
+const HERO_SIT_H=MONK_H, HERO_SIT_W=Math.round(400*(HERO_SIT_H/464));
+const SIT_H=HERO_SIT_H;
 const HERO_WALK_H=420,HERO_WALK_W=Math.round(HERO_FW*(HERO_WALK_H/HERO_FH));
 const HERO_L_H=Math.round(HERO_WALK_H*HERO_L_CR),HERO_R_H=Math.round(HERO_WALK_H*HERO_R_CR);
 const CAT_H=145,CAT_W=Math.round(CAT_FW*(CAT_H/CAT_FH));
@@ -1036,6 +1038,8 @@ let msgTimer=null;
 function showMsg(text,dur=2500){msgBox.textContent=text;msgBox.style.display='block';clearTimeout(msgTimer);msgTimer=setTimeout(()=>msgBox.style.display='none',dur);}
 function standUp(){
   hero.praying=false;hero.idle=true;pSyms=[];
+  mParticles=[];
+  setMeditationAudio(false);
   const btn=document.getElementById('btn-pray');
   if(btn) btn.classList.remove('active');
 }
@@ -1057,6 +1061,7 @@ function loop(){
     hero.x=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,hero.x));
   } else {if(tick%44===0)hero.sitFrame++;}
   if(hero.praying){pTick++;if(pTick%28===0)spawnSym();}else pTick=0;
+  updateMeditationMusic(hero.praying);
   // Cat burying animation timer
   if(catBurying){ catBuryTimer++; if(catBuryTimer>180){catBurying=false;dirtReady=true;showMsg('Кот закончил закапывать. Осталась кучка земли.');} }
   pSyms.forEach(s=>{s.vx+=(s.ax||0);s.vx*=0.96;s.x+=s.vx;s.vy*=0.998;s.y+=s.vy;s.age++;});
@@ -1185,40 +1190,83 @@ if(bgEl.complete){syncSize();window.addEventListener('resize',syncSize);renderHo
 
 // ── AMBIENT MUSIC ─────────────────────────────────────────────────────────────
 let audioCtx = null, ambientStarted = false;
+let masterGain = null;   // ref so we can duck/swell
+let soundMuted = false;
+
+function toggleSound() {
+  soundMuted = !soundMuted;
+  const btn = document.getElementById('sound-btn');
+  if (masterGain) masterGain.gain.setTargetAtTime(soundMuted ? 0 : 0.18, audioCtx.currentTime, 0.3);
+  if (btn) { btn.textContent = soundMuted ? '🔇' : '🔊'; btn.classList.toggle('muted', soundMuted); }
+}
+window.toggleSound = toggleSound;
+
+// Called from game loop when meditation state changes
+let meditationMusicActive = false;
+function updateMeditationMusic(praying) {
+  if (!masterGain || soundMuted) return;
+  if (praying && !meditationMusicActive) {
+    meditationMusicActive = true;
+    masterGain.gain.setTargetAtTime(0.32, audioCtx.currentTime, 1.2);
+  } else if (!praying && meditationMusicActive) {
+    meditationMusicActive = false;
+    masterGain.gain.setTargetAtTime(0.18, audioCtx.currentTime, 2.0);
+  }
+}
+let masterGain = null, meditationGain = null;
+let isMuted = false;
+
+function setMeditationAudio(on) {
+  if (!meditationGain) return;
+  const now = audioCtx.currentTime;
+  meditationGain.gain.cancelScheduledValues(now);
+  meditationGain.gain.setValueAtTime(meditationGain.gain.value, now);
+  meditationGain.gain.linearRampToValueAtTime(on ? 0.22 : 0, now + 2.5);
+}
+
+function toggleMute() {
+  if (!audioCtx) return;
+  isMuted = !isMuted;
+  const now = audioCtx.currentTime;
+  masterGain.gain.cancelScheduledValues(now);
+  masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+  masterGain.gain.linearRampToValueAtTime(isMuted ? 0 : 0.18, now + 0.4);
+  const btn = document.getElementById('mute-btn');
+  if (btn) btn.textContent = isMuted ? '🔇' : '🔊';
+}
+window.toggleMute = toggleMute;
 
 function startAmbient() {
   if (ambientStarted) return;
   ambientStarted = true;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-  const master = audioCtx.createGain();
-  master.gain.setValueAtTime(0, audioCtx.currentTime);
-  master.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 4);
-  master.connect(audioCtx.destination);
+  masterGain = audioCtx.createGain();
+  masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  masterGain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 4);
+  masterGain.connect(audioCtx.destination);
 
-  // ── Deep drone — fundamental + octave ──────────────────────────
+  // ── Deep drone ────────────────────────────────────────────────────
   function makeDrone(freq, gainVal) {
     const osc = audioCtx.createOscillator();
     const g   = audioCtx.createGain();
     osc.type = 'sine';
     osc.frequency.value = freq;
     g.gain.value = gainVal;
-    osc.connect(g); g.connect(master);
+    osc.connect(g); g.connect(masterGain);
     osc.start();
-    // Very slow tremolo
     const lfo = audioCtx.createOscillator();
     const lfoG = audioCtx.createGain();
     lfo.frequency.value = 0.07 + Math.random()*0.04;
     lfoG.gain.value = gainVal * 0.25;
     lfo.connect(lfoG); lfoG.connect(g.gain);
     lfo.start();
-    return osc;
   }
-  makeDrone(55,  0.28);  // A1 — low bass drone
-  makeDrone(110, 0.16);  // A2
-  makeDrone(164.8, 0.09); // E3 — fifth
+  makeDrone(55,   0.28);
+  makeDrone(110,  0.16);
+  makeDrone(164.8,0.09);
 
-  // ── Pad layer — slow random notes from pentatonic ───────────────
+  // ── Pad layer ─────────────────────────────────────────────────────
   const penta = [220, 246.9, 293.7, 329.6, 392, 440, 493.9];
   function schedulePad() {
     if (!audioCtx) return;
@@ -1228,77 +1276,77 @@ function startAmbient() {
     const osc  = audioCtx.createOscillator();
     const g    = audioCtx.createGain();
     const rev  = audioCtx.createConvolver();
-
     osc.type = 'triangle';
     osc.frequency.value = freq;
-    // Slight detune for warmth
     osc.detune.value = (Math.random()-0.5)*12;
-
-    // Reverb impulse — simple convolver trick
     const irLen = audioCtx.sampleRate * 2.5;
     const ir = audioCtx.createBuffer(2, irLen, audioCtx.sampleRate);
-    for(let ch=0;ch<2;ch++){
-      const d=ir.getChannelData(ch);
-      for(let i=0;i<irLen;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/irLen,2.2);
-    }
+    for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<irLen;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/irLen,2.2);}
     rev.buffer = ir;
-
     g.gain.setValueAtTime(0, now);
     g.gain.linearRampToValueAtTime(0.055, now + dur*0.25);
     g.gain.linearRampToValueAtTime(0.04,  now + dur*0.6);
     g.gain.linearRampToValueAtTime(0,     now + dur);
-
-    osc.connect(g);
-    g.connect(rev);
-    rev.connect(master);
-    g.connect(master); // dry signal too
-
-    osc.start(now);
-    osc.stop(now + dur + 0.1);
-
-    const next = 2200 + Math.random()*3500;
-    setTimeout(schedulePad, next);
+    osc.connect(g); g.connect(rev); rev.connect(masterGain); g.connect(masterGain);
+    osc.start(now); osc.stop(now + dur + 0.1);
+    setTimeout(schedulePad, 2200 + Math.random()*3500);
   }
-  // Start a few staggered pads
   schedulePad();
   setTimeout(schedulePad, 1400);
   setTimeout(schedulePad, 2900);
 
-  // ── Bell — rare, high, fading ────────────────────────────────────
-  function schedulebell() {
+  // ── Bell ─────────────────────────────────────────────────────────
+  function scheduleBell() {
     if (!audioCtx) return;
     const now = audioCtx.currentTime;
-    const bellFreqs = [880, 1046.5, 1318.5, 659.3];
-    const freq = bellFreqs[Math.floor(Math.random()*bellFreqs.length)];
+    const freq = [880,1046.5,1318.5,659.3][Math.floor(Math.random()*4)];
+    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    osc.type='sine'; osc.frequency.value=freq;
+    g.gain.setValueAtTime(0.06,now); g.gain.exponentialRampToValueAtTime(0.0001,now+4.5);
+    osc.connect(g); g.connect(masterGain); osc.start(now); osc.stop(now+5);
+    const osc2=audioCtx.createOscillator(); const g2=audioCtx.createGain();
+    osc2.type='sine'; osc2.frequency.value=freq*2.756;
+    g2.gain.setValueAtTime(0.025,now); g2.gain.exponentialRampToValueAtTime(0.0001,now+2.5);
+    osc2.connect(g2); g2.connect(masterGain); osc2.start(now); osc2.stop(now+3);
+    setTimeout(scheduleBell, 8000 + Math.random()*14000);
+  }
+  setTimeout(scheduleBell, 5000 + Math.random()*6000);
+
+  // ── Meditation layer — deeper drone + slow shimmer ────────────────
+  meditationGain = audioCtx.createGain();
+  meditationGain.gain.value = 0;
+  meditationGain.connect(masterGain);
+
+  // Deep meditation drone (lower, slower)
+  [55*0.5, 55*0.75].forEach((freq, i) => {
     const osc = audioCtx.createOscillator();
     const g   = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    g.gain.setValueAtTime(0.06, now);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + 4.5);
-    osc.connect(g); g.connect(master);
-    osc.start(now); osc.stop(now + 5);
-    // Overtone
-    const osc2 = audioCtx.createOscillator();
-    const g2   = audioCtx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.value = freq * 2.756;
-    g2.gain.setValueAtTime(0.025, now);
-    g2.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);
-    osc2.connect(g2); g2.connect(master);
-    osc2.start(now); osc2.stop(now + 3);
-
-    setTimeout(schedulebell, 8000 + Math.random()*14000);
-  }
-  setTimeout(schedulebell, 5000 + Math.random()*6000);
+    osc.type = 'sine'; osc.frequency.value = freq;
+    g.gain.value = 0.5 - i*0.15;
+    osc.connect(g); g.connect(meditationGain); osc.start();
+    const lfo2 = audioCtx.createOscillator();
+    const lg   = audioCtx.createGain();
+    lfo2.frequency.value = 0.04 + i*0.02; lg.gain.value = 0.1;
+    lfo2.connect(lg); lg.connect(g.gain); lfo2.start();
+  });
+  // High shimmer
+  const shimOsc = audioCtx.createOscillator();
+  const shimG   = audioCtx.createGain();
+  shimOsc.type = 'sine'; shimOsc.frequency.value = 528; // "healing" freq
+  shimG.gain.value = 0.12;
+  shimOsc.connect(shimG); shimG.connect(meditationGain); shimOsc.start();
+  const shimLfo = audioCtx.createOscillator();
+  const shimLG  = audioCtx.createGain();
+  shimLfo.frequency.value = 0.08; shimLG.gain.value = 0.08;
+  shimLfo.connect(shimLG); shimLG.connect(shimG.gain); shimLfo.start();
 }
 
-// Start on first user interaction (browser autoplay policy)
+// Start on first user interaction
 function onFirstInteract() {
   startAmbient();
-  document.removeEventListener('click', onFirstInteract);
+  document.removeEventListener('click',    onFirstInteract);
   document.removeEventListener('touchend', onFirstInteract);
-  document.removeEventListener('keydown', onFirstInteract);
+  document.removeEventListener('keydown',  onFirstInteract);
 }
 document.addEventListener('click',    onFirstInteract);
 document.addEventListener('touchend', onFirstInteract);
@@ -2274,17 +2322,27 @@ function startWishAnim(jarRect, onDone){
       requestAnimationFrame(aw);
     } else {
       setTimeout(()=>{
-        wishCanvas.style.display='none';wCtx.clearRect(0,0,bW,bH);
-        wishPlaying=false;bCanvas.style.pointerEvents='auto';
-        // Respawn flies with alpha=0 for fade-in, spread across screen
+        wishCanvas.style.display='none';
+        wCtx.clearRect(0,0,bW,bH);
+        wishPlaying=false;
+        bCanvas.style.pointerEvents='auto';
+        // Re-sync canvas size (may have changed)
+        const rect=document.getElementById('buddha-screen').getBoundingClientRect();
+        bW=bCanvas.width=wishCanvas.width=Math.round(rect.width);
+        bH=bCanvas.height=wishCanvas.height=Math.round(rect.height);
+        // Respawn flies fresh with fade-in
         bFlies=Array.from({length:30},()=>{
           const sz=4+Math.random()*5;
           return{x:60+Math.random()*(bW-120),y:40+Math.random()*(bH*0.75),
             phase:Math.random()*Math.PI*2,dx:(Math.random()-0.5)*0.9,dy:(Math.random()-0.5)*0.5,
             sz,alive:true,fadeIn:0};
         });
-        // Delay jar.glowing so it doesn't pop in while flies are fading in
-        setTimeout(()=>{ if(onDone)onDone(); }, 800);
+        // Start animBuddha loop fresh
+        animBuddha();
+        // Delay onDone so jar.glowing doesn't pop in immediately
+        setTimeout(()=>{ if(onDone)onDone(); }, 900);
+      },400);
+    }
       },400);
     }
   })();
