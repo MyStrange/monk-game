@@ -12,9 +12,8 @@
 ### 1. Определение предмета (`ITEM_DEFS`)
 - [ ] `id` — уникальный, snake_case
 - [ ] `label` — короткое название (для хотбара)
-- [ ] `icon` — эмодзи или `'svg'` если нужен пиксель-арт
 - [ ] `description` — что игрок видит в контекст-меню (1–2 предложения, тон игры: тихий, ироничный)
-- [ ] `look` — что происходит при клике «посмотреть» (наблюдение героя о предмете)
+- [ ] Нет поля `look` и `icon` — оба удалены, не добавлять
 
 ### 2. Где берётся предмет
 - [ ] В какой сцене появляется?
@@ -60,7 +59,6 @@
 |---|---|---|
 | `stick` | | |
 | `glowstick` | | |
-| `bread` | | |
 | `jar` | | |
 | `jar_open` | | |
 | `dirt` | | |
@@ -72,8 +70,8 @@
 - Если комбо **совсем не предполагается** → ничего не делать (вернётся `null` = просто смена выбора)
 
 ### 5. Контекст-меню и описание
-- [ ] Проверить что `description` и `look` заполнены и соответствуют тону игры
-- [ ] Если предмет SVG — написать `renderXIcon()` функцию и добавить ветку в `renderHotbar()` и `updateItemCursor()`
+- [ ] Проверить что `description` соответствует тону игры
+- [ ] Написать `renderXIcon()` функцию и добавить ветку в `renderHotbar()` и `updateItemCursor()`
 
 ### 6. Сцены с персонажем без персонажа
 - [ ] Если предмет применяется в сцене БЕЗ героя (buddha, scene2) — проверить что `itemOnZone` корректно обрабатывает зоны этой сцены, а `showMsg` заменён на `showS2Msg` / `showBMsg`
@@ -88,9 +86,20 @@
 - [ ] `closeSceneX()` вызывает `cancelAnimationFrame(sXAnimId); sXAnimId=null`
 - [ ] `window.closeSceneX = closeSceneX` (доступ из HTML back-button)
 - [ ] Сообщения только через `showMsgIn(el, text, dur)` — не через `.textContent`
-- [ ] Добавить кнопку «← Назад» в `index.html` с `onclick="closeSceneX()"`
 - [ ] Добавить `<link rel="preload">` для фона в `index.html` если новый asset
 - [ ] Описать сцену в `CLAUDE_INSTRUCTIONS.md`
+
+**Паттерн сцены с картинкой** (как scene2, buddha, scene4):
+```js
+// В createSceneXEl():
+const bg = document.createElement('img');
+bg.src = 'assets/bg/X.jpeg';
+bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;...';
+const canvas = document.createElement('canvas');
+canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+el.appendChild(bg); el.appendChild(canvas); // bg сначала!
+```
+Для сцен с загрузкой картинки — `showLoading` → `img.onload` → `hideLoading`.
 
 ---
 
@@ -148,7 +157,8 @@
 | `jar`, `jar_open` | `renderJarIcon(item)` |
 | `stick`, `glowstick` | `renderStickIcon(glowing)` |
 | `durian` | `renderDurianIcon()` |
-| `bread`, `dirt`, `fireflower` | ⚠️ пока эмодзи — нужно заменить на SVG |
+| `dirt` | `renderDirtIcon()` |
+| `fireflower` | `renderFireflowerIcon()` |
 
 **Шаблон для нового предмета:**
 ```js
@@ -211,7 +221,22 @@ leaveMain()  → вызывать перед любым openSceneX()
 
 ## Git workflow:
 ```
-git add game.js && git commit -m 'описание' && git push
+git add <файл> && git commit -m 'описание' && git push origin main
 ```
+Если push rejected: `git pull --rebase origin main` → затем push.
+
+Если загрузка игры зависает (кэш браузера): поднять версию в `index.html`:
+```html
+<script src="game.js?v=N" defer></script>  <!-- N++ -->
+```
+
 Не пушить: `CLAUDE_INSTRUCTIONS.md`, `.claude/`, `.DS_Store`.
 CLAUDE.md — пушить (это часть проекта).
+
+---
+
+## Правило обновления .md файлов
+- **CLAUDE_INSTRUCTIONS.md** — обновлять при каждом значимом изменении архитектуры, новых ассетах, новых правилах. Ставить дату.
+- **CLAUDE.md** — обновлять если меняются паттерны/чеклисты/инварианты.
+- **При нехватке места в беседе** — перечитывать `CLAUDE_INSTRUCTIONS.md` чтобы восстановить контекст.
+- Не переписывать полностью — только изменившиеся секции.
