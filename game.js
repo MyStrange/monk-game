@@ -651,6 +651,8 @@ let meditationPhase = 0;     // 0-1 transition progress
 let meditationEnergy = 0;    // clicks collected in meditation
 let meditationOrbs = [];     // floating energy orbs visible only in meditation
 let lastMeditationSpawn = 0;
+let meditationBellActive = false;
+let meditationBellTimer = null;
 
 const MEDITATE_MSGS = {
   cat: [
@@ -732,6 +734,38 @@ function spawnMeditationParticle() {
     sz: 1.5 + Math.random()*3.5,
     col: Math.random()<0.6 ? '#ffe066' : Math.random()<0.5 ? '#fff4aa' : '#ffcc44',
   });
+}
+
+function drawMeditationBehind() {
+  if (meditationPhase <= 0 || !hero.praying) return;
+  const hx = bx(hero.x + HERO_SIT_W / 2);
+  const hy = by(GROUND_Y - HERO_SIT_H * 0.6);
+  // Candle flicker: slow sine + fast random noise
+  const flicker = (0.72 + 0.28 * Math.sin(tick * 0.11)) * (0.88 + 0.12 * Math.sin(tick * 0.47 + 2.1));
+  const noise = 0.92 + 0.08 * (Math.random() * 2 - 1);
+  const alpha = meditationPhase * flicker * noise;
+  ctx.save();
+  // Warm glow orb behind hero
+  const bg = ctx.createRadialGradient(hx, hy, 0, hx, hy, bw(130));
+  bg.addColorStop(0, 'rgba(255,190,50,0.85)');
+  bg.addColorStop(0.35, 'rgba(255,120,20,0.45)');
+  bg.addColorStop(0.7, 'rgba(200,60,0,0.12)');
+  bg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = alpha * 0.65;
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.arc(hx, hy, bw(130), 0, Math.PI * 2); ctx.fill();
+  // Vertical light streak upward
+  const top = by(GROUND_Y - HERO_SIT_H * 2.2);
+  const bot = by(GROUND_Y);
+  const vg = ctx.createLinearGradient(hx, top, hx, bot);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(0.4, 'rgba(255,200,80,0.25)');
+  vg.addColorStop(0.75, 'rgba(255,160,40,0.55)');
+  vg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = alpha * 0.4;
+  ctx.fillStyle = vg;
+  ctx.fillRect(hx - bw(55), top, bw(110), bot - top);
+  ctx.restore();
 }
 
 function drawMeditationLayer() {
@@ -1106,7 +1140,7 @@ function loop(){
     ctx.fillStyle=`rgba(255,235,80,${(a*13|0)/100})`;
     ctx.fillRect(fx-sz*2,fy-sz/2,sz*4,sz);
   });
-  drawCat(catFrame);drawRedMonk(monkFrame);drawHero();
+  drawCat(catFrame);drawRedMonk(monkFrame);drawMeditationBehind();drawHero();
   drawMeditationLayer();
   drawResonanceFlashes();
   pCtx.clearRect(0,0,W,H);
@@ -1244,12 +1278,39 @@ function updateMeditationMusic(praying) {
     setMeditationAudio(false);
   }
 }
+function scheduleMeditationBell() {
+  if (!meditationBellActive || !audioCtx) return;
+  const now = audioCtx.currentTime;
+  const freqs = [528, 639, 741, 852, 1046.5, 1318.5];
+  const freq = freqs[Math.floor(Math.random() * freqs.length)];
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = 'sine'; osc.frequency.value = freq;
+  g.gain.setValueAtTime(0.045, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 5.0);
+  osc.connect(g); g.connect(masterGain); osc.start(now); osc.stop(now + 5.5);
+  const osc2 = audioCtx.createOscillator();
+  const g2 = audioCtx.createGain();
+  osc2.type = 'sine'; osc2.frequency.value = freq * 1.5;
+  g2.gain.setValueAtTime(0.018, now);
+  g2.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);
+  osc2.connect(g2); g2.connect(masterGain); osc2.start(now); osc2.stop(now + 3);
+  meditationBellTimer = setTimeout(scheduleMeditationBell, 1800 + Math.random() * 2400);
+}
+
 function setMeditationAudio(on) {
   if (!masterGain || soundMuted) return;
   const now = audioCtx.currentTime;
   masterGain.gain.cancelScheduledValues(now);
   masterGain.gain.setValueAtTime(masterGain.gain.value, now);
   masterGain.gain.linearRampToValueAtTime(on ? 0.32 : 0.18, now + 2.0);
+  if (on && !meditationBellActive) {
+    meditationBellActive = true;
+    setTimeout(scheduleMeditationBell, 600);
+  } else if (!on) {
+    meditationBellActive = false;
+    if (meditationBellTimer) { clearTimeout(meditationBellTimer); meditationBellTimer = null; }
+  }
 }
 
 function startAmbient() {
@@ -1529,9 +1590,9 @@ function bottleHit(cx,cy){if(jarPickedUp)return false;const b=getBottleRect();re
 function animScene2(){s2Ctx.clearRect(0,0,s2W,s2H);if(!jarPickedUp&&bottleImg.complete&&bottleImg.naturalWidth){const b=getBottleRect();s2Ctx.drawImage(bottleImg,b.x,b.y,b.w,b.h);}s2AnimId=requestAnimationFrame(animScene2);}
 
 const ROCKS = [
-  {fx:0.13, fy:0.78, fw:0.22, fh:0.22, name:'rock1'},  // левый нижний
-  {fx:0.50, fy:0.42, fw:0.18, fh:0.20, name:'rock2'},  // центральный
-  {fx:0.72, fy:0.62, fw:0.20, fh:0.22, name:'rock3'},  // правый нижний
+  {fx:0.13, fy:0.78, fw:0.22, fh:0.22, name:'rock1'},  // левый нижний — ok
+  {fx:0.60, fy:0.42, fw:0.18, fh:0.20, name:'rock2'},  // верхний — сдвинут вправо
+  {fx:0.80, fy:0.62, fw:0.20, fh:0.22, name:'rock3'},  // правый нижний — сдвинут вправо
 ];
 const rockStates = {rock1:false, rock2:false, rock3:false};
 function getRockRect(r){ return {x:r.fx*s2W,y:r.fy*s2H,w:r.fw*s2W,h:r.fh*s2H}; }
