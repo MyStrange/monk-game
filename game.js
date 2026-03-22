@@ -210,7 +210,7 @@ const isMobile = () => window.matchMedia('(pointer:coarse)').matches;
 // ── CAMERA (mobile only) ──────────────────────────────────────────────────────
 let camX = 0;
 function updateCamera() {
-  if (!isMobile()) { document.getElementById('wrap').style.transform = ''; return; }
+  if (!isMobile()) return; // десктоп — ничего не делаем
   const wrap = document.getElementById('wrap');
   const wrapW = wrap.offsetWidth;
   const vpW = window.innerWidth;
@@ -264,8 +264,9 @@ window.toggleFullscreen = toggleFullscreen;
 
 const GROUND_Y=920;
 const MONK_H=240,MONK_W=Math.round(MONK_FW*(MONK_H/MONK_FH));
-// Hero sit — match red monk height visually
-const HERO_SIT_H=MONK_H, HERO_SIT_W=Math.round(400*(HERO_SIT_H/464));
+// hero_sit.png: 1376×204, 5 кадров по 275×204
+const HERO_SIT_FW=275, HERO_SIT_FH=204;
+const HERO_SIT_H=MONK_H, HERO_SIT_W=Math.round(HERO_SIT_H*(HERO_SIT_FW/HERO_SIT_FH));
 const SIT_H=HERO_SIT_H;
 const HERO_WALK_H=420,HERO_WALK_W=Math.round(HERO_FW*(HERO_WALK_H/HERO_FH));
 const HERO_L_H=Math.round(HERO_WALK_H*HERO_L_CR),HERO_R_H=Math.round(HERO_WALK_H*HERO_R_CR);
@@ -310,7 +311,7 @@ function drawHero(){
     const sy=GROUND_Y-HERO_SIT_H;
     const dx=bx(hero.x), dy=by(sy), dw=bw(HERO_SIT_W), dh=bh(HERO_SIT_H);
     ctx.save();
-    ctx.drawImage(heroSitImg,f*400,0,400,464,dx,dy,dw,dh);
+    ctx.drawImage(heroSitImg,f*HERO_SIT_FW,0,HERO_SIT_FW,HERO_SIT_FH,dx,dy,dw,dh);
     ctx.restore();
   } else if(hero.idle&&hero.targetX===null){
     drawHeroIdle(hero.x,HERO_WALK_W,HERO_WALK_H);
@@ -714,6 +715,7 @@ function spawnMeditationOrb() {
 
 // ── MEDITATION PARTICLES ──────────────────────────────────────────────────────
 let mParticles = []; // rising dust particles around hero
+let _vigW=0,_vigH=0,_vigGrad=null; // cached vignette gradient
 
 function spawnMeditationParticle() {
   const hx = bx(hero.x + HERO_SIT_W / 2);
@@ -751,15 +753,18 @@ function drawMeditationLayer() {
   }
   meditationPhase = Math.min(1, meditationPhase + 0.015);
 
-  // ── Inverted vignette: edges bright, center clear ──────────────────
+  // ── Inverted vignette: edges bright, center clear — cached ────────
   ctx.save();
   ctx.globalAlpha = meditationPhase * 0.28;
-  const vg = ctx.createRadialGradient(W/2, H*0.52, H*0.18, W/2, H*0.52, H*0.82);
-  vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(0.6, 'rgba(255,200,40,0.12)');
-  vg.addColorStop(1, 'rgba(255,180,0,0.55)');
-  ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, W, H);
+  if(_vigW!==W||_vigH!==H){
+    _vigW=W;_vigH=H;
+    _vigGrad=ctx.createRadialGradient(W/2,H*0.52,H*0.18,W/2,H*0.52,H*0.82);
+    _vigGrad.addColorStop(0,'rgba(0,0,0,0)');
+    _vigGrad.addColorStop(0.6,'rgba(255,200,40,0.12)');
+    _vigGrad.addColorStop(1,'rgba(255,180,0,0.55)');
+  }
+  ctx.fillStyle=_vigGrad;
+  ctx.fillRect(0,0,W,H);
   ctx.restore();
 
   // ── Bright pulse around hero ───────────────────────────────────────
@@ -1085,15 +1090,21 @@ function loop(){
   // Cat burying animation timer
   if(catBurying){ catBuryTimer++; if(catBuryTimer>180){catBurying=false;dirtReady=true;showMsg('Кот закончил закапывать. Осталась кучка земли.');} }
   pSyms.forEach(s=>{s.vx+=(s.ax||0);s.vx*=0.96;s.x+=s.vx;s.vy*=0.998;s.y+=s.vy;s.age++;});
-  pSyms=pSyms.filter(s=>s.age<s.life);
+  for(let i=pSyms.length-1;i>=0;i--){if(pSyms[i].age>=pSyms[i].life)pSyms.splice(i,1);}
   ctx.clearRect(0,0,W,H);
+  // Кешируем scale один раз на кадр
+  const flyScale = Math.min(W/BG_W, H/BG_H);
   mainFlies.forEach(f=>{
     f.phase+=0.032;f.x+=f.dx;f.y+=f.dy;
     if(f.x<80)f.dx=Math.abs(f.dx);if(f.x>1920)f.dx=-Math.abs(f.dx);
     if(f.y<50)f.dy=Math.abs(f.dy);if(f.y>660)f.dy=-Math.abs(f.dy);
-    const a=0.15+0.85*Math.abs(Math.sin(f.phase)),sc=Math.min(W/BG_W,H/BG_H),sz=f.sz*sc;
-    ctx.fillStyle=`rgba(255,242,110,${a.toFixed(2)})`;ctx.fillRect(bx(f.x)-sz/2,by(f.y)-sz/2,sz,sz);
-    ctx.fillStyle=`rgba(255,235,80,${(a*0.13).toFixed(2)})`;ctx.fillRect(bx(f.x)-sz*2,by(f.y)-sz/2,sz*4,sz);
+    const a=0.15+0.85*Math.abs(Math.sin(f.phase));
+    const sz=f.sz*flyScale;
+    const fx=bx(f.x), fy=by(f.y);
+    ctx.fillStyle=`rgba(255,242,110,${(a*100|0)/100})`;
+    ctx.fillRect(fx-sz/2,fy-sz/2,sz,sz);
+    ctx.fillStyle=`rgba(255,235,80,${(a*13|0)/100})`;
+    ctx.fillRect(fx-sz*2,fy-sz/2,sz*4,sz);
   });
   drawCat(catFrame);drawRedMonk(monkFrame);drawHero();
   drawMeditationLayer();
@@ -2453,8 +2464,8 @@ function advanceDialog(){
     // Add durian to inventory directly
     addItem({id:'durian',name:'рис с дурианом',icon:'🍛',label:'дуриан',
       description:'Рис с кусочками дуриана. Запах невозможный. Кот, наверное, оценит.'});
-    durianReady=false; // не нужен клик на экране, уже в инвентаре
-    renderHotbar(); updateItemCursor();
+    durianReady=false;
+    updateItemCursor();
     showBMsg('Палка осталась там — она была нужна им, не тебе. На столе стоит миска с рисом. Запах странный.');
     return;
   }
@@ -2528,13 +2539,15 @@ function animBuddha(){
     f.phase+=0.03;f.x+=f.dx;f.y+=f.dy;
     if(f.x<20)f.dx=Math.abs(f.dx);if(f.x>bW-20)f.dx=-Math.abs(f.dx);
     if(f.y<20)f.dy=Math.abs(f.dy);if(f.y>bH*0.82)f.dy=-Math.abs(f.dy);
-    // Fade in after respawn
-    if(f.fadeIn!==undefined && f.fadeIn<1) f.fadeIn=Math.min(1,(f.fadeIn||0)+0.008);
-    const fadeAlpha = (f.fadeIn===undefined)?1:f.fadeIn;
-    const a=(0.2+0.8*Math.abs(Math.sin(f.phase)))*fadeAlpha,sz=f.sz;
-    bCtx.fillStyle=`rgba(255,248,120,${a.toFixed(2)})`;bCtx.fillRect(f.x-sz/2,f.y-sz/2,sz,sz);
-    bCtx.fillStyle=`rgba(255,240,80,${(a*0.25).toFixed(2)})`;
-    bCtx.fillRect(f.x-sz*2,f.y-sz/2,sz*4,sz);bCtx.fillRect(f.x-sz/2,f.y-sz*2,sz,sz*4);
+    if(f.fadeIn!==undefined&&f.fadeIn<1) f.fadeIn=Math.min(1,f.fadeIn+0.008);
+    const fadeAlpha=(f.fadeIn===undefined)?1:f.fadeIn;
+    const a=(0.2+0.8*Math.abs(Math.sin(f.phase)))*fadeAlpha;
+    const sz=f.sz;
+    bCtx.fillStyle=`rgba(255,248,120,${(a*100|0)/100})`;
+    bCtx.fillRect(f.x-sz/2,f.y-sz/2,sz,sz);
+    bCtx.fillStyle=`rgba(255,240,80,${(a*25|0)/100})`;
+    bCtx.fillRect(f.x-sz*2,f.y-sz/2,sz*4,sz);
+    bCtx.fillRect(f.x-sz/2,f.y-sz*2,sz,sz*4);
   });
   requestAnimationFrame(animBuddha);
 }
