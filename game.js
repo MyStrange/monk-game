@@ -105,7 +105,7 @@ const ITEM_COMBO = {
       if(si<0||!jar) return;
       inventory[si]=makeItem('glowstick');
       Object.assign(jar,makeItem('jar_open'),{caught:0,glowing:false,released:false,hasWater:false});
-      renderHotbar(); updateItemCursor();
+      renderHotbar();
       showMsg('Палка впитала свет. Крышка куда-то делась — банка теперь открытая.');
     },
   },
@@ -184,7 +184,7 @@ function renderHotbar() {
         // Item × item interaction
         const result = itemOnItem(prev.id, item.id);
         if(typeof result === 'string') { showMsg(result, 2800); return; }
-        if(result === false) { selectedSlot=-1; renderHotbar(); updateItemCursor(); return; }
+        if(result === false) { selectedSlot=-1; renderHotbar(); return; }
       }
       selectedSlot = selectedSlot === i ? -1 : i;
       renderHotbar();
@@ -194,6 +194,7 @@ function renderHotbar() {
     setupHotbarLongPress(div, item);
     el.appendChild(div);
   });
+  updateItemCursor();
 }
 
 function renderJarIcon(item) {
@@ -675,7 +676,7 @@ function itemOnZone(itemId, zone){
       const si=inventory.findIndex(i=>i&&i.id==='stick');
       if(si>=0){ inventory[si]=makeItem('glowstick'); }
       Object.assign(jar, makeItem('jar_open'), {caught:0,glowing:false,released:false,hasWater:false});
-      renderHotbar(); updateItemCursor();
+      renderHotbar();
       showS2Msg('Палка коснулась банки — и впитала весь свет. Банка снова пустая.');
       return null;
     }
@@ -690,7 +691,7 @@ function itemOnZone(itemId, zone){
       if(jar.hasWater) return 'Банка уже с водой.';
       jar.hasWater=true;
       Object.assign(jar, {label:'с водой', description:'Открытая банка с водой. Холодная. Не расплещи.'});
-      renderHotbar(); updateItemCursor();
+      renderHotbar();
       showMsg('Ты зачерпнул воды. Банка стала тяжелее.');
       return null;
     }
@@ -706,7 +707,7 @@ function itemOnZone(itemId, zone){
       rockStates[zone]=true;
       const jarIdx=inventory.findIndex(i=>i&&(i.id==='jar_open'||i.id==='jar')&&i.hasWater);
       if(jarIdx>=0){inventory[jarIdx]=null;if(selectedSlot===jarIdx)selectedSlot=-1;}
-      renderHotbar(); updateItemCursor();
+      renderHotbar();
       showS2Msg('Вода впитывается в камень. Банка трескается от холода — и рассыпается.');
       return null;
     }
@@ -714,7 +715,7 @@ function itemOnZone(itemId, zone){
       rockStates[zone]=true;
       const dirtIdx=inventory.findIndex(i=>i&&i.id==='dirt');
       if(dirtIdx>=0){inventory[dirtIdx]=null;if(selectedSlot===dirtIdx)selectedSlot=-1;}
-      renderHotbar(); updateItemCursor();
+      renderHotbar();
       showS2Msg('Земля ложится на камень. Что-то меняется.');
       return null;
     }
@@ -731,7 +732,7 @@ function itemOnZone(itemId, zone){
       const foodIdx=inventory.findIndex(i=>i&&i.id===itemId);
       if(foodIdx>=0){inventory[foodIdx]=null;if(selectedSlot===foodIdx)selectedSlot=-1;}
       catBurying=true; catBuryTimer=0;
-      renderHotbar(); updateItemCursor();
+      renderHotbar();
       showMsg(itemId==='durian'
         ? 'Кот понюхал рис с дурианом. На секунду завис. И начал закапывать — быстро, инстинктивно.'
         : 'Кот понюхал сухарик. Поморщился. И всё равно начал закапывать — инстинкт.');
@@ -1606,7 +1607,7 @@ function onMainTap(cx,cy){
     if(orb){collectOrb(orb);return;}
     // In meditation, tap without drag: orbs and zone messages only
     // Symbol drag is handled by mousedown/mouseup
-    if(inscHitCanvas(cx,cy)) { openScene4(); return; }
+    if(inscHitCanvas(cx,cy) && inscriptionReady) { openScene4(); return; }
     const orb2=hitMeditationOrb(cx,cy);
     if(orb2){collectOrb(orb2);return;}
     const zone=hitZone(cx,cy);
@@ -1682,7 +1683,13 @@ gc.addEventListener('mouseleave',()=>{
 gc.addEventListener('touchend',e=>{e.preventDefault();if(!e.changedTouches.length)return;const r=gc.getBoundingClientRect();onMainTap(e.changedTouches[0].clientX-r.left,e.changedTouches[0].clientY-r.top);},{passive:false});
 
 // ── SCENE TRANSITIONS ─────────────────────────────────────────────────────────
+function leaveMain() {
+  // Always call before leaving main screen: clears meditation state
+  if(hero.praying) standUp();
+  draggedSym = null;
+}
 function openScene2(){
+  leaveMain();
   activeScreen='scene2';
   document.getElementById('scene2').style.display='block';
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -1691,12 +1698,18 @@ function openScene2(){
     if(!s2AnimId)animScene2();
   }));
 }
-function closeScene2(){activeScreen='main';document.getElementById('scene2').style.display='none';if(s2AnimId){cancelAnimationFrame(s2AnimId);s2AnimId=null;}}
+function closeScene2(){
+  if(!canLeaveScene('scene2')){showS2Msg(getLeaveBlockMsg('scene2'));return;}
+  activeScreen='main';document.getElementById('scene2').style.display='none';
+  if(s2AnimId){cancelAnimationFrame(s2AnimId);s2AnimId=null;}
+}
 window.closeScene2=closeScene2;
-function openBuddha(){activeScreen='buddha';document.getElementById('buddha-screen').style.display='flex';initBuddhaScreen();}
+function openBuddha(){
+  leaveMain();
+  activeScreen='buddha';document.getElementById('buddha-screen').style.display='flex';initBuddhaScreen();
+}
 function closeBuddha(){
-  const jar=getItem('jar');
-  if(jar&&(jar.caught||0)>0){showBMsg('В банке ещё светлячки. Выпусти их сначала.',2800);return;}
+  if(!canLeaveScene('buddha')){showBMsg(getLeaveBlockMsg('buddha'),2800);return;}
   activeScreen='main';document.getElementById('buddha-screen').style.display='none';
 }
 window.closeBuddha=closeBuddha;
@@ -1763,11 +1776,8 @@ function pickUpJar(){
   if(jarPickedUp)return;
   if(selectedSlot>=0){showS2Msg('Руки заняты.');return;}
   jarPickedUp=true;
-  addItem({id:'jar',name:'банка',icon:'🫙',label:'банка',caught:0,glowing:false,description:'Пустая стеклянная банка. Поймай в неё что-нибудь.'});
-  updateItemCursor();
-  s2MsgEl.textContent='Ты подобрал стеклянную банку. Она пустая.';
-  s2MsgEl.style.display='block';
-  setTimeout(()=>s2MsgEl.style.display='none',2800);
+  addItem(makeItem('jar', {caught:0, glowing:false, released:false, hasWater:false}));
+  showS2Msg('Ты подобрал стеклянную банку. Она пустая.');
 }
 
 // ═══ BUDDHA SCREEN ══════════════════════════════════════════════════════════════
@@ -1945,7 +1955,7 @@ function onBuddhaTap(cx,cy){
       f.alive=false;
       jar.caught=(jar.caught||0)+1;
       spawnBubble(f.x, f.y);
-      renderHotbar(); updateItemCursor();
+      renderHotbar();
       // Narrative messages — irony → nostalgia → wish
       const catchMsgs = [
         'В детстве это было важно. Не помню почему.',
@@ -2023,6 +2033,7 @@ let s3W=0, s3H=0, s3AnimId=null, s3Tick=0;
 let fireFlowerPicked=false;
 
 function openScene3() {
+  leaveMain();
   createScene3El();
   activeScreen='scene3';
   scene3Unlocked=true;
@@ -2208,6 +2219,7 @@ function createScene4El() {
 let s4AnimId=null, s4Tick=0;
 
 function openScene4() {
+  leaveMain();
   createScene4El(); // safe — checks internally
   activeScreen='scene4';
   scene4Unlocked=true;
