@@ -89,7 +89,6 @@ function addItem(item) {
 const ITEM_DEFS = {
   stick:      { id:'stick',      label:'палка',      icon:'🪵', description:'Сухая ветка. Чуть влажная снизу. Пахнет листьями.',            look:'Кривая, но надёжная. Из таких делают посохи и неприятности.' },
   glowstick:  { id:'glowstick',  label:'светопалка', icon:'🪄', description:'Палка впитала свет из банки. Светится тихо и ровно.',           look:'Светится. Обещание выполнено.' },
-  bread:      { id:'bread',      label:'сухарик',    icon:'🍞', description:'Старый сухарь. Выглядит грустно. Котам нравится.',             look:'Кто-то оставил здесь. Намеренно или нет.' },
   jar:        { id:'jar',        label:'банка',                 description:'Пустая стеклянная банка с крышкой. Поймай в неё что-нибудь.',    look:'Хорошая банка. Для чего-нибудь пригодится.' },
   jar_open:   { id:'jar_open',   label:'банка',                 description:'Банка без крышки. Крышка ушла вместе со светом.',                look:'Открытая банка. Что-то из неё ушло.' },
   dirt:       { id:'dirt',       label:'земля',      icon:'🫧', description:'Свежая земля. Кот постарался.',                                  look:'Тёплая. Кот закопал сюда что-то с усилием.' },
@@ -202,8 +201,12 @@ function renderHotbar() {
       div.innerHTML = `<span class="slot-icon">${renderStickIcon(item.id==='glowstick')}</span>`;
     } else if (item.id === 'durian') {
       div.innerHTML = `<span class="slot-icon">${renderDurianIcon()}</span>`;
+    } else if (item.id === 'dirt') {
+      div.innerHTML = `<span class="slot-icon">${renderDirtIcon()}</span>`;
+    } else if (item.id === 'fireflower') {
+      div.innerHTML = `<span class="slot-icon">${renderFireflowerIcon()}</span>`;
     } else {
-      div.innerHTML = `<span class="slot-icon">${item.icon}</span>`;
+      div.innerHTML = `<span class="slot-icon">${item.icon||'?'}</span>`;
     }
     div.onclick = () => {
       const prev = getSelectedItem();
@@ -298,6 +301,72 @@ function renderDurianIcon() {
     <!-- bowl highlight -->
     <rect x="8"  y="34" width="4" height="8" fill="rgba(255,255,255,0.12)"/>
     <rect x="6"  y="32" width="2" height="2" fill="rgba(255,255,255,0.2)"/>
+  </svg>`;
+}
+
+function renderDirtIcon() {
+  return `<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- base soil layer -->
+    <rect x="4"  y="28" width="40" height="14" fill="#5a3a1a"/>
+    <rect x="4"  y="28" width="40" height="3"  fill="#7a5228"/>
+    <!-- clumps -->
+    <rect x="6"  y="24" width="8"  height="6"  fill="#6b4420"/>
+    <rect x="6"  y="24" width="8"  height="2"  fill="#8a5c2c"/>
+    <rect x="7"  y="25" width="2"  height="2"  fill="#9a6a38"/>
+    <rect x="18" y="22" width="10" height="8"  fill="#6b4420"/>
+    <rect x="18" y="22" width="10" height="2"  fill="#8a5c2c"/>
+    <rect x="20" y="23" width="3"  height="2"  fill="#9a6a38"/>
+    <rect x="32" y="25" width="8"  height="5"  fill="#6b4420"/>
+    <rect x="32" y="25" width="8"  height="2"  fill="#8a5c2c"/>
+    <rect x="33" y="26" width="2"  height="2"  fill="#9a6a38"/>
+    <rect x="12" y="26" width="6"  height="4"  fill="#5a3a1a"/>
+    <rect x="28" y="27" width="5"  height="3"  fill="#5a3a1a"/>
+    <!-- small pebbles -->
+    <rect x="10" y="32" width="3"  height="2"  fill="#8a7060"/>
+    <rect x="22" y="34" width="4"  height="2"  fill="#7a6050"/>
+    <rect x="36" y="31" width="3"  height="2"  fill="#8a7060"/>
+    <!-- shadow bottom -->
+    <rect x="4"  y="40" width="40" height="2"  fill="#3a2410"/>
+    <!-- highlight top edge of main clump -->
+    <rect x="18" y="22" width="2"  height="1"  fill="#aa7840"/>
+    <rect x="6"  y="24" width="2"  height="1"  fill="#aa7840"/>
+  </svg>`;
+}
+
+function renderFireflowerIcon() {
+  return `<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- stem -->
+    <rect x="22" y="32" width="4"  height="12" fill="#2a5a1a"/>
+    <rect x="22" y="32" width="2"  height="12" fill="#3a7828"/>
+    <!-- leaves -->
+    <rect x="14" y="36" width="8"  height="3"  fill="#2a5a1a"/>
+    <rect x="14" y="36" width="8"  height="1"  fill="#3a7828"/>
+    <rect x="26" y="38" width="8"  height="3"  fill="#2a5a1a"/>
+    <rect x="26" y="38" width="8"  height="1"  fill="#3a7828"/>
+    <!-- petals — outer ring, warm orange-red -->
+    <rect x="18" y="8"  width="12" height="6"  fill="#cc4400"/>
+    <rect x="8"  y="18" width="6"  height="12" fill="#cc4400"/>
+    <rect x="34" y="18" width="6"  height="12" fill="#cc4400"/>
+    <rect x="18" y="34" width="12" height="6"  fill="#cc4400"/>
+    <!-- diagonal petals -->
+    <rect x="10" y="10" width="8"  height="8"  fill="#cc4400"/>
+    <rect x="30" y="10" width="8"  height="8"  fill="#cc4400"/>
+    <rect x="10" y="30" width="8"  height="8"  fill="#cc4400"/>
+    <rect x="30" y="30" width="8"  height="8"  fill="#cc4400"/>
+    <!-- petal highlights -->
+    <rect x="19" y="9"  width="4"  height="2"  fill="#ff7733"/>
+    <rect x="9"  y="19" width="2"  height="4"  fill="#ff7733"/>
+    <rect x="35" y="19" width="2"  height="4"  fill="#ff7733"/>
+    <rect x="11" y="11" width="3"  height="3"  fill="#ff7733"/>
+    <rect x="31" y="11" width="3"  height="3"  fill="#ff7733"/>
+    <!-- inner glow centre -->
+    <rect x="18" y="18" width="12" height="12" fill="#ff8800"/>
+    <rect x="20" y="20" width="8"  height="8"  fill="#ffcc00"/>
+    <rect x="22" y="22" width="4"  height="4"  fill="#fff4aa"/>
+    <!-- glow shimmer -->
+    <rect x="22" y="22" width="2"  height="2"  fill="#ffffff"><animate attributeName="opacity" values="0.5;1;0.5" dur="1.2s" repeatCount="indefinite"/></rect>
+    <rect x="20" y="20" width="2"  height="2"  fill="#ffeeaa"><animate attributeName="opacity" values="1;0.3;1" dur="0.9s" repeatCount="indefinite"/></rect>
+    <rect x="26" y="24" width="2"  height="2"  fill="#ffeeaa"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.1s" repeatCount="indefinite"/></rect>
   </svg>`;
 }
 
@@ -417,9 +486,15 @@ function updateItemCursor() {
     } else if (item.id === 'durian') {
       itemCursorEl.innerHTML = renderDurianIcon();
       itemCursorEl.style.fontSize = '';
+    } else if (item.id === 'dirt') {
+      itemCursorEl.innerHTML = renderDirtIcon();
+      itemCursorEl.style.fontSize = '';
+    } else if (item.id === 'fireflower') {
+      itemCursorEl.innerHTML = renderFireflowerIcon();
+      itemCursorEl.style.fontSize = '';
     } else {
       itemCursorEl.innerHTML = '';
-      itemCursorEl.textContent = item.icon;
+      itemCursorEl.textContent = item.icon||'?';
       itemCursorEl.style.fontSize = '32px';
     }
   } else {
@@ -626,23 +701,11 @@ function spawnSym(){
 // ── BUSH / STICK ──────────────────────────────────────────────────────────────
 let stickPickedUp = false;
 function pickUpStick() {
-  if (stickPickedUp && !bushBreadPickedUp) { tryPickupBread(); return; }
-  if (stickPickedUp && bushBreadPickedUp) { showMsg('Здесь больше ничего нет.'); return; }
+  if (stickPickedUp) { showMsg('Здесь больше ничего нет.'); return; }
   if (selectedSlot >= 0) { showMsg('Руки заняты.'); return; }
   stickPickedUp = true;
-  addItem({id:'stick', name:'палка', icon:'🪵', label:'палка', description:'Обычная палка. Немного влажная. Пахнет листьями.'});
+  addItem(makeItem('stick'));
   showMsg('Ты нашёл палку в кустах. Зачем-то взял её.');
-}
-
-// Bread — found in bush after stick
-let bushBreadPickedUp = false;
-function tryPickupBread() {
-  if (bushBreadPickedUp) { showMsg('Здесь больше ничего нет.'); return; }
-  if (selectedSlot >= 0) { showMsg('Руки заняты.'); return; }
-  bushBreadPickedUp = true;
-  addItem({id:'bread', name:'сухарик', icon:'🍞', label:'сухарик',
-    description:'Старый сухой сухарик. Немного грустный на вид. Коту, может, зайдёт.'});
-  showMsg('На дне куста лежал сухарик. Ты взял его, не зная зачем.');
 }
 
 // ── CAT & MONK MESSAGES ───────────────────────────────────────────────────────
@@ -755,20 +818,15 @@ function itemOnZone(itemId, zone){
 
   // ── Cat zone ───────────────────────────────────────────────────────────────
   if(zone==='cat'){
-    if(itemId==='bread'||itemId==='durian'){
+    if(itemId==='durian'){
       const foodIdx=inventory.findIndex(i=>i&&i.id===itemId);
       if(foodIdx>=0){inventory[foodIdx]=null;if(selectedSlot===foodIdx)selectedSlot=-1;}
       catBurying=true; catBuryTimer=0;
       renderHotbar();
-      showMsg(itemId==='durian'
-        ? 'Кот понюхал рис с дурианом. На секунду завис. И начал закапывать — быстро, инстинктивно.'
-        : 'Кот понюхал сухарик. Поморщился. И всё равно начал закапывать — инстинкт.');
+      showMsg('Кот понюхал рис с дурианом. На секунду завис. И начал закапывать — быстро, инстинктивно.');
       return null;
     }
   }
-
-  // ── Bread fallback ────────────────────────────────────────────────────────
-  if(itemId==='bread') return ['Что делать с сухариком здесь?','Нет.',' '][n%3];
 
   // ── Flavor messages from ZONE_MSGS table ──────────────────────────────────
   return getZoneMsg(itemId, zone, n);
@@ -1619,7 +1677,7 @@ gc.addEventListener('mousemove',e=>{
     gc.style.cursor=interactZones.includes(zone)?'pointer':'default';
   } else {
     // Bush: no pointer after both items taken
-    const bushDone = stickPickedUp && bushBreadPickedUp;
+    const bushDone = stickPickedUp;
     const dirtGone = dirtPickedUp || (!dirtReady && !catBurying);
     const noPointer = (zone==='bush'&&bushDone) || (zone==='dirt'&&dirtGone);
     gc.style.cursor=(zone && !noPointer)?'pointer':'default';
