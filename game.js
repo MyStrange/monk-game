@@ -527,12 +527,65 @@ const ctx       = gc.getContext('2d');
 const pCtx      = pc.getContext('2d');
 const msgBox    = document.getElementById('msg-box');
 
-const catImg     = new Image(); catImg.src     = 'assets/sprites/cat.png';
-const monkImg    = new Image(); monkImg.src    = 'assets/sprites/monk_red.png';
-const heroLImg   = new Image(); heroLImg.src   = 'assets/sprites/hero_left.png';
-const heroRImg   = new Image(); heroRImg.src   = 'assets/sprites/hero_right.png';
-const heroSitImg = new Image(); heroSitImg.src = 'assets/sprites/hero_sit.png';
-const bottleImg  = new Image(); bottleImg.src  = 'assets/items/bottle.png';
+// Sprite images — tracked for loading progress
+const catImg     = new Image();
+const monkImg    = new Image();
+const heroLImg   = new Image();
+const heroRImg   = new Image();
+const heroSitImg = new Image();
+const bottleImg  = new Image();
+
+// ── LOADING WITH PROGRESS ──────────────────────────────────────────────────────
+const LOAD_ASSETS = [
+  { img: bgEl,      label: 'лес' },
+  { img: catImg,    label: 'кот' },
+  { img: monkImg,   label: 'монах' },
+  { img: heroLImg,  label: 'герой' },
+  { img: heroRImg,  label: 'герой' },
+  { img: heroSitImg,label: 'медитация' },
+  { img: bottleImg, label: 'банка' },
+];
+let loadedCount = 0;
+let gameStarted = false;
+
+function onAssetLoad() {
+  loadedCount++;
+  const pct = Math.round(loadedCount / LOAD_ASSETS.length * 100);
+  const label = LOAD_ASSETS[loadedCount - 1]?.label || '';
+  const el = document.getElementById('loading-overlay');
+  if (el && !el.classList.contains('hidden')) {
+    el.querySelector('#loading-text').textContent = label + '…';
+  }
+  if (loadedCount >= LOAD_ASSETS.length) startGame();
+}
+
+function startGame() {
+  if (gameStarted) return;
+  gameStarted = true;
+  hideLoading();
+  syncSize();
+  window.addEventListener('resize', syncSize);
+  renderHotbar();
+  loop();
+}
+
+// Kick off loading
+LOAD_ASSETS.forEach(({img, label}) => {
+  if (img.complete && img.naturalWidth) { onAssetLoad(); return; }
+  img.onerror = onAssetLoad; // don't block on missing optional assets
+  img.addEventListener('load', onAssetLoad);
+});
+
+// Assign sources after registering listeners
+catImg.src      = 'assets/sprites/cat.png';
+monkImg.src     = 'assets/sprites/monk_red.png';
+heroLImg.src    = 'assets/sprites/hero_left.png';
+heroRImg.src    = 'assets/sprites/hero_right.png';
+heroSitImg.src  = 'assets/sprites/hero_sit.png';
+bottleImg.src   = 'assets/items/bottle.png';
+
+// Hard fallback: force-start after 6s even if some assets lag
+setTimeout(() => { if (!gameStarted) startGame(); }, 6000);
 
 // ── SPRITE CONSTANTS ──────────────────────────────────────────────────────────
 const CAT_FRAMES=5, CAT_FW=400, CAT_FH=330;
@@ -1490,9 +1543,7 @@ gc.addEventListener('touchend',e=>{
   else draggedSym=null;
 },{passive:true});
 
-bgEl.onerror=()=>showError('не удалось загрузить игру');
-bgEl.onload=()=>{hideLoading();syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();};
-if(bgEl.complete&&bgEl.naturalWidth){hideLoading();syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();}
+bgEl.onerror=()=>{ if(!gameStarted) showError('не удалось загрузить игру'); };
 
 // ── AMBIENT MUSIC ─────────────────────────────────────────────────────────────
 let audioCtx = null, ambientStarted = false;
