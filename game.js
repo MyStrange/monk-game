@@ -57,9 +57,8 @@ function renderHotbar() {
 
 function renderJarIcon(item) {
   const isOpen = item.id === 'jar_open' || item.icon === 'jar_open';
+  const hasWater = !!item.hasWater;
   const n = Math.min(item.caught||0, 9);
-  // Pixel-art jar: 48x54 grid, 2px pixel size
-  // Chaotic positions inside jar body (cols 10-38, rows 20-44)
   const positions = [
     [12,36],[30,24],[20,40],[10,28],[34,38],[22,22],[8,42],[28,32],[16,26]
   ];
@@ -67,30 +66,29 @@ function renderJarIcon(item) {
   for (let i = 0; i < n; i++) {
     const [x,y] = positions[i];
     const dur = (0.6+(i*0.23)%1.1).toFixed(2);
-    // Each dot is 3x3 with 1px bright center
     dots.push(
       `<rect x="${x}" y="${y}" width="3" height="3" fill="#ffe066"><animate attributeName="opacity" values="0.15;1;0.15" dur="${dur}s" repeatCount="indefinite"/></rect>` +
       `<rect x="${x+1}" y="${y+1}" width="1" height="1" fill="#fff8cc"><animate attributeName="opacity" values="0.1;0.9;0.1" dur="${dur}s" repeatCount="indefinite"/></rect>`
     );
   }
-  // Pixel-art jar — all hard rectangles, no border-radius
   const lidHtml = isOpen ? '' : '<rect x="12" y="4" width="24" height="2" fill="#3a6b2a"/><rect x="10" y="6" width="28" height="2" fill="#4a8b36"/><rect x="10" y="8" width="28" height="2" fill="#3a6b2a"/>';
+  // Water fill — visible when hasWater, pixel-art blue fill in lower 2/3 of body
+  const waterHtml = hasWater ? `
+    <rect x="10" y="30" width="28" height="16" fill="rgba(60,120,200,0.55)"/>
+    <rect x="10" y="30" width="28" height="3"  fill="rgba(120,180,255,0.45)"/>
+    <rect x="12" y="32" width="4"  height="12" fill="rgba(100,160,255,0.18)"/>
+    <rect x="10" y="30" width="28" height="1"  fill="rgba(180,220,255,0.6)"/>` : '';
   return `<svg width="48" height="54" viewBox="0 0 48 54" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
     ${lidHtml}
-    <!-- neck -->
     <rect x="12" y="10" width="24" height="4"  fill="#2a4a1e"/>
-    <!-- body outline -->
     <rect x="6"  y="14" width="36" height="36" fill="rgba(140,200,130,0.12)"/>
-    <!-- body border left/right -->
     <rect x="6"  y="14" width="4"  height="36" fill="rgba(120,180,110,0.25)"/>
     <rect x="38" y="14" width="4"  height="36" fill="rgba(120,180,110,0.18)"/>
-    <!-- body border top/bottom -->
     <rect x="6"  y="14" width="36" height="4"  fill="rgba(140,200,130,0.22)"/>
     <rect x="6"  y="46" width="36" height="4"  fill="rgba(100,160,90,0.28)"/>
-    <!-- glass highlight -->
     <rect x="10" y="18" width="4"  height="24" fill="rgba(200,255,190,0.18)"/>
     <rect x="12" y="16" width="2"  height="2"  fill="rgba(220,255,210,0.3)"/>
-    <!-- fireflies -->
+    ${waterHtml}
     ${dots.join('')}
   </svg>`;
 }
@@ -226,11 +224,41 @@ function updateCamera() {
 
 // ── FULLSCREEN ────────────────────────────────────────────────────────────────
 function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
-  } else {
-    document.exitFullscreen && document.exitFullscreen();
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const btn = document.getElementById('fullscreen-btn');
+  if (isIOS) {
+    // iOS Safari doesn't support fullscreen API — show hint
+    showFullscreenHint();
+    return;
   }
+  if (!document.fullscreenElement) {
+    (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen
+      || function(){}).call(document.documentElement);
+    if (btn) btn.textContent = '✕';
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
+    if (btn) btn.textContent = '⛶';
+  }
+}
+document.addEventListener('fullscreenchange', ()=>{
+  const btn = document.getElementById('fullscreen-btn');
+  if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶';
+});
+function showFullscreenHint() {
+  let hint = document.getElementById('fs-hint');
+  if (!hint) {
+    hint = document.createElement('div');
+    hint.id = 'fs-hint';
+    hint.style.cssText = `position:fixed;bottom:200px;right:10px;background:rgba(0,0,0,0.88);
+      border:1px solid rgba(240,192,64,0.5);color:#f0c040;font-family:monospace;font-size:11px;
+      padding:8px 12px;border-radius:4px;z-index:400;max-width:160px;line-height:1.5;
+      text-align:center;pointer-events:none;`;
+    hint.textContent = 'Нажми ⎋ → «На экран домой» чтобы играть без шапки';
+    document.body.appendChild(hint);
+  }
+  hint.style.opacity = '1';
+  clearTimeout(hint._t);
+  hint._t = setTimeout(() => { hint.style.opacity = '0'; }, 3500);
 }
 window.toggleFullscreen = toggleFullscreen;
 
@@ -552,9 +580,8 @@ function itemOnZone(itemId, zone){
     if((itemId==='jar_open'||itemId==='jar')&&jar&&jar.hasWater){
       // Water jar on rock 1 → activate, jar breaks
       rockStates[zone]=true;
-      const jarIdx=inventory.findIndex(i=>i&&i.id==='jar');
-      if(jarIdx>=0) inventory[jarIdx]=null;
-      if(selectedSlot===jarIdx) selectedSlot=-1;
+      const jarIdx=inventory.findIndex(i=>i&&(i.id==='jar_open'||i.id==='jar')&&i.hasWater);
+      if(jarIdx>=0){inventory[jarIdx]=null;if(selectedSlot===jarIdx)selectedSlot=-1;}
       renderHotbar(); updateItemCursor();
       showS2Msg('Вода впитывается в камень. Банка трескается от холода — и рассыпается.');
       return null;
@@ -679,29 +706,88 @@ function spawnMeditationOrb() {
   });
 }
 
+// ── MEDITATION PARTICLES ──────────────────────────────────────────────────────
+let mParticles = []; // rising dust particles around hero
+
+function spawnMeditationParticle() {
+  const hx = bx(hero.x + HERO_SIT_W / 2);
+  const hy = by(GROUND_Y - HERO_SIT_H * 0.5);
+  const angle = -Math.PI/2 + (Math.random()-0.5)*1.4;
+  const speed = 0.3 + Math.random()*0.5;
+  mParticles.push({
+    x: hx + (Math.random()-0.5)*bw(60),
+    y: hy + (Math.random()-0.5)*bh(40),
+    vx: Math.cos(angle)*speed*(Math.random()-0.5)*0.6,
+    vy: -speed,
+    life: 90 + Math.random()*80,
+    age: 0,
+    sz: 1.5 + Math.random()*3.5,
+    col: Math.random()<0.6 ? '#ffe066' : Math.random()<0.5 ? '#fff4aa' : '#ffcc44',
+  });
+}
+
 function drawMeditationLayer() {
   if (!hero.praying) {
     if (meditationPhase > 0) meditationPhase = Math.max(0, meditationPhase - 0.02);
+    // Fade out particles
+    for(let i=mParticles.length-1;i>=0;i--){
+      const p=mParticles[i]; p.age++;
+      if(p.age>=p.life){mParticles.splice(i,1);continue;}
+      const t=p.age/p.life;
+      const a=(1-t)*meditationPhase*0.6;
+      if(a<=0) continue;
+      ctx.save(); ctx.globalAlpha=a;
+      ctx.fillStyle=p.col;
+      ctx.fillRect(p.x-p.sz/2, p.y-p.sz/2, p.sz, p.sz);
+      ctx.restore();
+    }
     return;
   }
   meditationPhase = Math.min(1, meditationPhase + 0.015);
 
-  // Warm golden overlay on entire scene
+  // ── Inverted vignette: edges bright, center clear ──────────────────
   ctx.save();
-  ctx.globalAlpha = meditationPhase * 0.22;
-  ctx.fillStyle = 'rgba(255, 220, 80, 1)';
-  ctx.fillRect(0, 0, W, H);
-  ctx.restore();
-
-  // Vignette — darken edges
-  ctx.save();
-  ctx.globalAlpha = meditationPhase * 0.35;
-  const vg = ctx.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.85);
+  ctx.globalAlpha = meditationPhase * 0.28;
+  const vg = ctx.createRadialGradient(W/2, H*0.52, H*0.18, W/2, H*0.52, H*0.82);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(20,10,0,1)');
+  vg.addColorStop(0.6, 'rgba(255,200,40,0.12)');
+  vg.addColorStop(1, 'rgba(255,180,0,0.55)');
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
+
+  // ── Bright pulse around hero ───────────────────────────────────────
+  const hx = bx(hero.x + HERO_SIT_W/2);
+  const hy = by(GROUND_Y - HERO_SIT_H*0.55);
+  const heroPulse = 0.55 + 0.45*Math.abs(Math.sin(tick*0.025));
+  ctx.save();
+  ctx.globalAlpha = meditationPhase * heroPulse * 0.55;
+  const hg = ctx.createRadialGradient(hx, hy, 0, hx, hy, bw(180));
+  hg.addColorStop(0, 'rgba(255,240,120,0.9)');
+  hg.addColorStop(0.35, 'rgba(255,200,40,0.4)');
+  hg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = hg;
+  ctx.beginPath(); ctx.arc(hx, hy, bw(180), 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // ── Spawn and draw particles ───────────────────────────────────────
+  if (tick % 3 === 0 && mParticles.length < 60) spawnMeditationParticle();
+  for(let i=mParticles.length-1;i>=0;i--){
+    const p=mParticles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy*=0.995; p.vx*=0.99;
+    p.age++;
+    if(p.age>=p.life){mParticles.splice(i,1);continue;}
+    const t=p.age/p.life;
+    const a=(t<0.15?t/0.15:1-t)*meditationPhase*0.85;
+    ctx.save();
+    ctx.globalAlpha=a;
+    ctx.fillStyle=p.col;
+    ctx.fillRect(p.x-p.sz/2, p.y-p.sz/2, p.sz, p.sz);
+    // tiny glow cross
+    ctx.globalAlpha=a*0.25;
+    ctx.fillRect(p.x-p.sz*1.5, p.y-p.sz/2, p.sz*3, p.sz);
+    ctx.restore();
+  }
 
   // Spawn orbs periodically
   if (tick - lastMeditationSpawn > 120 && meditationOrbs.length < 8) {
@@ -709,20 +795,16 @@ function drawMeditationLayer() {
     lastMeditationSpawn = tick;
   }
 
-  // Hidden inscription on pedestal — visible only in meditation
-  // Statue is roughly at BG x:700-820, inscription on base y:750-820
+  // Hidden inscription on pedestal
   const inscAlpha = meditationPhase * (0.6 + 0.4*Math.abs(Math.sin(tick*0.02)));
   if(inscAlpha > 0.05){
     ctx.save();
-    ctx.globalAlpha = inscAlpha;
-    // Glow behind inscription
     const ig2=ctx.createRadialGradient(bx(790),by(820),0,bx(790),by(820),bw(90));
     ig2.addColorStop(0,'rgba(255,200,60,0.5)');
     ig2.addColorStop(1,'rgba(0,0,0,0)');
     ctx.globalAlpha=inscAlpha*0.6;
     ctx.fillStyle=ig2;
     ctx.fillRect(bx(700),by(760),bw(180),bh(110));
-    // Main symbol — large Thai OM
     ctx.globalAlpha=inscAlpha;
     ctx.font = `bold ${Math.round(bw(52))}px serif`;
     ctx.fillStyle = '#ffe066';
@@ -731,7 +813,6 @@ function drawMeditationLayer() {
     ctx.shadowBlur=12;
     ctx.fillText('ᩮ', bx(790), by(830));
     ctx.shadowBlur=0;
-    // Charge indicator dots around symbol
     for(let di=0;di<inscriptionCharge;di++){
       const da=(di/5)*Math.PI*2-Math.PI/2;
       ctx.globalAlpha=inscAlpha;
@@ -741,7 +822,7 @@ function drawMeditationLayer() {
     ctx.restore();
   }
 
-  // Aura around cat in meditation
+  // Aura around cat
   const catCx = bx(cat.x + CAT_W/2), catCy = by(cat.y + CAT_H/2);
   ctx.save();
   ctx.globalAlpha = meditationPhase * 0.35 * (0.6+0.4*Math.abs(Math.sin(tick*0.03)));
@@ -750,7 +831,6 @@ function drawMeditationLayer() {
   catAura.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = catAura;
   ctx.beginPath(); ctx.arc(catCx, catCy, bw(80), 0, Math.PI*2); ctx.fill();
-  // OM symbol above cat
   ctx.globalAlpha = meditationPhase * 0.7;
   ctx.font = `bold ${Math.round(bw(24))}px serif`;
   ctx.fillStyle = 'rgba(255,220,60,1)';
@@ -758,13 +838,6 @@ function drawMeditationLayer() {
   ctx.fillText('ॐ', catCx, by(cat.y - 20));
   ctx.restore();
   ctx.textAlign = 'left';
-
-  // Water reflection glow in meditation
-  ctx.save();
-  ctx.globalAlpha = meditationPhase * 0.18;
-  ctx.fillStyle = 'rgba(100,180,255,1)';
-  ctx.fillRect(bx(200), by(950), bw(1400), bh(140));
-  ctx.restore();
 
   // Draw orbs
   meditationOrbs.forEach(orb => {
@@ -776,20 +849,16 @@ function drawMeditationLayer() {
     if (orb.x > BG_W-80) orb.dx = -Math.abs(orb.dx);
     if (orb.y < 100) orb.dy = Math.abs(orb.dy);
     if (orb.y > 700) orb.dy = -Math.abs(orb.dy);
-
     const pulse = 0.5 + 0.5 * Math.abs(Math.sin(orb.phase));
     const alpha = orb.alpha * meditationPhase * pulse;
     const sz = orb.sz;
-
     ctx.save();
-    // Glow
     ctx.globalAlpha = alpha * 0.4;
     const g = ctx.createRadialGradient(bx(orb.x), by(orb.y), 0, bx(orb.x), by(orb.y), bw(sz*5));
     g.addColorStop(0, 'rgba(255,230,100,0.9)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(bx(orb.x), by(orb.y), bw(sz*5), 0, Math.PI*2); ctx.fill();
-    // Core
     ctx.globalAlpha = alpha;
     ctx.fillStyle = `rgba(255,240,120,${pulse.toFixed(2)})`;
     ctx.fillRect(bx(orb.x)-bw(sz)/2, by(orb.y)-bh(sz)/2, bw(sz), bh(sz));
@@ -1113,6 +1182,127 @@ gc.addEventListener('touchend',e=>{
 
 bgEl.onload=()=>{syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();};
 if(bgEl.complete){syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();}
+
+// ── AMBIENT MUSIC ─────────────────────────────────────────────────────────────
+let audioCtx = null, ambientStarted = false;
+
+function startAmbient() {
+  if (ambientStarted) return;
+  ambientStarted = true;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  const master = audioCtx.createGain();
+  master.gain.setValueAtTime(0, audioCtx.currentTime);
+  master.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 4);
+  master.connect(audioCtx.destination);
+
+  // ── Deep drone — fundamental + octave ──────────────────────────
+  function makeDrone(freq, gainVal) {
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    g.gain.value = gainVal;
+    osc.connect(g); g.connect(master);
+    osc.start();
+    // Very slow tremolo
+    const lfo = audioCtx.createOscillator();
+    const lfoG = audioCtx.createGain();
+    lfo.frequency.value = 0.07 + Math.random()*0.04;
+    lfoG.gain.value = gainVal * 0.25;
+    lfo.connect(lfoG); lfoG.connect(g.gain);
+    lfo.start();
+    return osc;
+  }
+  makeDrone(55,  0.28);  // A1 — low bass drone
+  makeDrone(110, 0.16);  // A2
+  makeDrone(164.8, 0.09); // E3 — fifth
+
+  // ── Pad layer — slow random notes from pentatonic ───────────────
+  const penta = [220, 246.9, 293.7, 329.6, 392, 440, 493.9];
+  function schedulePad() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const freq = penta[Math.floor(Math.random()*penta.length)];
+    const dur  = 4.5 + Math.random()*3.5;
+    const osc  = audioCtx.createOscillator();
+    const g    = audioCtx.createGain();
+    const rev  = audioCtx.createConvolver();
+
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    // Slight detune for warmth
+    osc.detune.value = (Math.random()-0.5)*12;
+
+    // Reverb impulse — simple convolver trick
+    const irLen = audioCtx.sampleRate * 2.5;
+    const ir = audioCtx.createBuffer(2, irLen, audioCtx.sampleRate);
+    for(let ch=0;ch<2;ch++){
+      const d=ir.getChannelData(ch);
+      for(let i=0;i<irLen;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/irLen,2.2);
+    }
+    rev.buffer = ir;
+
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.055, now + dur*0.25);
+    g.gain.linearRampToValueAtTime(0.04,  now + dur*0.6);
+    g.gain.linearRampToValueAtTime(0,     now + dur);
+
+    osc.connect(g);
+    g.connect(rev);
+    rev.connect(master);
+    g.connect(master); // dry signal too
+
+    osc.start(now);
+    osc.stop(now + dur + 0.1);
+
+    const next = 2200 + Math.random()*3500;
+    setTimeout(schedulePad, next);
+  }
+  // Start a few staggered pads
+  schedulePad();
+  setTimeout(schedulePad, 1400);
+  setTimeout(schedulePad, 2900);
+
+  // ── Bell — rare, high, fading ────────────────────────────────────
+  function schedulebell() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const bellFreqs = [880, 1046.5, 1318.5, 659.3];
+    const freq = bellFreqs[Math.floor(Math.random()*bellFreqs.length)];
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.06, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 4.5);
+    osc.connect(g); g.connect(master);
+    osc.start(now); osc.stop(now + 5);
+    // Overtone
+    const osc2 = audioCtx.createOscillator();
+    const g2   = audioCtx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.value = freq * 2.756;
+    g2.gain.setValueAtTime(0.025, now);
+    g2.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);
+    osc2.connect(g2); g2.connect(master);
+    osc2.start(now); osc2.stop(now + 3);
+
+    setTimeout(schedulebell, 8000 + Math.random()*14000);
+  }
+  setTimeout(schedulebell, 5000 + Math.random()*6000);
+}
+
+// Start on first user interaction (browser autoplay policy)
+function onFirstInteract() {
+  startAmbient();
+  document.removeEventListener('click', onFirstInteract);
+  document.removeEventListener('touchend', onFirstInteract);
+  document.removeEventListener('keydown', onFirstInteract);
+}
+document.addEventListener('click',    onFirstInteract);
+document.addEventListener('touchend', onFirstInteract);
+document.addEventListener('keydown',  onFirstInteract);
 
 // ── KEYBOARD ──────────────────────────────────────────────────────────────────
 const INTERACT=new Set(['e','E','у','У']);
@@ -2086,8 +2276,15 @@ function startWishAnim(jarRect, onDone){
       setTimeout(()=>{
         wishCanvas.style.display='none';wCtx.clearRect(0,0,bW,bH);
         wishPlaying=false;bCanvas.style.pointerEvents='auto';
-        bFlies=bFlies.map(f=>({...f,alive:true,x:60+Math.random()*(bW-120),y:40+Math.random()*(bH*0.75)}));
-        if(onDone)onDone();
+        // Respawn flies with alpha=0 for fade-in, spread across screen
+        bFlies=Array.from({length:30},()=>{
+          const sz=4+Math.random()*5;
+          return{x:60+Math.random()*(bW-120),y:40+Math.random()*(bH*0.75),
+            phase:Math.random()*Math.PI*2,dx:(Math.random()-0.5)*0.9,dy:(Math.random()-0.5)*0.5,
+            sz,alive:true,fadeIn:0};
+        });
+        // Delay jar.glowing so it doesn't pop in while flies are fading in
+        setTimeout(()=>{ if(onDone)onDone(); }, 800);
       },400);
     }
   })();
@@ -2095,135 +2292,183 @@ function startWishAnim(jarRect, onDone){
 
 
 // ── FIREFLY DIALOG ─────────────────────────────────────────────────────────────
+function createFlyRoomEl() {
+  if (document.getElementById('fly-room')) return;
+  const el = document.createElement('div');
+  el.id = 'fly-room';
+  el.style.cssText = 'position:absolute;inset:0;z-index:65;display:none;overflow:hidden;cursor:pointer;';
+
+  // Background image
+  const bg = document.createElement('img');
+  bg.id = 'fly-room-bg';
+  bg.src = 'assets/bg/flyroom.jpeg';
+  bg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;image-rendering:pixelated;';
+
+  // Dark overlay to dim image slightly during dialog
+  const overlay = document.createElement('div');
+  overlay.id = 'fly-room-overlay';
+  overlay.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.35);pointer-events:none;';
+
+  // Canvas for animated firefly glows on top of image
+  const canvas = document.createElement('canvas');
+  canvas.id = 'fly-room-canvas';
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;';
+
+  // Speech bubble container
+  const speech = document.createElement('div');
+  speech.id = 'fly-speech';
+  speech.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
+
+  // Tap hint
+  const hint = document.createElement('div');
+  hint.id = 'fly-hint';
+  hint.style.cssText = `position:absolute;bottom:18px;right:18px;
+    font-family:monospace;font-size:11px;color:rgba(240,192,64,0.4);
+    pointer-events:none;`;
+  hint.textContent = 'нажми чтобы продолжить';
+
+  // Back button
+  const back = document.createElement('button');
+  back.className = 'back-btn';
+  back.textContent = '← Назад';
+  back.style.zIndex = '70';
+  back.onclick = e => {
+    e.stopPropagation();
+    dialogActive=false;
+    if(flyRoomAnimId){cancelAnimationFrame(flyRoomAnimId);flyRoomAnimId=null;}
+    document.getElementById('fly-room').style.display='none';
+  };
+
+  el.appendChild(bg);
+  el.appendChild(overlay);
+  el.appendChild(canvas);
+  el.appendChild(speech);
+  el.appendChild(back);
+  el.appendChild(hint);
+  document.getElementById('buddha-screen').appendChild(el);
+}
+
 function startFireflyDialog(){
+  createFlyRoomEl();
   dialogActive=true;
   dialogStep=0;
-  bCanvas.style.pointerEvents='auto';
-  // Create dialog overlay div
-  let dlg=document.getElementById('fly-dialog');
-  if(!dlg){
-    dlg=document.createElement('div');
-    dlg.id='fly-dialog';
-    dlg.style.cssText=`
-      position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;
-      align-items:center;justify-content:flex-end;padding-bottom:90px;
-      cursor:pointer;`;
-    document.getElementById('buddha-screen').appendChild(dlg);
-  }
-  dlg.style.display='flex';
+
+  const el = document.getElementById('fly-room');
+  el.style.display = 'block';
+
+  // Size canvas
+  requestAnimationFrame(()=>{
+    const r = el.getBoundingClientRect();
+    const c = document.getElementById('fly-room-canvas');
+    if(c){ c.width=Math.round(r.width); c.height=Math.round(r.height); }
+    animFlyRoom();
+  });
+
   advanceDialog();
-  dlg.addEventListener('click', advanceDialog);
-  dlg.addEventListener('touchend', e=>{e.preventDefault();advanceDialog();},{passive:false});
+  el.addEventListener('click', advanceDialog);
+  el.addEventListener('touchend', e=>{e.preventDefault();advanceDialog();},{passive:false});
+}
+
+let flyRoomAnimId = null;
+function animFlyRoom(){
+  if(!dialogActive){ flyRoomAnimId=null; return; }
+  const c = document.getElementById('fly-room-canvas');
+  if(!c){ flyRoomAnimId=null; return; }
+  const W=c.width, H=c.height;
+  const cx = c.getContext('2d');
+  const t = Date.now()/1000;
+  cx.clearRect(0,0,W,H);
+
+  // Two firefly glows at their approximate positions in the image
+  // Left fly А: ~35% x, 58% y of image — sitting left of table
+  // Right fly Б: ~65% x, 58% y — sitting right
+  [[0.35, 0.60, 0], [0.65, 0.60, 1]].forEach(([fx,fy,idx])=>{
+    const glow = 0.4 + 0.6*Math.abs(Math.sin(t*1.8+idx*1.3));
+    const x = W*fx, y = H*fy;
+    cx.save();
+    cx.globalAlpha = glow * 0.5;
+    const g = cx.createRadialGradient(x,y,0,x,y,W*0.07);
+    g.addColorStop(0,'rgba(255,230,80,0.9)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=g; cx.beginPath(); cx.arc(x,y,W*0.07,0,Math.PI*2); cx.fill();
+    cx.restore();
+  });
+
+  flyRoomAnimId = requestAnimationFrame(animFlyRoom);
 }
 
 function advanceDialog(){
-  const dlg=document.getElementById('fly-dialog');
-  if(!dlg||!dialogActive)return;
+  const el = document.getElementById('fly-room');
+  if(!el||!dialogActive)return;
+
   if(dialogStep>=DIALOG.length){
     // End dialog
     dialogActive=false;
-    dlg.style.display='none';
-    dlg.replaceWith(dlg.cloneNode(false)); // remove listeners
-    // Remove glowstick — it lit the way in, stayed inside
+    if(flyRoomAnimId){ cancelAnimationFrame(flyRoomAnimId); flyRoomAnimId=null; }
+    el.style.display='none';
+    el.replaceWith(el.cloneNode(false));
+    // Remove glowstick
     const gi=inventory.findIndex(i=>i&&i.id==='glowstick');
     if(gi>=0){inventory[gi]=null; if(selectedSlot===gi)selectedSlot=-1;}
     renderHotbar(); updateItemCursor();
     durianReady=true;
     showBMsg('Палка осталась там — она была нужна им, не тебе. На столе стоит миска. Запах странный.');
-    // Draw durian on canvas
-    drawDurianOnTable();
     return;
   }
-  const line=DIALOG[dialogStep];
+
+  const line = DIALOG[dialogStep];
   dialogStep++;
-  // Render line
-  const isNarr=line.s==='';
-  const isA=line.s==='А';
-  const borderCol = isNarr ? 'rgba(240,192,64,0.4)' : '#f0c040';
-  const textCol   = isNarr ? 'rgba(240,192,64,0.7)' : '#f0c040';
-  const alignStr  = isNarr ? 'center' : 'left';
-  const speakerCol = isA ? '#ffe066' : '#aaddff';
-  const speakerHtml = line.s
-    ? '<span style="color:'+speakerCol+';font-weight:bold;margin-right:8px">'+line.s+':</span>'
-    : '';
-  const hintHtml = line.last ? '' : '<div style="text-align:right;margin-top:8px;font-size:11px;opacity:0.5">нажми чтобы продолжить</div>';
-  dlg.innerHTML =
-    '<div style="background:rgba(0,0,0,0.88);border:1.5px solid '+borderCol+';border-radius:4px;padding:14px 22px;max-width:72%;font-family:monospace;font-size:15px;line-height:1.7;color:'+textCol+';text-align:'+alignStr+';">'+
-      speakerHtml + line.t + hintHtml +
-    '</div>'+
-    '<canvas id="fly-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>';  // Draw two fireflies at table on the fly-canvas
-  requestAnimationFrame(drawFlyTable);
-}
 
-let flyTableAnim=null;
-function drawFlyTable(){
-  const c=document.getElementById('fly-canvas');
-  if(!c||!dialogActive)return;
-  c.width=c.offsetWidth; c.height=c.offsetHeight;
-  const cx=c.getContext('2d');
-  const W=c.width,H=c.height;
-  const t=Date.now()/1000;
+  const speech = document.getElementById('fly-speech');
+  const hint   = document.getElementById('fly-hint');
+  if(!speech) return;
 
-  // Table — center of screen
-  const tx=W*0.5,ty=H*0.45;
-  // Table surface
-  cx.fillStyle='rgba(60,35,15,0.85)';
-  cx.fillRect(tx-90,ty,180,8);
-  cx.fillRect(tx-80,ty,160,40);
-  // Table legs
-  cx.fillRect(tx-80,ty+40,10,30);
-  cx.fillRect(tx+70,ty+40,10,30);
+  const isNarr = line.s === '';
+  const isA    = line.s === 'А';
+  const isLast = !!line.last;
 
-  // Bowl of rice
-  cx.fillStyle='rgba(200,190,160,0.9)';
-  cx.beginPath(); cx.ellipse(tx,ty-4,28,10,0,0,Math.PI*2); cx.fill();
-  cx.fillStyle='rgba(230,220,190,0.95)';
-  cx.beginPath(); cx.ellipse(tx,ty-6,20,7,0,0,Math.PI*2); cx.fill();
-  // Rice dots
-  for(let i=0;i<12;i++){
-    const rx=tx-14+Math.cos(i*0.8+1)*12,ry=ty-6+Math.sin(i*1.1)*4;
-    cx.fillStyle='rgba(255,250,235,0.9)';
-    cx.fillRect(rx-1.5,ry-1,3,2);
+  if(hint) hint.style.display = isLast ? 'none' : 'block';
+
+  if(isNarr){
+    // Narrator line — centered, subtle
+    speech.innerHTML = `<div style="
+      position:absolute;left:50%;bottom:18%;transform:translateX(-50%);
+      background:rgba(0,0,0,0.72);border:1px solid rgba(240,192,64,0.3);
+      border-radius:4px;padding:10px 20px;
+      font-family:monospace;font-size:13px;color:rgba(240,192,64,0.65);
+      text-align:center;max-width:70%;line-height:1.6;
+      white-space:pre-wrap;
+    ">${line.t}</div>`;
+  } else {
+    // Positional bubble: А left (~28% from left), Б right (~72%)
+    // Bubble appears just above the firefly's head in the image
+    const leftPct  = isA ? '5%'  : 'auto';
+    const rightPct = isA ? 'auto': '5%';
+    const bottomPct = '22%'; // above the table area in the image
+    const maxW = '38%';
+    const align = isA ? 'left' : 'right';
+    const borderCol = isA ? 'rgba(255,220,80,0.6)' : 'rgba(160,210,255,0.6)';
+    const textCol   = isA ? '#ffe066' : '#c8e8ff';
+    // Tail direction
+    const tailStyle = isA
+      ? 'border-left:8px solid transparent;border-right:8px solid transparent;border-top:10px solid rgba(0,0,0,0.78);position:absolute;bottom:-10px;left:18px;'
+      : 'border-left:8px solid transparent;border-right:8px solid transparent;border-top:10px solid rgba(0,0,0,0.78);position:absolute;bottom:-10px;right:18px;';
+
+    speech.innerHTML = `<div style="
+      position:absolute;
+      left:${leftPct};right:${rightPct};bottom:${bottomPct};
+      max-width:${maxW};
+      background:rgba(0,0,0,0.78);
+      border:1.5px solid ${borderCol};
+      border-radius:6px;
+      padding:10px 14px;
+      font-family:monospace;font-size:14px;
+      color:${textCol};
+      text-align:${align};
+      line-height:1.6;
+      white-space:pre-wrap;
+    ">${line.t}<div style="${tailStyle}"></div></div>`;
   }
-  // Fruit bits (durian chunks — yellowish)
-  [[tx-8,ty-9],[tx+5,ty-11],[tx-2,ty-8]].forEach(([fx,fy])=>{
-    cx.fillStyle='rgba(210,190,80,0.85)';
-    cx.fillRect(fx-3,fy-3,6,6);
-    cx.fillStyle='rgba(180,155,40,0.7)';
-    cx.fillRect(fx-2,fy-2,4,4);
-  });
-
-  // Firefly А — left of table
-  const fax=tx-55, fay=ty-22+Math.sin(t*1.1)*2;
-  const fbx=tx+55, fby=ty-22+Math.sin(t*0.9+1)*2;
-  [[fax,fay,'А'],[fbx,fby,'Б']].forEach(([fx,fy,label],idx)=>{
-    const glow=0.5+0.5*Math.abs(Math.sin(t*2+idx));
-    // Body glow
-    cx.save();
-    cx.globalAlpha=glow*0.4;
-    const g=cx.createRadialGradient(fx,fy,0,fx,fy,18);
-    g.addColorStop(0,'rgba(255,240,100,0.9)');
-    g.addColorStop(1,'rgba(0,0,0,0)');
-    cx.fillStyle=g; cx.beginPath(); cx.arc(fx,fy,18,0,Math.PI*2); cx.fill();
-    cx.restore();
-    // Core
-    cx.fillStyle=`rgba(255,245,120,${glow.toFixed(2)})`;
-    cx.fillRect(fx-4,fy-4,8,8);
-    cx.fillStyle='rgba(255,255,220,0.9)';
-    cx.fillRect(fx-2,fy-2,4,4);
-    // Eyes
-    cx.fillStyle='rgba(0,0,0,0.8)';
-    if(idx===0){cx.fillRect(fx+2,fy-2,2,2);cx.fillRect(fx+2,fy+1,2,1);}
-    else{cx.fillRect(fx-4,fy-2,2,2);cx.fillRect(fx-4,fy+1,2,1);}
-    // Label
-    cx.font='bold 10px monospace';
-    cx.fillStyle='rgba(240,192,64,0.7)';
-    cx.textAlign='center';
-    cx.fillText(label,fx,fy-12);
-    cx.textAlign='left';
-  });
-
-  if(dialogActive) flyTableAnim=requestAnimationFrame(drawFlyTable);
 }
 
 function drawDurianOnTable(){
@@ -2240,10 +2485,11 @@ function animBuddha(){
     f.phase+=0.03;f.x+=f.dx;f.y+=f.dy;
     if(f.x<20)f.dx=Math.abs(f.dx);if(f.x>bW-20)f.dx=-Math.abs(f.dx);
     if(f.y<20)f.dy=Math.abs(f.dy);if(f.y>bH*0.82)f.dy=-Math.abs(f.dy);
-    const a=0.2+0.8*Math.abs(Math.sin(f.phase)),sz=f.sz;
-    // Core
+    // Fade in after respawn
+    if(f.fadeIn!==undefined && f.fadeIn<1) f.fadeIn=Math.min(1,(f.fadeIn||0)+0.008);
+    const fadeAlpha = (f.fadeIn===undefined)?1:f.fadeIn;
+    const a=(0.2+0.8*Math.abs(Math.sin(f.phase)))*fadeAlpha,sz=f.sz;
     bCtx.fillStyle=`rgba(255,248,120,${a.toFixed(2)})`;bCtx.fillRect(f.x-sz/2,f.y-sz/2,sz,sz);
-    // Glow cross
     bCtx.fillStyle=`rgba(255,240,80,${(a*0.25).toFixed(2)})`;
     bCtx.fillRect(f.x-sz*2,f.y-sz/2,sz*4,sz);bCtx.fillRect(f.x-sz/2,f.y-sz*2,sz,sz*4);
   });
