@@ -50,6 +50,7 @@ function renderHotbar() {
       updateItemCursor();
     };
     div.oncontextmenu = (e) => { e.preventDefault(); showItemMenu(item, e.clientX, e.clientY); };
+    setupHotbarLongPress(div, item);
     el.appendChild(div);
   });
 }
@@ -982,6 +983,84 @@ function loop(){
   if(draggedSym) drawDraggedSym();
   requestAnimationFrame(loop);
 }
+
+// ── MOBILE HELPERS ────────────────────────────────────────────────────────────
+function mobileSit()  { if(activeScreen==='main'&&!hero.praying) hero.praying=true; }
+function mobileStand(){ if(activeScreen==='main'&&hero.praying)  standUp(); }
+window.mobileSit=mobileSit;
+window.mobileStand=mobileStand;
+
+// ── SWIPE TO WALK ──────────────────────────────────────────────────────────────
+let swipeStartX=0, swipeStartY=0, swipeActive=false;
+gc.addEventListener('touchstart',e=>{
+  if(activeScreen!=='main') return;
+  swipeStartX=e.touches[0].clientX;
+  swipeStartY=e.touches[0].clientY;
+  swipeActive=true;
+},{passive:true});
+
+gc.addEventListener('touchmove',e=>{
+  if(activeScreen!=='main'||!swipeActive) return;
+  if(hero.praying){
+    // Update drag position for symbol dragging
+    const r=gc.getBoundingClientRect();
+    dragX=e.touches[0].clientX-r.left;
+    dragY=e.touches[0].clientY-r.top;
+    return;
+  }
+  const dx=e.touches[0].clientX-swipeStartX;
+  const dy=e.touches[0].clientY-swipeStartY;
+  // Horizontal swipe = walk
+  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>12){
+    hero.facing=dx>0?1:-1;
+    hero.x=Math.max(20,Math.min(BG_W-HERO_WALK_W-20,hero.x+dx*0.4));
+    hero.idle=false; hero.targetX=null;
+    if(tick%8===0) hero.walkFrame++;
+    swipeStartX=e.touches[0].clientX; // rolling delta
+  }
+},{passive:true});
+
+gc.addEventListener('touchend',e=>{
+  swipeActive=false;
+  if(!hero.praying&&hero.targetX===null) hero.idle=true;
+},{passive:true});
+
+// ── LONG-PRESS ON HOTBAR SLOT = context menu (mobile) ─────────────────────────
+let hotbarLongTimer=null;
+function setupHotbarLongPress(div, item){
+  div.addEventListener('touchstart',e=>{
+    hotbarLongTimer=setTimeout(()=>{
+      showItemMenu(item, e.touches[0].clientX, e.touches[0].clientY);
+    },600);
+  },{passive:true});
+  div.addEventListener('touchend',()=>clearTimeout(hotbarLongTimer),{passive:true});
+  div.addEventListener('touchmove',()=>clearTimeout(hotbarLongTimer),{passive:true});
+}
+
+// ── TOUCH DRAG FOR SYMBOLS (meditation) ───────────────────────────────────────
+gc.addEventListener('touchstart',e=>{
+  if(activeScreen!=='main'||!hero.praying||inscriptionCharge>=5) return;
+  const r=gc.getBoundingClientRect();
+  const cx=e.touches[0].clientX-r.left, cy=e.touches[0].clientY-r.top;
+  const idx=pSyms.findIndex(s=>symHit(cx,cy,s));
+  if(idx>=0){
+    draggedSym=pSyms[idx];
+    pSyms.splice(idx,1);
+    dragX=cx; dragY=cy;
+  }
+},{passive:true});
+
+// touchend for symbol delivery already exists but let's ensure it works
+gc.addEventListener('touchend',e=>{
+  if(activeScreen!=='main'||!hero.praying||!draggedSym) return;
+  const r=gc.getBoundingClientRect();
+  const cx=e.changedTouches[0].clientX-r.left;
+  const cy=e.changedTouches[0].clientY-r.top;
+  if(inscHitCanvas(cx,cy)&&inscriptionCharge<5) deliverSymbol();
+  else if(inscHitCanvas(cx,cy)&&(inscriptionReady||inscriptionCharge>=5)) openScene4();
+  else draggedSym=null;
+},{passive:true});
+
 bgEl.onload=()=>{syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();};
 if(bgEl.complete){syncSize();window.addEventListener('resize',syncSize);renderHotbar();loop();}
 
@@ -1116,14 +1195,7 @@ gc.addEventListener('mouseup',e=>{
 gc.addEventListener('mouseleave',()=>{
   if(draggedSym){draggedSym=null;gc.style.cursor='default';}
 });
-gc.addEventListener('touchmove',e=>{
-  if(activeScreen!=='main'||!hero.praying)return;
-  e.preventDefault();
-  if(!e.touches.length)return;
-  const r=gc.getBoundingClientRect();
-  dragX=e.touches[0].clientX-r.left;
-  dragY=e.touches[0].clientY-r.top;
-},{passive:false});
+// touchmove handled in mobile section above
 gc.addEventListener('touchend',e=>{e.preventDefault();if(!e.changedTouches.length)return;const r=gc.getBoundingClientRect();onMainTap(e.changedTouches[0].clientX-r.left,e.changedTouches[0].clientY-r.top);},{passive:false});
 
 // ── SCENE TRANSITIONS ─────────────────────────────────────────────────────────
