@@ -627,8 +627,8 @@ const ZONES={
   tree:  {x:1600,y:300,w:200,h:580},
   cat:   {x:cat.x,y:cat.y,w:CAT_W,h:CAT_H},
   monk:  {x:redMonk.x,y:redMonk.y,w:MONK_W,h:MONK_H},
-  bush:  {x:0,y:720,w:300,h:280},    // left foreground bush — enlarged
-  water: {x:200,y:950,w:1400,h:140}, // water with reflection
+  bush:  {x:0,y:580,w:500,h:420},    // left foreground bush — large hit area
+  water: {x:0,y:920,w:1800,h:170},   // water with reflection — full width
   dirt:  {x:870,y:890,w:100,h:80},    // dirt pile after cat buries
 };
 function inZone(cx,cy,z){return cx>=bx(z.x)&&cx<=bx(z.x)+bw(z.w)&&cy>=by(z.y)&&cy<=by(z.y)+bh(z.h);}
