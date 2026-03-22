@@ -2319,11 +2319,14 @@ function createScene4El() {
   el.id = 'scene4';
   el.style.cssText = 'position:absolute;inset:0;display:none;z-index:60;overflow:hidden;';
 
-  // Background drawn procedurally on canvas
+  const bg = document.createElement('img');
+  bg.id = 'scene4-bg';
+  bg.src = 'assets/bg/above_main.jpeg';
+  bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;object-position:center top;image-rendering:pixelated;';
 
   const canvas = document.createElement('canvas');
   canvas.id = 'scene4-canvas';
-  canvas.style.cssText = 'display:block;width:100%;height:100%;cursor:default;image-rendering:pixelated;';
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:default;';
 
   const back = document.createElement('button');
   back.id = 'scene4-back';
@@ -2335,6 +2338,7 @@ function createScene4El() {
   msg.id = 'scene4-msg';
   msg.className = 'scene-msg';
 
+  el.appendChild(bg);
   el.appendChild(canvas);
   el.appendChild(back);
   el.appendChild(msg);
@@ -2378,178 +2382,17 @@ function closeScene4() {
 window.closeScene4=closeScene4;
 
 function drawScene4Bg(c, W4, H4, t) {
-  const cx=W4*0.5, cy=H4*0.46;
-  const px = x => Math.round(x); // pixel-snap helper
-
-  // ── Dark canopy background ─────────────────────────────────────
-  c.fillStyle='#060d04'; c.fillRect(0,0,W4,H4);
-  // Radial clearing — lighter centre
-  const clearing=c.createRadialGradient(cx,cy,H4*0.04, cx,cy,H4*0.7);
-  clearing.addColorStop(0,'rgba(32,52,14,0.92)');
-  clearing.addColorStop(0.45,'rgba(14,30,6,0.88)');
-  clearing.addColorStop(1,'rgba(2,6,1,0.98)');
-  c.fillStyle=clearing; c.fillRect(0,0,W4,H4);
-
-  // ── Dense foliage tiles — pixel grid ──────────────────────────
-  const tile=Math.round(W4/64);
-  const foliageCols=['#0e2206','#112808','#16320a','#0a1c04','#1a3c0c','#081802'];
-  for(let gy=0;gy<H4;gy+=tile){
-    for(let gx=0;gx<W4;gx+=tile){
-      const dx=gx-cx, dy=gy-cy;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-      if(dist<H4*0.42){
-        const ci=Math.abs(Math.round(Math.sin(gx*0.3+gy*0.2+t*0.002)*3+Math.cos(gx*0.17-gy*0.25)*2))%foliageCols.length;
-        c.fillStyle=foliageCols[ci];
-        c.fillRect(gx,gy,tile,tile);
-        // Lighter top-edge of each leaf cluster
-        if((Math.round(gx/tile)+Math.round(gy/tile))%3===0){
-          c.fillStyle='rgba(38,72,14,0.55)';
-          c.fillRect(gx,gy,tile,Math.round(tile*0.35));
-        }
-      }
-    }
-  }
-
-  // ── Root system — thick brown bezier curves ───────────────────
-  const rootDefs=[
-    // [angle, len_factor, thick, branch_angle]
-    [0.0,  0.48, 9,  0.45],[0.38, 0.52, 8, -0.5],[0.82, 0.45, 10, 0.4],
-    [1.28, 0.50, 7, -0.45],[1.70, 0.46, 9,  0.5],[2.15, 0.53, 8, -0.4],
-    [2.62, 0.47, 10, 0.5],[3.05, 0.51, 7, -0.5],[3.50, 0.44, 9,  0.4],
-    [3.95, 0.49, 8, -0.4],[4.40, 0.52, 7,  0.5],[4.88, 0.46, 9, -0.5],
-  ];
-  rootDefs.forEach(([angle,lf,thick,ba],ri)=>{
-    const a=angle+Math.sin(t*0.006+ri*0.5)*0.018;
-    const len=Math.min(W4,H4)*lf;
-    const ex=cx+Math.cos(a)*len, ey=cy+Math.sin(a)*len;
-    const m1x=cx+Math.cos(a-0.2)*len*0.38+Math.sin(t*0.008+ri)*12;
-    const m1y=cy+Math.sin(a-0.2)*len*0.38+Math.cos(t*0.009+ri)*10;
-    const m2x=cx+Math.cos(a+0.12)*len*0.72;
-    const m2y=cy+Math.sin(a+0.12)*len*0.72;
-    // Shadow
-    c.save(); c.strokeStyle='rgba(0,0,0,0.45)'; c.lineWidth=thick+3; c.lineCap='round';
-    c.beginPath(); c.moveTo(cx+2,cy+3);
-    c.bezierCurveTo(m1x+2,m1y+3,m2x+2,m2y+3,ex+2,ey+3); c.stroke();
-    // Root
-    c.strokeStyle=`rgb(${52+ri%4*4},${30+ri%3*3},${12+ri%2*4})`; c.lineWidth=thick;
-    c.beginPath(); c.moveTo(cx,cy);
-    c.bezierCurveTo(m1x,m1y,m2x,m2y,ex,ey); c.stroke();
-    // Highlight edge
-    c.strokeStyle=`rgba(${80+ri%4*5},${50+ri%3*4},20,0.3)`; c.lineWidth=Math.ceil(thick*0.3);
-    c.beginPath(); c.moveTo(cx,cy);
-    c.bezierCurveTo(m1x,m1y,m2x,m2y,ex,ey); c.stroke();
-    // Branch
-    if(ri%2===0){
-      const blen=len*0.22;
-      c.strokeStyle=`rgb(${45+ri*3},${26+ri*2},10)`; c.lineWidth=Math.ceil(thick*0.5);
-      c.beginPath(); c.moveTo(m2x,m2y);
-      c.lineTo(m2x+Math.cos(a+ba)*blen, m2y+Math.sin(a+ba)*blen); c.stroke();
-    }
-    c.restore();
-  });
-
-  // ── Buddha stone plaque — centre ──────────────────────────────
-  const sr=Math.min(W4,H4)*0.12;
-  const statueGlow=0.75+0.25*Math.abs(Math.sin(t*0.018));
-  // Stone frame (outer border)
-  c.fillStyle='#6a6050'; c.fillRect(px(cx-sr*1.15),px(cy-sr*1.25),px(sr*2.3),px(sr*2.5));
-  c.fillStyle='#807060'; c.fillRect(px(cx-sr*1.1), px(cy-sr*1.2), px(sr*2.2),px(sr*2.4));
-  // Inner stone
-  c.fillStyle='#a89878'; c.fillRect(px(cx-sr*0.95),px(cy-sr*1.05),px(sr*1.9),px(sr*2.1));
-  c.fillStyle='#bfad8e'; c.fillRect(px(cx-sr*0.88),px(cy-sr*0.98),px(sr*1.76),px(sr*1.96));
-  // Stone cracks / texture
-  c.fillStyle='rgba(80,65,40,0.3)';
-  [[0.1,0.2,0.6,0.02],[0.3,-0.4,0.5,0.015],[-.2,0.6,0.4,0.02]].forEach(([dx,dy,dl,w])=>{
-    c.fillRect(px(cx+dx*sr),px(cy+dy*sr),px(dl*sr),px(H4*w));
-  });
-  // Buddha figure (from above — simplified top-down)
-  c.save(); c.globalAlpha=statueGlow;
-  // Base/lotus
-  c.fillStyle='#8a7050';
-  c.fillRect(px(cx-sr*0.5),px(cy+sr*0.45),px(sr*1.0),px(sr*0.22));
-  c.fillStyle='#a08860';
-  c.fillRect(px(cx-sr*0.42),px(cy+sr*0.4),px(sr*0.84),px(sr*0.12));
-  // Robe layers from above
-  c.fillStyle='#d48818'; c.beginPath(); c.ellipse(cx,cy+sr*0.1,sr*0.62,sr*0.55,0,0,Math.PI*2); c.fill();
-  c.fillStyle='#e09a22'; c.beginPath(); c.ellipse(cx,cy+sr*0.05,sr*0.44,sr*0.40,0,0,Math.PI*2); c.fill();
-  c.fillStyle='#f0b030'; c.beginPath(); c.ellipse(cx,cy,sr*0.28,sr*0.25,0,0,Math.PI*2); c.fill();
-  // Shoulder line
-  c.fillStyle='#c87818';
-  c.fillRect(px(cx-sr*0.6),px(cy-sr*0.15),px(sr*1.2),px(sr*0.08));
-  // Head
-  c.fillStyle='#d4a055'; c.beginPath(); c.ellipse(cx,cy-sr*0.28,sr*0.18,sr*0.16,0,0,Math.PI*2); c.fill();
-  c.fillStyle='#c49045'; c.beginPath(); c.ellipse(cx,cy-sr*0.28,sr*0.12,sr*0.10,0,0,Math.PI*2); c.fill();
-  // Ushnisha
-  c.fillStyle='#b07820'; c.beginPath(); c.ellipse(cx,cy-sr*0.28,sr*0.055,sr*0.05,0,0,Math.PI*2); c.fill();
-  c.restore();
-  // Halo glow
-  c.save();
-  c.globalAlpha=0.18*statueGlow;
-  const halo=c.createRadialGradient(cx,cy,0,cx,cy,sr*1.4);
-  halo.addColorStop(0,'rgba(255,210,80,1)'); halo.addColorStop(1,'rgba(0,0,0,0)');
-  c.fillStyle=halo; c.fillRect(cx-sr*1.4,cy-sr*1.4,sr*2.8,sr*2.8);
-  c.restore();
-
-  // ── Monk — bottom right of clearing (seen from above) ─────────
-  const mx=cx+W4*0.14, my=cy+H4*0.22;
-  c.fillStyle='#2a1a0a'; // shadow
-  c.fillRect(px(mx-8),px(my-6),18,14);
-  c.fillStyle='#cc2222'; // red robe from above
-  c.fillRect(px(mx-7),px(my-7),16,15);
-  c.fillStyle='#dd3333';
-  c.fillRect(px(mx-5),px(my-5),10,10);
-  c.fillStyle='#d4a060'; // bald head
-  c.fillRect(px(mx-4),px(my-11),9,8);
-  c.fillStyle='#c49050';
-  c.fillRect(px(mx-2),px(my-9),5,5);
-
-  // ── Cat — bottom left of clearing ────────────────────────────
-  const catx=cx-W4*0.14, caty=cy+H4*0.19;
-  c.fillStyle='rgba(0,0,0,0.3)'; // shadow
-  c.fillRect(px(catx-5),px(caty-3),16,10);
-  c.fillStyle='#f0f0e0'; // white body
-  c.fillRect(px(catx-4),px(caty-4),14,9);
-  c.fillStyle='#e8a840'; // orange patches
-  c.fillRect(px(catx-2),px(caty-4),5,4);
-  c.fillRect(px(catx+4),px(caty),4,4);
-  c.fillStyle='#f4f4f0'; // head
-  c.fillRect(px(catx-3),px(caty-7),8,6);
-  c.fillStyle='#e8a840'; // ear patches
-  c.fillRect(px(catx-2),px(caty-8),2,2);
-  c.fillRect(px(catx+2),px(caty-8),2,2);
-  // Tail
-  c.fillStyle='#d4d4c0';
-  c.fillRect(px(catx+9),px(caty-5),4,2);
-  c.fillRect(px(catx+12),px(caty-8),2,4);
-
-  // ── Water / rocks — bottom left corner ───────────────────────
-  c.save();
-  const wx=W4*0.06, wy=H4*0.76, ww=W4*0.14, wh=H4*0.12;
-  // Rocks around water
-  c.fillStyle='#606070';
-  c.fillRect(px(wx),px(wy),px(ww*1.2),px(wh*1.3));
-  c.fillStyle='#707585';
-  c.fillRect(px(wx+ww*0.05),px(wy+wh*0.1),px(ww*0.9),px(wh*0.9));
-  // Water shimmer
-  const ws=0.55+0.45*Math.abs(Math.sin(t*0.025));
-  c.fillStyle=`rgba(50,80,130,${ws.toFixed(2)})`;
-  c.fillRect(px(wx+ww*0.1),px(wy+wh*0.2),px(ww*0.8),px(wh*0.65));
-  c.fillStyle=`rgba(100,150,200,${(ws*0.35).toFixed(2)})`;
-  c.fillRect(px(wx+ww*0.12),px(wy+wh*0.22),px(ww*0.7),px(wh*0.18));
-  c.restore();
-
-  // ── Fireflies — scattered yellow dots ────────────────────────
+  // Background is above_main.jpeg — canvas only for animated fireflies overlay
+  c.clearRect(0, 0, W4, H4);
   for(let i=0;i<28;i++){
     const seed1=i*173.13, seed2=i*97.37;
     const ffx=((seed1+t*0.22*(i%2===0?1:-0.8))%W4+W4)%W4;
     const ffy=((seed2+t*0.16*(i%3===0?1:-0.6))%H4+H4)%H4;
-    // Skip statue area
-    if(Math.abs(ffx-cx)<sr*1.3&&Math.abs(ffy-cy)<sr*1.3) continue;
     const fa=0.2+0.8*Math.abs(Math.sin(t*0.038+i*0.71));
-    c.fillStyle=`rgba(255,235,80,${(fa).toFixed(2)})`;
-    c.fillRect(px(ffx-1),px(ffy-1),3,3);
+    c.fillStyle=`rgba(255,235,80,${fa.toFixed(2)})`;
+    c.fillRect(Math.round(ffx-1),Math.round(ffy-1),3,3);
     c.fillStyle=`rgba(255,240,120,${(fa*0.15).toFixed(2)})`;
-    c.fillRect(px(ffx-3),px(ffy-3),7,7);
+    c.fillRect(Math.round(ffx-3),Math.round(ffy-3),7,7);
   }
 }
 
