@@ -31,7 +31,7 @@ function renderHotbar() {
     const glowing = item.id === 'jar' && item.glowing;
     div.className = 'hotbar-slot' + (i === selectedSlot ? ' selected' : '') + (glowing ? ' jar-glowing' : '');
     // Jar and stick use pixel-art SVG
-    if (item.id === 'jar') {
+    if (item.id === 'jar' || item.id === 'jar_open') {
       div.innerHTML = `<span class="slot-icon">${renderJarIcon(item)}</span>`;
     } else if (item.id === 'stick' || item.id === 'glowstick') {
       div.innerHTML = `<span class="slot-icon">${renderStickIcon(item.id==='glowstick')}</span>`;
@@ -55,7 +55,8 @@ function renderHotbar() {
 }
 
 function renderJarIcon(item) {
-  const n = Math.min(item.caught, 9);
+  const isOpen = item.id === 'jar_open' || item.icon === 'jar_open';
+  const n = Math.min(item.caught||0, 9);
   // Pixel-art jar: 48x54 grid, 2px pixel size
   // Chaotic positions inside jar body (cols 10-38, rows 20-44)
   const positions = [
@@ -72,11 +73,9 @@ function renderJarIcon(item) {
     );
   }
   // Pixel-art jar — all hard rectangles, no border-radius
+  const lidHtml = isOpen ? '' : '<rect x="12" y="4" width="24" height="2" fill="#3a6b2a"/><rect x="10" y="6" width="28" height="2" fill="#4a8b36"/><rect x="10" y="8" width="28" height="2" fill="#3a6b2a"/>';
   return `<svg width="48" height="54" viewBox="0 0 48 54" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <!-- lid -->
-    <rect x="12" y="4"  width="24" height="2"  fill="#3a6b2a"/>
-    <rect x="10" y="6"  width="28" height="2"  fill="#4a8b36"/>
-    <rect x="10" y="8"  width="28" height="2"  fill="#3a6b2a"/>
+    ${lidHtml}
     <!-- neck -->
     <rect x="12" y="10" width="24" height="4"  fill="#2a4a1e"/>
     <!-- body outline -->
@@ -140,7 +139,7 @@ function updateItemCursor() {
   const item = getSelectedItem();
   if (item) {
     itemCursorEl.style.display = 'block';
-    if (item.id === 'jar') {
+    if (item.id === 'jar' || item.id === 'jar_open') {
       itemCursorEl.innerHTML = renderJarIcon(item);
       itemCursorEl.style.fontSize = '';
     } else if (item.id === 'stick' || item.id === 'glowstick') {
@@ -357,13 +356,13 @@ function itemOnItem(activeId, targetId) {
     };
     if(selectedSlot===stickIdx) selectedSlot=stickIdx;
 
-    // Jar becomes empty
-    jar.caught=0; jar.glowing=false; jar.released=false;
-    jar.hasWater=false; jar.label='банка'; jar.icon='🫙';
-    jar.description='Пустая банка. Свет ушёл в палку.';
+    // Jar becomes open (lid went with the light)
+    jar.id='jar_open'; jar.caught=0; jar.glowing=false; jar.released=false;
+    jar.hasWater=false; jar.label='банка'; jar.icon='jar_open';
+    jar.description='Банка без крышки. Крышка ушла вместе со светом.';
 
     renderHotbar(); updateItemCursor();
-    showMsg('Палка впитала свет из банки. Банка снова пустая.');
+    showMsg('Палка впитала свет. Крышка куда-то делась — банка теперь открытая.');
     return null; // handled, no extra message needed
   }
 
@@ -381,8 +380,8 @@ function itemOnZone(itemId, zone){
   bumpInteract(itemId, zone);
 
   // Glowing jar (has firefly liquid) — special messages everywhere
-  if(itemId==='jar'){
-    const jar=getItem('jar');
+  if(itemId==='jar'||itemId==='jar_open'){
+    const jar=getItem(itemId);
     if(jar&&jar.glowing){
       const gm={
         cat:   ['Банка светит коту в лицо. Кот щурится.','Кот смотрит на свет. Долго.','Кот моргнул. Что-то изменилось. Или нет.'],
@@ -496,12 +495,13 @@ function itemOnZone(itemId, zone){
   }
 
   if(zone==='water'){
-    if(itemId==='jar'){
-      const jar=getItem('jar');
+    if(itemId==='jar_open'||itemId==='jar'){
+      const jar=getItem(itemId);
       if(!jar) return null;
-      if(jar.released||jar.hasWater) return 'Банка уже с водой.';
-      jar.hasWater=true; jar.label='с водой'; jar.icon='🫙';
-      jar.description='Банка с водой. Холодная. Тяжелее, чем кажется.';
+      if(jar.id==='jar'&&!jar.glowing&&!jar.released) return 'У банки крышка. Воду не зачерпнёшь.';
+      if(jar.hasWater) return 'Банка уже с водой.';
+      jar.hasWater=true; jar.label='с водой'; jar.icon='jar_open';
+      jar.description='Открытая банка с водой. Холодная. Не расплещи.';
       renderHotbar(); updateItemCursor();
       showMsg('Ты зачерпнул воды. Банка стала тяжелее.');
       return null;
@@ -509,11 +509,11 @@ function itemOnZone(itemId, zone){
   }
 
   if(zone==='rock1'||zone==='rock2'||zone==='rock3'){
-    const jar=itemId==='jar'?getItem('jar'):null;
+    const jar=(itemId==='jar'||itemId==='jar_open')?getItem(itemId):null;
     if(itemId==='jar'&&jar&&!jar.hasWater&&!jar.released&&(jar.caught||0)===0){
       return ['Банка ещё пригодится. Не надо её разбивать.','Точно не сюда.','Пустая банка камню не поможет.'][Math.min(getInteractCount(itemId,zone)%3,2)];
     }
-    if(itemId==='jar'&&jar&&jar.hasWater){
+    if((itemId==='jar_open'||itemId==='jar')&&jar&&jar.hasWater){
       // Water jar on rock 1 → activate, jar breaks
       rockStates[zone]=true;
       const jarIdx=inventory.findIndex(i=>i&&i.id==='jar');
@@ -830,11 +830,7 @@ function deliverSymbol() {
         inscriptionGlow=Math.max(inscriptionGlow,1.5);
       }, i*200);
     }
-    showMsg('Надпись горит. Нажми на неё.', 4000);
-    // Also allow click anywhere on inscription to open — set a flag
     inscriptionReady = true;
-  } else {
-    showMsg(['Один.','Два.','Три.','Четыре.'][inscriptionCharge-1] + ' Надпись светится.', 1800);
   }
 }
 
@@ -2006,12 +2002,12 @@ function advanceDialog(){
     dialogActive=false;
     dlg.style.display='none';
     dlg.replaceWith(dlg.cloneNode(false)); // remove listeners
-    // Remove glowstick from inventory
+    // Remove glowstick — it lit the way in, stayed inside
     const gi=inventory.findIndex(i=>i&&i.id==='glowstick');
     if(gi>=0){inventory[gi]=null; if(selectedSlot===gi)selectedSlot=-1;}
     renderHotbar(); updateItemCursor();
     durianReady=true;
-    showBMsg('В ухе тихо. На столе — почти пустая миска с дурианом. Запах странный.');
+    showBMsg('Палка осталась там — она была нужна им, не тебе. На столе стоит миска. Запах странный.');
     // Draw durian on canvas
     drawDurianOnTable();
     return;
