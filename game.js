@@ -1207,34 +1207,19 @@ function updateMeditationMusic(praying) {
   if (!masterGain || soundMuted) return;
   if (praying && !meditationMusicActive) {
     meditationMusicActive = true;
-    masterGain.gain.setTargetAtTime(0.32, audioCtx.currentTime, 1.2);
+    setMeditationAudio(true);
   } else if (!praying && meditationMusicActive) {
     meditationMusicActive = false;
-    masterGain.gain.setTargetAtTime(0.18, audioCtx.currentTime, 2.0);
+    setMeditationAudio(false);
   }
 }
-let masterGain = null, meditationGain = null;
-let isMuted = false;
-
 function setMeditationAudio(on) {
-  if (!meditationGain) return;
-  const now = audioCtx.currentTime;
-  meditationGain.gain.cancelScheduledValues(now);
-  meditationGain.gain.setValueAtTime(meditationGain.gain.value, now);
-  meditationGain.gain.linearRampToValueAtTime(on ? 0.22 : 0, now + 2.5);
-}
-
-function toggleMute() {
-  if (!audioCtx) return;
-  isMuted = !isMuted;
+  if (!masterGain || soundMuted) return;
   const now = audioCtx.currentTime;
   masterGain.gain.cancelScheduledValues(now);
   masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-  masterGain.gain.linearRampToValueAtTime(isMuted ? 0 : 0.18, now + 0.4);
-  const btn = document.getElementById('mute-btn');
-  if (btn) btn.textContent = isMuted ? '🔇' : '🔊';
+  masterGain.gain.linearRampToValueAtTime(on ? 0.32 : 0.18, now + 2.0);
 }
-window.toggleMute = toggleMute;
 
 function startAmbient() {
   if (ambientStarted) return;
@@ -2341,8 +2326,6 @@ function startWishAnim(jarRect, onDone){
         animBuddha();
         // Delay onDone so jar.glowing doesn't pop in immediately
         setTimeout(()=>{ if(onDone)onDone(); }, 900);
-      },400);
-    }
       },400);
     }
   })();
