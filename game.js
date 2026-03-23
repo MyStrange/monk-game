@@ -651,6 +651,51 @@ function renderVoidIcon(level, unlocked) {
     <rect x="17" y="17" width="2"  height="2" fill="${c}"/>
   </svg>`;
 }
+// Dharma wheel (dharmachakra) — shown for all locked achievements
+function renderLockedAchIcon() {
+  const ring='#2e2a40', spoke='#252236', hub='#2a2640', hi='#3d3858';
+  return `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- outer ring -->
+    <rect x="12" y="2"  width="12" height="2" fill="${ring}"/>
+    <rect x="8"  y="4"  width="4"  height="2" fill="${ring}"/>
+    <rect x="24" y="4"  width="4"  height="2" fill="${ring}"/>
+    <rect x="6"  y="6"  width="2"  height="2" fill="${ring}"/>
+    <rect x="28" y="6"  width="2"  height="2" fill="${ring}"/>
+    <rect x="4"  y="8"  width="2"  height="4" fill="${ring}"/>
+    <rect x="30" y="8"  width="2"  height="4" fill="${ring}"/>
+    <rect x="2"  y="12" width="2"  height="12" fill="${ring}"/>
+    <rect x="32" y="12" width="2"  height="12" fill="${ring}"/>
+    <rect x="4"  y="24" width="2"  height="4" fill="${ring}"/>
+    <rect x="30" y="24" width="2"  height="4" fill="${ring}"/>
+    <rect x="6"  y="28" width="2"  height="2" fill="${ring}"/>
+    <rect x="28" y="28" width="2"  height="2" fill="${ring}"/>
+    <rect x="8"  y="30" width="4"  height="2" fill="${ring}"/>
+    <rect x="24" y="30" width="4"  height="2" fill="${ring}"/>
+    <rect x="12" y="32" width="12" height="2" fill="${ring}"/>
+    <!-- ring highlight (top-left arc) -->
+    <rect x="12" y="3"  width="8"  height="1" fill="${hi}"/>
+    <rect x="6"  y="7"  width="1"  height="6" fill="${hi}"/>
+    <!-- 8 spokes: 4 cardinal -->
+    <rect x="17" y="6"  width="2"  height="10" fill="${spoke}"/>
+    <rect x="17" y="20" width="2"  height="10" fill="${spoke}"/>
+    <rect x="6"  y="17" width="10" height="2"  fill="${spoke}"/>
+    <rect x="20" y="17" width="10" height="2"  fill="${spoke}"/>
+    <!-- 4 diagonal spokes (stepped pixel lines) -->
+    <rect x="9"  y="9"  width="2"  height="2"  fill="${spoke}"/>
+    <rect x="11" y="11" width="2"  height="2"  fill="${spoke}"/>
+    <rect x="23" y="9"  width="2"  height="2"  fill="${spoke}"/>
+    <rect x="21" y="11" width="2"  height="2"  fill="${spoke}"/>
+    <rect x="9"  y="25" width="2"  height="2"  fill="${spoke}"/>
+    <rect x="11" y="23" width="2"  height="2"  fill="${spoke}"/>
+    <rect x="23" y="25" width="2"  height="2"  fill="${spoke}"/>
+    <rect x="21" y="23" width="2"  height="2"  fill="${spoke}"/>
+    <!-- hub -->
+    <rect x="13" y="13" width="10" height="10" fill="${hub}"/>
+    <rect x="15" y="15" width="6"  height="6"  fill="${ring}"/>
+    <rect x="16" y="16" width="4"  height="4"  fill="${hi}"/>
+    <rect x="17" y="17" width="2"  height="2"  fill="${spoke}"/>
+  </svg>`;
+}
 function renderAchIcon(id, unlocked) {
   const p=id.split('_'), cat=p[0], level=parseInt(p[1]);
   if(cat==='stub') return renderEyeIcon(level, unlocked);
@@ -745,8 +790,8 @@ function openAchievements() {
     <div class="ach-grid">${ACHIEVEMENT_DEFS.map(def=>{
       const u=unlockedAchs.has(def.id);
       return `<div class="ach-cell${u?'':' locked'}">
-        <div class="ach-cell-icon">${renderAchIcon(def.id,u)}</div>
-        <div class="ach-cell-name">${u?def.title:'???'}</div>
+        <div class="ach-cell-icon">${u?renderAchIcon(def.id,true):renderLockedAchIcon()}</div>
+        <div class="ach-cell-name">${u?def.title:'—'}</div>
         <div class="ach-cell-desc">${u?def.desc:''}</div>
       </div>`;
     }).join('')}</div>
@@ -834,8 +879,9 @@ const heroSitImg = new Image();
 const bottleImg  = new Image();
 
 // ── LOADING WITH PROGRESS ──────────────────────────────────────────────────────
+// BG is critical — game MUST NOT start without it (tracked separately from sprites)
+// Sprites are optional — have a 6s fallback timeout
 const LOAD_ASSETS = [
-  { img: bgEl,      label: 'лес' },
   { img: catImg,    label: 'кот' },
   { img: monkImg,   label: 'монах' },
   { img: heroLImg,  label: 'герой' },
@@ -844,17 +890,27 @@ const LOAD_ASSETS = [
   { img: bottleImg, label: 'банка' },
 ];
 let loadedCount = 0;
+let spritesLoaded = false;
+let bgLoaded = (bgEl.complete && bgEl.naturalWidth > 0);
 let gameStarted = false;
+
+function tryStart() {
+  if (bgLoaded && spritesLoaded && !gameStarted) startGame();
+}
 
 function onAssetLoad() {
   loadedCount++;
-  const pct = Math.round(loadedCount / LOAD_ASSETS.length * 100);
-  const label = LOAD_ASSETS[loadedCount - 1]?.label || '';
   const el = document.getElementById('loading-overlay');
   if (el && !el.classList.contains('hidden')) {
-    el.querySelector('#loading-text').textContent = label + '…';
+    const labels = LOAD_ASSETS.map(a=>a.label);
+    el.querySelector('#loading-text').textContent = (labels[loadedCount-1]||'') + '…';
   }
-  if (loadedCount >= LOAD_ASSETS.length) startGame();
+  if (loadedCount >= LOAD_ASSETS.length) { spritesLoaded = true; tryStart(); }
+}
+
+// BG load tracking (src already set in HTML)
+if (!bgLoaded) {
+  bgEl.addEventListener('load', () => { bgLoaded = true; tryStart(); });
 }
 
 function startGame() {
@@ -883,8 +939,8 @@ heroRImg.src    = 'assets/sprites/hero_right.png';
 heroSitImg.src  = 'assets/sprites/hero_sit.png';
 bottleImg.src   = 'assets/items/bottle.png';
 
-// Hard fallback: force-start after 6s even if some assets lag
-setTimeout(() => { if (!gameStarted) startGame(); }, 6000);
+// Sprite fallback: give up waiting for sprites after 6s, but still wait for BG
+setTimeout(() => { if (!spritesLoaded) { spritesLoaded = true; tryStart(); } }, 6000);
 
 // ── SPRITE CONSTANTS ──────────────────────────────────────────────────────────
 const CAT_FRAMES=5, CAT_FW=400, CAT_FH=330;
@@ -1842,11 +1898,13 @@ gc.addEventListener('touchend',e=>{
   else draggedSym=null;
 },{passive:true});
 
-bgEl.onerror=()=>{ if(!gameStarted) showError('не удалось загрузить игру'); };
+bgEl.onerror=()=>{ bgLoaded=false; showError('не удалось загрузить игру'); };
 
 // ── AMBIENT MUSIC ─────────────────────────────────────────────────────────────
 let audioCtx = null, ambientStarted = false;
-let masterGain = null;   // ref so we can duck/swell
+let masterGain = null;
+let ambientGain = null;   // normal mode layer — fades out during meditation
+let meditationGain = null; // meditation layer — fades in during meditation
 let soundMuted = false;
 
 function toggleSound() {
@@ -1879,25 +1937,38 @@ function scheduleMeditationBell() {
   osc.type = 'sine'; osc.frequency.value = freq;
   g.gain.setValueAtTime(0.045, now);
   g.gain.exponentialRampToValueAtTime(0.0001, now + 5.0);
-  osc.connect(g); g.connect(masterGain); osc.start(now); osc.stop(now + 5.5);
+  const dest = meditationGain || masterGain;
+  osc.connect(g); g.connect(dest); osc.start(now); osc.stop(now + 5.5);
   const osc2 = audioCtx.createOscillator();
   const g2 = audioCtx.createGain();
   osc2.type = 'sine'; osc2.frequency.value = freq * 1.5;
   g2.gain.setValueAtTime(0.018, now);
   g2.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);
-  osc2.connect(g2); g2.connect(masterGain); osc2.start(now); osc2.stop(now + 3);
-  meditationBellTimer = setTimeout(scheduleMeditationBell, 1800 + Math.random() * 2400);
+  osc2.connect(g2); g2.connect(dest); osc2.start(now); osc2.stop(now + 3);
+  meditationBellTimer = setTimeout(scheduleMeditationBell, 2200 + Math.random() * 3000);
 }
 
 function setMeditationAudio(on) {
-  if (!masterGain || soundMuted) return;
+  if (!masterGain) return;
   const now = audioCtx.currentTime;
+  const dur = 2.8;
+  // Crossfade ambient ↔ meditation layers
+  if (ambientGain) {
+    ambientGain.gain.cancelScheduledValues(now);
+    ambientGain.gain.setValueAtTime(ambientGain.gain.value, now);
+    ambientGain.gain.linearRampToValueAtTime(on ? 0.08 : 1.0, now + dur);
+  }
+  if (meditationGain) {
+    meditationGain.gain.cancelScheduledValues(now);
+    meditationGain.gain.setValueAtTime(meditationGain.gain.value, now);
+    meditationGain.gain.linearRampToValueAtTime(on ? 1.0 : 0, now + dur);
+  }
   masterGain.gain.cancelScheduledValues(now);
   masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-  masterGain.gain.linearRampToValueAtTime(on ? 0.32 : 0.18, now + 2.0);
+  masterGain.gain.linearRampToValueAtTime(on ? 0.28 : 0.18, now + dur);
   if (on && !meditationBellActive) {
     meditationBellActive = true;
-    setTimeout(scheduleMeditationBell, 600);
+    setTimeout(scheduleMeditationBell, 800);
   } else if (!on) {
     meditationBellActive = false;
     if (meditationBellTimer) { clearTimeout(meditationBellTimer); meditationBellTimer = null; }
@@ -1909,32 +1980,34 @@ function startAmbient() {
   ambientStarted = true;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
+  // Master output bus
   masterGain = audioCtx.createGain();
   masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
   masterGain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 4);
   masterGain.connect(audioCtx.destination);
 
-  // ── Deep drone ────────────────────────────────────────────────────
+  // ── Normal-mode ambient bus (fades to background during meditation) ──
+  ambientGain = audioCtx.createGain();
+  ambientGain.gain.value = 1.0;
+  ambientGain.connect(masterGain);
+
   function makeDrone(freq, gainVal) {
     const osc = audioCtx.createOscillator();
     const g   = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
+    osc.type = 'sine'; osc.frequency.value = freq;
     g.gain.value = gainVal;
-    osc.connect(g); g.connect(masterGain);
-    osc.start();
+    osc.connect(g); g.connect(ambientGain); osc.start();
     const lfo = audioCtx.createOscillator();
     const lfoG = audioCtx.createGain();
     lfo.frequency.value = 0.07 + Math.random()*0.04;
     lfoG.gain.value = gainVal * 0.25;
-    lfo.connect(lfoG); lfoG.connect(g.gain);
-    lfo.start();
+    lfo.connect(lfoG); lfoG.connect(g.gain); lfo.start();
   }
-  makeDrone(55,   0.28);
-  makeDrone(110,  0.16);
-  makeDrone(164.8,0.09);
+  makeDrone(55,    0.28);
+  makeDrone(110,   0.16);
+  makeDrone(164.8, 0.08);
 
-  // ── Pad layer ─────────────────────────────────────────────────────
+  // ── Pentatonic pad layer ────────────────────────────────────────────
   const penta = [220, 246.9, 293.7, 329.6, 392, 440, 493.9];
   function schedulePad() {
     if (!audioCtx) return;
@@ -1944,8 +2017,7 @@ function startAmbient() {
     const osc  = audioCtx.createOscillator();
     const g    = audioCtx.createGain();
     const rev  = audioCtx.createConvolver();
-    osc.type = 'triangle';
-    osc.frequency.value = freq;
+    osc.type = 'triangle'; osc.frequency.value = freq;
     osc.detune.value = (Math.random()-0.5)*12;
     const irLen = audioCtx.sampleRate * 2.5;
     const ir = audioCtx.createBuffer(2, irLen, audioCtx.sampleRate);
@@ -1955,58 +2027,61 @@ function startAmbient() {
     g.gain.linearRampToValueAtTime(0.055, now + dur*0.25);
     g.gain.linearRampToValueAtTime(0.04,  now + dur*0.6);
     g.gain.linearRampToValueAtTime(0,     now + dur);
-    osc.connect(g); g.connect(rev); rev.connect(masterGain); g.connect(masterGain);
+    osc.connect(g); g.connect(rev); rev.connect(ambientGain); g.connect(ambientGain);
     osc.start(now); osc.stop(now + dur + 0.1);
     setTimeout(schedulePad, 2200 + Math.random()*3500);
   }
-  schedulePad();
-  setTimeout(schedulePad, 1400);
-  setTimeout(schedulePad, 2900);
+  schedulePad(); setTimeout(schedulePad, 1400); setTimeout(schedulePad, 2900);
 
-  // ── Bell ─────────────────────────────────────────────────────────
-  function scheduleBell() {
+  // ── Occasional bell (ambient) ───────────────────────────────────────
+  function scheduleAmbientBell() {
     if (!audioCtx) return;
     const now = audioCtx.currentTime;
-    const freq = [880,1046.5,1318.5,659.3][Math.floor(Math.random()*4)];
+    const freq = [880, 1046.5, 1318.5, 659.3][Math.floor(Math.random()*4)];
     const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
     osc.type='sine'; osc.frequency.value=freq;
     g.gain.setValueAtTime(0.06,now); g.gain.exponentialRampToValueAtTime(0.0001,now+4.5);
-    osc.connect(g); g.connect(masterGain); osc.start(now); osc.stop(now+5);
+    osc.connect(g); g.connect(ambientGain); osc.start(now); osc.stop(now+5);
     const osc2=audioCtx.createOscillator(); const g2=audioCtx.createGain();
     osc2.type='sine'; osc2.frequency.value=freq*2.756;
     g2.gain.setValueAtTime(0.025,now); g2.gain.exponentialRampToValueAtTime(0.0001,now+2.5);
-    osc2.connect(g2); g2.connect(masterGain); osc2.start(now); osc2.stop(now+3);
-    setTimeout(scheduleBell, 8000 + Math.random()*14000);
+    osc2.connect(g2); g2.connect(ambientGain); osc2.start(now); osc2.stop(now+3);
+    setTimeout(scheduleAmbientBell, 10000 + Math.random()*16000);
   }
-  setTimeout(scheduleBell, 5000 + Math.random()*6000);
+  setTimeout(scheduleAmbientBell, 6000 + Math.random()*8000);
 
-  // ── Meditation layer — deeper drone + slow shimmer ────────────────
+  // ── Meditation bus (starts silent, crossfades in during meditation) ──
   meditationGain = audioCtx.createGain();
   meditationGain.gain.value = 0;
   meditationGain.connect(masterGain);
 
-  // Deep meditation drone (lower, slower)
-  [55*0.5, 55*0.75].forEach((freq, i) => {
+  // Very deep, slow drones (subharmonics — grounding)
+  [[27.5, 0.55, 0.03], [41.25, 0.38, 0.05], [55, 0.22, 0.07]].forEach(([freq, gainVal, lfoFreq]) => {
     const osc = audioCtx.createOscillator();
     const g   = audioCtx.createGain();
-    osc.type = 'sine'; osc.frequency.value = freq;
-    g.gain.value = 0.5 - i*0.15;
+    osc.type = 'sine'; osc.frequency.value = freq; g.gain.value = gainVal;
     osc.connect(g); g.connect(meditationGain); osc.start();
-    const lfo2 = audioCtx.createOscillator();
-    const lg   = audioCtx.createGain();
-    lfo2.frequency.value = 0.04 + i*0.02; lg.gain.value = 0.1;
-    lfo2.connect(lg); lg.connect(g.gain); lfo2.start();
+    const lfo = audioCtx.createOscillator(); const lg = audioCtx.createGain();
+    lfo.frequency.value = lfoFreq; lg.gain.value = gainVal * 0.15;
+    lfo.connect(lg); lg.connect(g.gain); lfo.start();
   });
-  // High shimmer
+
+  // 528 Hz "healing" shimmer with slow breathing LFO
   const shimOsc = audioCtx.createOscillator();
   const shimG   = audioCtx.createGain();
-  shimOsc.type = 'sine'; shimOsc.frequency.value = 528; // "healing" freq
-  shimG.gain.value = 0.12;
+  shimOsc.type = 'sine'; shimOsc.frequency.value = 528;
+  shimG.gain.value = 0.14;
   shimOsc.connect(shimG); shimG.connect(meditationGain); shimOsc.start();
-  const shimLfo = audioCtx.createOscillator();
-  const shimLG  = audioCtx.createGain();
-  shimLfo.frequency.value = 0.08; shimLG.gain.value = 0.08;
+  const shimLfo = audioCtx.createOscillator(); const shimLG = audioCtx.createGain();
+  shimLfo.frequency.value = 0.06; shimLG.gain.value = 0.10;
   shimLfo.connect(shimLG); shimLG.connect(shimG.gain); shimLfo.start();
+
+  // Slow binaural-like shimmer at 432Hz (slightly detuned pair)
+  [432, 435].forEach((freq, i) => {
+    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    osc.type = 'sine'; osc.frequency.value = freq; g.gain.value = 0.08 - i*0.02;
+    osc.connect(g); g.connect(meditationGain); osc.start();
+  });
 }
 
 // Start on first user interaction
