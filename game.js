@@ -185,6 +185,52 @@ function getZoneMsg(itemId, zone, n) {
   return Array.isArray(m)?m[Math.min(n,m.length-1)]:m;
 }
 
+// ── ACHIEVEMENT SYSTEM ─────────────────────────────────────────────────────────
+const ACHIEVEMENT_DEFS = [
+  // Упорство — повторные клики на одну зону
+  { id:'stub_1', title:'Путь паломника',          desc:'Пять раз на одно место. Оно всё ещё там.',                  cat:'stub', threshold:5  },
+  { id:'stub_2', title:'Колесо сансары',           desc:'Пятнадцать кликов по одному месту. Ты и есть колесо.',       cat:'stub', threshold:15 },
+  { id:'stub_3', title:'Просветление повторением', desc:'Тридцать раз. Место устало. Ты — нет.',                      cat:'stub', threshold:30 },
+  // Странник — уникальные зоны
+  { id:'exp_1',  title:'Первые шаги',              desc:'Три разных места. Лес запомнил.',                            cat:'exp',  threshold:3  },
+  { id:'exp_2',  title:'Любопытный ум',            desc:'Пять мест. Всё разное, но одно и то же.',                   cat:'exp',  threshold:5  },
+  { id:'exp_3',  title:'Знаток пустоты',           desc:'Ты обошёл всё. Теперь можно начинать сначала.',             cat:'exp',  threshold:7  },
+  // Пустота — клики в никуда
+  { id:'void_1', title:'Зов пустоты',              desc:'Ты нажал туда, где ничего нет. Три раза.',                  cat:'void', threshold:3  },
+  { id:'void_2', title:'Мастер ничто',             desc:'Десять кликов в пустоту. Пустота благодарна.',              cat:'void', threshold:10 },
+  { id:'void_3', title:'Дзен пустого клика',       desc:'Двадцать пять раз. Это и есть путь без пути.',              cat:'void', threshold:25 },
+];
+const zoneClickCounts = {};
+const zonesVisited = new Set();
+let emptyClickCount = 0;
+let unlockedAchs = new Set(JSON.parse(localStorage.getItem('monk_ach')||'[]'));
+
+function trackZoneClick(zone) {
+  zoneClickCounts[zone] = (zoneClickCounts[zone]||0)+1;
+  zonesVisited.add(zone);
+  checkAchievements();
+}
+function trackEmptyClick() {
+  emptyClickCount++;
+  checkAchievements();
+}
+function checkAchievements() {
+  const maxZone = Object.values(zoneClickCounts).reduce((a,b)=>Math.max(a,b), 0);
+  ACHIEVEMENT_DEFS.forEach(def=>{
+    if(unlockedAchs.has(def.id)) return;
+    let earned = false;
+    if(def.cat==='stub' && maxZone>=def.threshold)          earned=true;
+    if(def.cat==='exp'  && zonesVisited.size>=def.threshold) earned=true;
+    if(def.cat==='void' && emptyClickCount>=def.threshold)  earned=true;
+    if(earned) unlockAchievement(def);
+  });
+}
+function unlockAchievement(def) {
+  unlockedAchs.add(def.id);
+  localStorage.setItem('monk_ach', JSON.stringify([...unlockedAchs]));
+  showAchToast(def);
+}
+
 function renderHotbar() {
   const el = document.getElementById('hotbar');
   el.style.display = inventory.some(s => s !== null) ? 'flex' : 'none';
@@ -462,6 +508,258 @@ function renderStickIcon(glowing=false) {
 }
 
 
+// ── ACHIEVEMENT ICON RENDERERS ─────────────────────────────────────────────────
+// All icons use only <rect> elements (pixel-art style, 36x36 viewBox)
+function renderEyeIcon(level, unlocked) {
+  const b=unlocked?'#0e0c08':'#252525', m=unlocked?'#7a5a10':'#3c3c3c',
+        h=unlocked?'#f0c040':'#585858', w=unlocked?'#f0e8d0':'#2c2c2c';
+  if(level===1) return `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="2" y="16" width="32" height="1" fill="${b}"/>
+    <rect x="4" y="17" width="28" height="3" fill="${m}"/>
+    <rect x="12" y="17" width="10" height="3" fill="${b}"/>
+    <rect x="14" y="17" width="2" height="2" fill="${h}"/>
+    <rect x="2" y="20" width="32" height="1" fill="${b}"/>
+  </svg>`;
+  if(level===2) return `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="8" y="9"  width="20" height="2" fill="${b}"/>
+    <rect x="4" y="11" width="28" height="2" fill="${b}"/>
+    <rect x="2" y="13" width="32" height="12" fill="${w}"/>
+    <rect x="2" y="13" width="32" height="1"  fill="${b}"/>
+    <rect x="4" y="11" width="28" height="2"  fill="${b}"/>
+    <rect x="8" y="9"  width="20" height="2"  fill="${b}"/>
+    <rect x="2" y="24" width="32" height="1"  fill="${b}"/>
+    <rect x="4" y="25" width="28" height="2"  fill="${b}"/>
+    <rect x="8" y="27" width="20" height="2"  fill="${b}"/>
+    <rect x="9" y="13" width="18" height="11" fill="${m}"/>
+    <rect x="13" y="15" width="10" height="7" fill="${b}"/>
+    <rect x="15" y="15" width="2"  height="2" fill="${h}"/>
+  </svg>`;
+  return `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="10" y="2"  width="16" height="2" fill="${b}"/>
+    <rect x="6"  y="4"  width="24" height="2" fill="${b}"/>
+    <rect x="4"  y="6"  width="28" height="2" fill="${b}"/>
+    <rect x="2"  y="8"  width="32" height="22" fill="${w}"/>
+    <rect x="2"  y="8"  width="32" height="1"  fill="${b}"/>
+    <rect x="4"  y="6"  width="28" height="2"  fill="${b}"/>
+    <rect x="6"  y="4"  width="24" height="2"  fill="${b}"/>
+    <rect x="10" y="2"  width="16" height="2"  fill="${b}"/>
+    <rect x="2"  y="29" width="32" height="1"  fill="${b}"/>
+    <rect x="4"  y="30" width="28" height="2"  fill="${b}"/>
+    <rect x="6"  y="32" width="24" height="2"  fill="${b}"/>
+    <rect x="10" y="34" width="16" height="2"  fill="${b}"/>
+    <rect x="8"  y="8"  width="20" height="22" fill="${m}"/>
+    <rect x="2"  y="14" width="6"  height="10" fill="${w}"/>
+    <rect x="28" y="14" width="6"  height="10" fill="${w}"/>
+    <rect x="12" y="12" width="12" height="14" fill="${b}"/>
+    <rect x="14" y="12" width="3"  height="3"  fill="${h}"/>
+    <rect x="19" y="19" width="2"  height="2"  fill="${h}"/>
+  </svg>`;
+}
+function renderLotusIcon(level, unlocked) {
+  const d=unlocked?'#1a4a10':'#222', m=unlocked?'#2a7a20':'#383838',
+        h=unlocked?'#60b840':'#484848', c=unlocked?'#f0c040':'#555',
+        cp=unlocked?'#fff8cc':'#666';
+  const stem=`<rect x="16" y="28" width="4" height="8" fill="${d}"/><rect x="16" y="28" width="2" height="8" fill="${m}"/>`;
+  const ctr=`<rect x="14" y="14" width="8" height="8" fill="${c}"/><rect x="15" y="15" width="6" height="6" fill="${cp}"/><rect x="16" y="16" width="4" height="4" fill="${c}"/>`;
+  if(level===1) return `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    ${stem}
+    <rect x="14" y="8"  width="8" height="8" fill="${m}"/><rect x="15" y="9"  width="6" height="6" fill="${h}"/>
+    <rect x="6"  y="14" width="8" height="8" fill="${m}"/><rect x="7"  y="15" width="6" height="6" fill="${h}"/>
+    <rect x="22" y="14" width="8" height="8" fill="${m}"/><rect x="23" y="15" width="6" height="6" fill="${h}"/>
+    <rect x="14" y="22" width="8" height="6" fill="${m}"/><rect x="15" y="23" width="6" height="4" fill="${h}"/>
+    ${ctr}
+  </svg>`;
+  if(level===2) return `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    ${stem}
+    <rect x="14" y="6"  width="8"  height="10" fill="${m}"/><rect x="15" y="7"  width="6"  height="8"  fill="${h}"/>
+    <rect x="4"  y="14" width="10" height="8"  fill="${m}"/><rect x="5"  y="15" width="8"  height="6"  fill="${h}"/>
+    <rect x="22" y="14" width="10" height="8"  fill="${m}"/><rect x="23" y="15" width="8"  height="6"  fill="${h}"/>
+    <rect x="14" y="22" width="8"  height="6"  fill="${m}"/><rect x="15" y="23" width="6"  height="4"  fill="${h}"/>
+    <rect x="6"  y="8"  width="8"  height="8"  fill="${m}"/><rect x="7"  y="9"  width="6"  height="6"  fill="${h}"/>
+    <rect x="22" y="8"  width="8"  height="8"  fill="${m}"/><rect x="23" y="9"  width="6"  height="6"  fill="${h}"/>
+    ${ctr}
+  </svg>`;
+  return `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    ${stem}
+    <rect x="14" y="4"  width="8"  height="12" fill="${m}"/><rect x="15" y="5"  width="6"  height="10" fill="${h}"/><rect x="16" y="6"  width="4"  height="4"  fill="${d}"/>
+    <rect x="2"  y="14" width="12" height="8"  fill="${m}"/><rect x="3"  y="15" width="10" height="6"  fill="${h}"/><rect x="4"  y="16" width="4"  height="4"  fill="${d}"/>
+    <rect x="22" y="14" width="12" height="8"  fill="${m}"/><rect x="23" y="15" width="10" height="6"  fill="${h}"/><rect x="28" y="16" width="4"  height="4"  fill="${d}"/>
+    <rect x="14" y="22" width="8"  height="8"  fill="${m}"/><rect x="15" y="23" width="6"  height="6"  fill="${h}"/>
+    <rect x="4"  y="6"  width="10" height="10" fill="${m}"/><rect x="5"  y="7"  width="8"  height="8"  fill="${h}"/>
+    <rect x="22" y="6"  width="10" height="10" fill="${m}"/><rect x="23" y="7"  width="8"  height="8"  fill="${h}"/>
+    <rect x="4"  y="22" width="10" height="8"  fill="${m}"/><rect x="5"  y="23" width="8"  height="6"  fill="${h}"/>
+    <rect x="22" y="22" width="10" height="8"  fill="${m}"/><rect x="23" y="23" width="8"  height="6"  fill="${h}"/>
+    ${ctr}
+  </svg>`;
+}
+function renderVoidIcon(level, unlocked) {
+  const r=unlocked?'#5858a0':'#303040', h=unlocked?'#9898d8':'#484858',
+        c=unlocked?'#ffffff':'#666', b=unlocked?'#0c0c18':'#1a1a1a';
+  if(level===1) return `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="14" y="14" width="8" height="8" fill="${b}"/>
+    <rect x="12" y="14" width="2" height="8" fill="${r}"/>
+    <rect x="22" y="14" width="2" height="8" fill="${r}"/>
+    <rect x="14" y="12" width="8" height="2" fill="${r}"/>
+    <rect x="14" y="22" width="8" height="2" fill="${r}"/>
+    <rect x="12" y="12" width="2" height="2" fill="${r}"/>
+    <rect x="22" y="12" width="2" height="2" fill="${r}"/>
+    <rect x="12" y="22" width="2" height="2" fill="${r}"/>
+    <rect x="22" y="22" width="2" height="2" fill="${r}"/>
+    <rect x="16" y="16" width="4" height="4" fill="${h}"/>
+    <rect x="17" y="17" width="2" height="2" fill="${c}"/>
+  </svg>`;
+  if(level===2) return `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="8"  y="2"  width="20" height="4" fill="${r}"/>
+    <rect x="2"  y="8"  width="4"  height="20" fill="${r}"/>
+    <rect x="30" y="8"  width="4"  height="20" fill="${r}"/>
+    <rect x="8"  y="30" width="20" height="4" fill="${r}"/>
+    <rect x="2"  y="2"  width="6"  height="6" fill="${r}"/>
+    <rect x="28" y="2"  width="6"  height="6" fill="${r}"/>
+    <rect x="2"  y="28" width="6"  height="6" fill="${r}"/>
+    <rect x="28" y="28" width="6"  height="6" fill="${r}"/>
+    <rect x="10" y="4"  width="16" height="2" fill="${h}"/>
+    <rect x="4"  y="10" width="2"  height="16" fill="${h}"/>
+    <rect x="30" y="10" width="2"  height="16" fill="${h}"/>
+    <rect x="10" y="30" width="16" height="2" fill="${h}"/>
+    <rect x="16" y="16" width="4" height="4" fill="${b}"/>
+    <rect x="16" y="16" width="4" height="4" fill="${h}"/>
+    <rect x="17" y="17" width="2" height="2" fill="${c}"/>
+  </svg>`;
+  return `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="12" y="2"  width="12" height="2" fill="${r}"/>
+    <rect x="8"  y="4"  width="4"  height="4" fill="${r}"/>
+    <rect x="24" y="4"  width="4"  height="4" fill="${r}"/>
+    <rect x="2"  y="12" width="2"  height="12" fill="${r}"/>
+    <rect x="32" y="12" width="2"  height="12" fill="${r}"/>
+    <rect x="4"  y="8"  width="4"  height="4" fill="${r}"/>
+    <rect x="28" y="8"  width="4"  height="4" fill="${r}"/>
+    <rect x="4"  y="24" width="4"  height="4" fill="${r}"/>
+    <rect x="28" y="24" width="4"  height="4" fill="${r}"/>
+    <rect x="8"  y="28" width="4"  height="4" fill="${r}"/>
+    <rect x="24" y="28" width="4"  height="4" fill="${r}"/>
+    <rect x="12" y="32" width="12" height="2" fill="${r}"/>
+    <rect x="10" y="6"  width="16" height="2" fill="${h}"/>
+    <rect x="6"  y="10" width="2"  height="16" fill="${h}"/>
+    <rect x="28" y="10" width="2"  height="16" fill="${h}"/>
+    <rect x="10" y="28" width="16" height="2" fill="${h}"/>
+    <rect x="14" y="12" width="8"  height="2" fill="${r}"/>
+    <rect x="12" y="14" width="2"  height="8" fill="${r}"/>
+    <rect x="22" y="14" width="2"  height="8" fill="${r}"/>
+    <rect x="14" y="22" width="8"  height="2" fill="${r}"/>
+    <rect x="16" y="14" width="4"  height="8" fill="${b}"/>
+    <rect x="14" y="16" width="8"  height="4" fill="${b}"/>
+    <rect x="17" y="17" width="2"  height="2" fill="${c}"/>
+  </svg>`;
+}
+function renderAchIcon(id, unlocked) {
+  const p=id.split('_'), cat=p[0], level=parseInt(p[1]);
+  if(cat==='stub') return renderEyeIcon(level, unlocked);
+  if(cat==='exp')  return renderLotusIcon(level, unlocked);
+  if(cat==='void') return renderVoidIcon(level, unlocked);
+  return '';
+}
+
+// ── BUTTON SVG ICONS ───────────────────────────────────────────────────────────
+function renderSoundIcon(muted) {
+  const x=`<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="2" y="7" width="4" height="6" fill="currentColor"/>
+    <rect x="6" y="5" width="2" height="2" fill="currentColor"/>
+    <rect x="6" y="13" width="2" height="2" fill="currentColor"/>
+    <rect x="8" y="3" width="2" height="2" fill="currentColor"/>
+    <rect x="8" y="15" width="2" height="2" fill="currentColor"/>
+    <rect x="10" y="3" width="2" height="14" fill="currentColor"/>`;
+  if(muted) return x+`
+    <rect x="13" y="6" width="2" height="2" fill="currentColor"/>
+    <rect x="15" y="8" width="2" height="2" fill="currentColor"/>
+    <rect x="17" y="10" width="2" height="2" fill="currentColor"/>
+    <rect x="15" y="12" width="2" height="2" fill="currentColor"/>
+    <rect x="13" y="14" width="2" height="2" fill="currentColor"/>
+    <rect x="17" y="6" width="2" height="2" fill="currentColor"/>
+    <rect x="13" y="14" width="6" height="2" fill="currentColor"/>
+  </svg>`;
+  return x+`
+    <rect x="13" y="7" width="2" height="6" fill="currentColor"/>
+    <rect x="15" y="5" width="2" height="10" fill="currentColor"/>
+    <rect x="17" y="3" width="2" height="14" fill="currentColor"/>
+  </svg>`;
+}
+function renderFullscreenIcon(isFullscreen) {
+  if(isFullscreen) return `<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="2"  y="8"  width="6"  height="2" fill="currentColor"/>
+    <rect x="8"  y="2"  width="2"  height="6" fill="currentColor"/>
+    <rect x="10" y="2"  width="2"  height="6" fill="currentColor"/>
+    <rect x="12" y="8"  width="6"  height="2" fill="currentColor"/>
+    <rect x="2"  y="10" width="6"  height="2" fill="currentColor"/>
+    <rect x="8"  y="12" width="2"  height="6" fill="currentColor"/>
+    <rect x="10" y="12" width="2"  height="6" fill="currentColor"/>
+    <rect x="12" y="10" width="6"  height="2" fill="currentColor"/>
+  </svg>`;
+  return `<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="2"  y="2"  width="6"  height="2" fill="currentColor"/>
+    <rect x="2"  y="2"  width="2"  height="6" fill="currentColor"/>
+    <rect x="12" y="2"  width="6"  height="2" fill="currentColor"/>
+    <rect x="16" y="2"  width="2"  height="6" fill="currentColor"/>
+    <rect x="2"  y="12" width="2"  height="6" fill="currentColor"/>
+    <rect x="2"  y="16" width="6"  height="2" fill="currentColor"/>
+    <rect x="16" y="12" width="2"  height="6" fill="currentColor"/>
+    <rect x="12" y="16" width="6"  height="2" fill="currentColor"/>
+  </svg>`;
+}
+function renderAchBtnIcon() {
+  return `<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="4"  y="2"  width="12" height="8" fill="currentColor"/>
+    <rect x="2"  y="4"  width="2"  height="4" fill="currentColor"/>
+    <rect x="16" y="4"  width="2"  height="4" fill="currentColor"/>
+    <rect x="6"  y="10" width="8"  height="2" fill="currentColor"/>
+    <rect x="8"  y="12" width="4"  height="2" fill="currentColor"/>
+    <rect x="8"  y="14" width="4"  height="2" fill="currentColor"/>
+    <rect x="4"  y="16" width="12" height="2" fill="currentColor"/>
+    <rect x="7"  y="5"  width="6"  height="2" fill="currentColor" opacity="0.35"/>
+  </svg>`;
+}
+function initUIIcons() {
+  const snd = document.getElementById('sound-btn');
+  if(snd) snd.innerHTML = renderSoundIcon(soundMuted);
+  const fs = document.getElementById('fullscreen-btn');
+  if(fs) fs.innerHTML = renderFullscreenIcon(!!document.fullscreenElement);
+  const ach = document.getElementById('ach-btn');
+  if(ach) ach.innerHTML = renderAchBtnIcon();
+}
+
+// ── ACHIEVEMENT TOAST & SCREEN ─────────────────────────────────────────────────
+function showAchToast(def) {
+  let t = document.getElementById('ach-toast');
+  if(!t){ t=document.createElement('div'); t.id='ach-toast'; document.body.appendChild(t); }
+  t.innerHTML = `<div class="ach-t-icon">${renderAchIcon(def.id, true)}</div><div class="ach-t-body"><div class="ach-t-title">${def.title}</div><div class="ach-t-desc">${def.desc}</div></div>`;
+  t.classList.remove('ach-t-hide');
+  void t.offsetWidth; // force reflow
+  t.classList.add('ach-t-show');
+  clearTimeout(t._tmr);
+  t._tmr = setTimeout(()=>{ t.classList.remove('ach-t-show'); t.classList.add('ach-t-hide'); }, 3800);
+}
+function openAchievements() {
+  let s = document.getElementById('ach-screen');
+  if(!s){ s=document.createElement('div'); s.id='ach-screen'; document.body.appendChild(s); }
+  s.innerHTML = `<div class="ach-inner">
+    <div class="ach-hdr"><span class="ach-title">достижения</span><button class="ach-close" onclick="closeAchievements()">×</button></div>
+    <div class="ach-grid">${ACHIEVEMENT_DEFS.map(def=>{
+      const u=unlockedAchs.has(def.id);
+      return `<div class="ach-cell${u?'':' locked'}">
+        <div class="ach-cell-icon">${renderAchIcon(def.id,u)}</div>
+        <div class="ach-cell-name">${u?def.title:'???'}</div>
+        <div class="ach-cell-desc">${u?def.desc:''}</div>
+      </div>`;
+    }).join('')}</div>
+    <div class="ach-cnt">${unlockedAchs.size} / ${ACHIEVEMENT_DEFS.length}</div>
+  </div>`;
+  s.style.display='flex';
+}
+function closeAchievements() {
+  const s=document.getElementById('ach-screen'); if(s) s.style.display='none';
+}
+window.closeAchievements=closeAchievements;
+window.openAchievements=openAchievements;
+
 // ── ITEM CURSOR FOLLOWER ──────────────────────────────────────────────────────
 const itemCursorEl = document.createElement('div');
 itemCursorEl.id = 'item-cursor';
@@ -566,6 +864,7 @@ function startGame() {
   syncSize();
   window.addEventListener('resize', syncSize);
   renderHotbar();
+  initUIIcons();
   loop();
 }
 
@@ -634,15 +933,15 @@ function toggleFullscreen() {
   if (!document.fullscreenElement) {
     (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen
       || function(){}).call(document.documentElement);
-    if (btn) btn.textContent = '✕';
+    if (btn) btn.innerHTML = renderFullscreenIcon(true);
   } else {
     (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
-    if (btn) btn.textContent = '⛶';
+    if (btn) btn.innerHTML = renderFullscreenIcon(false);
   }
 }
 document.addEventListener('fullscreenchange', ()=>{
   const btn = document.getElementById('fullscreen-btn');
-  if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶';
+  if (btn) btn.innerHTML = renderFullscreenIcon(!!document.fullscreenElement);
 });
 function showFullscreenHint() {
   let hint = document.getElementById('fs-hint');
@@ -1554,7 +1853,7 @@ function toggleSound() {
   soundMuted = !soundMuted;
   const btn = document.getElementById('sound-btn');
   if (masterGain) masterGain.gain.setTargetAtTime(soundMuted ? 0 : 0.18, audioCtx.currentTime, 0.3);
-  if (btn) { btn.textContent = soundMuted ? '🔇' : '🔊'; btn.classList.toggle('muted', soundMuted); }
+  if (btn) { btn.innerHTML = renderSoundIcon(soundMuted); btn.classList.toggle('muted', soundMuted); }
 }
 window.toggleSound = toggleSound;
 
@@ -1792,6 +2091,7 @@ function onMainTap(cx,cy){
   }
 
   const zone=hitZone(cx,cy);
+  if(zone) trackZoneClick(zone); else trackEmptyClick();
   const sel=getSelectedItem();
 
   // Item × element interaction takes priority
