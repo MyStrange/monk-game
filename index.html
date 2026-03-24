@@ -15,11 +15,9 @@
 <link rel="stylesheet" href="style.css">
 <!-- Preload critical assets -->
 <link rel="preload" as="image" href="assets/bg/main.png">
+<link rel="preload" as="image" href="assets/sprites/hero.png">
 <link rel="preload" as="image" href="assets/sprites/cat.png">
-<link rel="preload" as="image" href="assets/sprites/monk_red.png">
-<link rel="preload" as="image" href="assets/sprites/hero_left.png">
-<link rel="preload" as="image" href="assets/sprites/hero_right.png">
-<link rel="preload" as="image" href="assets/sprites/hero_sit.png">
+<link rel="preload" as="image" href="assets/sprites/monk.png">
 <link rel="preload" as="image" href="assets/bg/tree.png">
 <link rel="preload" as="image" href="assets/bg/buddha.jpeg">
 <link rel="preload" as="image" href="assets/bg/flyroom.jpeg">
@@ -27,56 +25,39 @@
 </head>
 <body>
 
-<!-- Единый хотбар поверх всех сцен -->
+<!-- Loading overlay -->
+<div id="loading-overlay" style="display:none">
+  <div class="loading-inner">
+    <div class="loading-label"></div>
+    <div class="loading-dots"><span>·</span><span>·</span><span>·</span></div>
+  </div>
+</div>
+
+<!-- Error overlay -->
+<div id="error-overlay" style="display:none">
+  <div class="error-msg"></div>
+</div>
+
+<!-- Hotbar (поверх всех сцен) -->
 <div id="hotbar"></div>
-<!-- Контекстное меню для предметов -->
-<div id="item-menu"></div>
 
-<!-- Loading / error overlay -->
-<div id="loading-overlay">
-  <div id="loading-inner">
-    <div id="loading-text">загружается</div>
-    <div id="loading-dots"><span>·</span><span>·</span><span>·</span></div>
-    <div id="loading-error-hint">нажми чтобы продолжить</div>
-  </div>
-</div>
+<!-- UI buttons -->
+<button id="sound-btn"    class="ui-btn" onclick="toggleSound()"      title="Звук"></button>
+<button id="ach-btn"      class="ui-btn" onclick="openAchievements()" title="Достижения"></button>
+<button id="fullscreen-btn" class="ui-btn" onclick="toggleFullscreen()" title="Полный экран"></button>
 
+<!-- Game wrap — все сцены внутри -->
 <div id="wrap">
-  <img id="bg-img" src="assets/bg/main.png" fetchpriority="high">
-  <canvas id="game-canvas"></canvas>
-  <canvas id="prayer-canvas"></canvas>
-  <div id="msg-box"></div>
 
-  <!-- Scene 2: tree / roots -->
-  <div id="scene2">
-    <img id="scene2-bg" src="assets/bg/tree.png">
-    <canvas id="scene2-canvas"></canvas>
-    <div id="scene2-msg"></div>
-    <button id="scene2-back" class="back-btn" onclick="closeScene2()">← Назад</button>
-  </div>
+  <!-- Main scene -->
+  <canvas id="main-canvas"></canvas>
+  <div id="main-msg" class="scene-msg"></div>
+  <button id="pray-btn" class="pray-btn" title="Медитировать">มี</button>
 
-  <!-- Buddha close-up -->
-  <div id="buddha-screen">
-    <img id="buddha-bg" src="assets/bg/buddha.jpeg">
-    <canvas id="buddha-canvas"></canvas>
-    <canvas id="wish-anim"></canvas>
-    <div id="buddha-msg"></div>
-    <button id="buddha-back" class="back-btn" onclick="closeBuddha()">← Вернуться в лес</button>
-  </div>
 </div>
 
-<!-- Mobile controls — shown only on touch -->
-<div id="mobile-controls">
-  <button id="btn-pray" class="mob-btn mob-pray" ontouchstart="mobilePrayToggle(event)" ontouchend="e=>e.preventDefault()">มี</button>
-</div>
+<!-- Сцены создаются динамически из своих JS-модулей -->
 
-<!-- Sound toggle -->
-<button id="sound-btn" onclick="toggleSound()" title="Звук"></button>
-<!-- Achievement button -->
-<button id="ach-btn" onclick="openAchievements()" title="Достижения"></button>
-<!-- Fullscreen button — desktop only -->
-<button id="fullscreen-btn" onclick="toggleFullscreen()"></button>
-
-<script src="game.js?v=9" defer></script>
+<script type="module" src="game.js?v=1" defer></script>
 </body>
 </html>
