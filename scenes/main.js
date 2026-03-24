@@ -35,7 +35,8 @@ const monkSheet = new Image(); monkSheet.src = 'assets/sprites/monk_red.png';
 
 // ── Scene constants (in BG px, BG = 2000×1116) ────────────────────────────
 const BG_W = 2000, BG_H = 1116;
-const GROUND_Y = 920;
+const GROUND_Y      = 920;   // плоскость монаха/кота (фон)
+const HERO_GROUND_Y = 980;   // плоскость героя — чуть ближе к камере
 const HERO_SPEED = 5;  // BG px per frame
 
 // Hero display size — proportional to sprite frame ratio (275/348 = 0.791)
@@ -83,7 +84,7 @@ let inscriptionGlow = 0;
 
 // ── Hero ───────────────────────────────────────────────────────────────────
 const hero = {
-  x: 300, y: GROUND_Y,
+  x: 300, y: HERO_GROUND_Y,
   targetX:  null,   // click-to-move target (BG px)
   facing:   'right',
   walking:  false,
@@ -378,22 +379,6 @@ function animate() {
     ctx.restore();
   }
 
-  // ── Hero ──────────────────────────────────────────────────────────────────
-  const hp  = bgToCanvas(hero.x, hero.y);
-  const heroImg = hero.praying ? heroImgS : (hero.facing === 'left' ? heroImgL : heroImgR);
-  const hW  = hero.praying ? HERO_SIT_W   : HERO_STAND_W;
-  const hH  = hero.praying ? HERO_SIT_H   : HERO_STAND_H;
-  if (heroImg.complete && heroImg.naturalWidth) {
-    const frameW = heroImg.naturalWidth / HERO_FRAMES;
-    const frame  = Math.floor(tick / 10) % HERO_FRAMES;
-    ctx.drawImage(heroImg,
-      frame * frameW, 0, frameW, heroImg.naturalHeight,
-      hp.x - (hW / 2) * sx, hp.y - hH * sy, hW * sx, hH * sy);
-  } else {
-    ctx.fillStyle = '#c87040';
-    ctx.fillRect(hp.x - 16 * sx, hp.y - hH * sy, 32 * sx, hH * sy);
-  }
-
   // ── Cat ───────────────────────────────────────────────────────────────────
   const cp = bgToCanvas(CAT_X, GROUND_Y - CAT_H);
   if (catSheet.complete && catSheet.naturalWidth) {
@@ -417,6 +402,22 @@ function animate() {
   } else {
     ctx.fillStyle = '#c04030';
     ctx.fillRect(mp.x, mp.y, MONK_W * sx, MONK_H * sy);
+  }
+
+  // ── Hero — рисуется после монаха/кота (ближе к камере) ───────────────────
+  const hp  = bgToCanvas(hero.x, hero.y);
+  const heroImg = hero.praying ? heroImgS : (hero.facing === 'left' ? heroImgL : heroImgR);
+  const hW  = hero.praying ? HERO_SIT_W   : HERO_STAND_W;
+  const hH  = hero.praying ? HERO_SIT_H   : HERO_STAND_H;
+  if (heroImg.complete && heroImg.naturalWidth) {
+    const frameW = heroImg.naturalWidth / HERO_FRAMES;
+    const frame  = Math.floor(tick / 10) % HERO_FRAMES;
+    ctx.drawImage(heroImg,
+      frame * frameW, 0, frameW, heroImg.naturalHeight,
+      hp.x - (hW / 2) * sx, hp.y - hH * sy, hW * sx, hH * sy);
+  } else {
+    ctx.fillStyle = '#c87040';
+    ctx.fillRect(hp.x - 16 * sx, hp.y - hH * sy, 32 * sx, hH * sy);
   }
 
   // ── Cat burying timer ─────────────────────────────────────────────────────

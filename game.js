@@ -31,3 +31,14 @@ loadAchievements();
 AudioSystem.init();
 renderHotbar();
 initMain();
+
+// ── Временная кнопка сброса (потом убрать) ──────────────────────────────────
+{
+  const btn = document.createElement('button');
+  btn.className = 'ui-btn';
+  btn.title = 'Сбросить игру';
+  btn.textContent = '↺';
+  btn.style.cssText = 'position:fixed;top:14px;right:56px;z-index:300;';
+  btn.onclick = () => { SaveManager.reset(); location.reload(); };
+  document.body.appendChild(btn);
+}

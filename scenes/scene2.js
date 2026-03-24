@@ -206,6 +206,7 @@ function createEl() {
   back.className = 'back-btn';
   back.textContent = '←';
   back.onclick = closeSceneScene2;
+  back.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); closeSceneScene2(); }, { passive: false });
 
   msgEl = document.createElement('div');
   msgEl.className = 'scene-msg';

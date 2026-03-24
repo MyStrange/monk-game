@@ -32,7 +32,7 @@ function _spawnFlies(n) {
     y:  Math.random() * bH,
     vx: (Math.random() - 0.5) * 1.2,
     vy: (Math.random() - 0.5) * 0.8,
-    sz: 2 + Math.random() * 2,
+    sz: 14 + Math.random() * 14,
     br: Math.random(),
     bv: (Math.random() - 0.5) * 0.025,
     alive: true,
@@ -135,7 +135,9 @@ function _buildFlyroom() {
   const back = document.createElement('button');
   back.className = 'back-btn';
   back.textContent = '←';
-  back.onclick = e => { e.stopPropagation(); flyroomEl.style.display = 'none'; };
+  const _closeFlyr = e => { e.stopPropagation(); e.preventDefault(); flyroomEl.style.display = 'none'; };
+  back.onclick = _closeFlyr;
+  back.addEventListener('touchend', _closeFlyr, { passive: false });
 
   flyroomEl.appendChild(bg);
   flyroomEl.appendChild(frCanvas);
@@ -396,6 +398,7 @@ function createEl() {
   back.className = 'back-btn';
   back.textContent = '←';
   back.onclick = closeSceneBuddha;
+  back.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); closeSceneBuddha(); }, { passive: false });
 
   bMsgEl = document.createElement('div');
   bMsgEl.className = 'scene-msg';
