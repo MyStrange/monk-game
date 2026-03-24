@@ -3,6 +3,7 @@
 // Версия: v1
 
 import { SaveManager }                      from './src/save.js';
+import { state }                            from './src/state.js';
 import { AudioSystem, toggleSound }         from './src/audio.js';
 import { renderHotbar }                     from './src/hotbar.js';
 import { toggleFullscreen }                 from './src/utils.js';
@@ -21,6 +22,11 @@ Object.assign(window, {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 SaveManager.load();
+
+// Восстановить инвентарь из сохранения
+const _savedInv = SaveManager.global.inventory;
+if (_savedInv) for (let i = 0; i < 5; i++) state.inventory[i] = _savedInv[i] ?? null;
+
 loadAchievements();
 AudioSystem.init();
 renderHotbar();

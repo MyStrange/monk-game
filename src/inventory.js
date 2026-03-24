@@ -1,7 +1,13 @@
 // src/inventory.js — ITEM_DEFS, makeItem, addItem, getSelectedItem
 // Новый предмет: добавить сюда + icons.js + zone-msgs.js
 
-import { state } from './state.js';
+import { state }       from './state.js';
+import { SaveManager } from './save.js';
+
+function _saveInv() {
+  SaveManager.global.inventory = state.inventory.map(i => i ? { ...i } : null);
+  SaveManager.save();
+}
 
 // ── Item definitions ───────────────────────────────────────────────────────
 // Нет полей `look` и `icon` — оба удалены.
@@ -67,12 +73,14 @@ export function addItem(item) {
   const idx = state.inventory.findIndex(s => s === null);
   if (idx === -1) return false;  // инвентарь полон
   state.inventory[idx] = item;
+  _saveInv();
   return true;
 }
 
 export function removeItem(idx) {
   state.inventory[idx] = null;
   if (state.selectedSlot === idx) state.selectedSlot = -1;
+  _saveInv();
 }
 
 export function getSelectedItem() {

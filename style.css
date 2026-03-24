@@ -156,6 +156,10 @@ canvas{
   border-color:#f0c040;
   box-shadow:0 0 18px rgba(240,192,64,0.4);
 }
+/* На десктопе (точный указатель + широкий экран) — скрыть */
+@media (pointer:fine) and (min-width:768px){
+  .pray-btn{ display:none; }
+}
 /* На мобиле — справа внизу */
 @media (pointer:coarse){
   .pray-btn{
