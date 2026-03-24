@@ -1,18 +1,39 @@
 # CLAUDE.md — Monk Game Rules
 
-**Полная документация**: читай `CLAUDE_INSTRUCTIONS.md` перед любой правкой.
+> Ветка: `perfectmonk` | GitHub: https://github.com/MyStrange/monk-game
+
+---
+
+## ОБЯЗАТЕЛЬНО ПЕРЕД ЛЮБОЙ ПРАВКОЙ
+
+1. При добавлении **сцены** → прочти `scenes/_TEMPLATE.js` целиком
+2. При добавлении **предмета** → прочти `src/inventory.js` + `src/icons.js` + `src/zone-msgs.js`
+3. При добавлении **диалога** → прочти `src/dialogue.js`
+4. При добавлении **комбо** → прочти `src/combos.js`
+
+---
+
+## TOKEN BUDGET — что читать для каждой задачи
+
+| Задача | Читать | Не читать |
+|---|---|---|
+| Новая сцена | `scenes/_TEMPLATE.js` + 1 строка `src/nav.js` | остальное |
+| Новый предмет | `src/inventory.js`, `src/icons.js`, `src/zone-msgs.js` | сцены |
+| Диалог/текст | `src/dialogue.js` | — |
+| Предмет × предмет | `src/combos.js` | сцены |
+| Предмет × зона | только сам файл сцены | combos.js |
+| Звук | `src/audio.js` | — |
+| Ачивка | `src/achievements.js` | — |
+| Пролог (слайды) | `scenes/prologue.js` + `src/sequence.js` | — |
 
 ---
 
 ## ЧЕК-ЛИСТ: Добавить новый предмет
 
-Когда пользователь говорит «добавь предмет X» — пройди ВСЕ пункты по порядку.
-Не начинай кодить, пока не заполнил каждый блок.
-
-### 1. Определение предмета (`ITEM_DEFS`)
+### 1. Определение предмета (`ITEM_DEFS` в `src/inventory.js`)
 - [ ] `id` — уникальный, snake_case
 - [ ] `label` — короткое название (для хотбара)
-- [ ] `description` — что игрок видит в контекст-меню (1–2 предложения, тон игры: тихий, ироничный)
+- [ ] `description` — что игрок видит в контекст-меню (1–2 предл., тон: тихий, ироничный)
 - [ ] Нет поля `look` и `icon` — оба удалены, не добавлять
 
 ### 2. Где берётся предмет
@@ -21,41 +42,39 @@
 - [ ] Нужен ли флаг `xPickedUp` чтобы не выдавать дважды?
 - [ ] Через `addItem(makeItem('id', {...}))` — не вручную
 
-### 3. Флейворные сообщения — предмет × зона (`ZONE_MSGS`)
-Для КАЖДОЙ зоны во ВСЕХ сценах, где предмет может быть активным, нужна хоть одна строка.
-Минимум — главная сцена (все зоны):
+### 3. SVG иконка (`src/icons.js`)
+- [ ] Написать `renderXIcon()` — только `<rect>` элементы, никаких `<path>/<circle>`
+- [ ] Добавить ветку в `renderItemIcon()` (dispatch)
+- [ ] Проверить отображение в хотбаре и курсоре
 
-| Зона | Нужно? | Написано? |
-|---|---|---|
-| `statue` | почти всегда | |
-| `tree` | почти всегда | |
-| `cat` | почти всегда | |
-| `monk` | почти всегда | |
-| `bush` | почти всегда | |
-| `water` | если предмет не водный | |
-| `dirt` | если предмет не земляной | |
+### 4. Флейворные сообщения (`src/zone-msgs.js`)
+Для каждой зоны во всех сценах где предмет может быть активным — хотя бы одна строка.
+Минимум — главная сцена:
 
-Сцена 2 (корни) — если предмет может быть там:
+| Зона | Написано? |
+|---|---|
+| `statue` | |
+| `tree` | |
+| `cat` | |
+| `monk` | |
+| `bush` | |
+| `water` | |
+| `dirt` | |
 
-| Зона | Нужно? | Написано? |
-|---|---|---|
-| `rock1` | если предмет не активирует камень | |
-| `rock2` | — | |
-| `rock3` | — | |
-| `bottle` | если предмет можно применить к банке | |
+Сцена 2 (корни):
 
-Будда — если предмет может быть там:
+| Зона | Написано? |
+|---|---|
+| `rock1` | |
+| `rock2` | |
+| `rock3` | |
+| `bottle` | |
 
-| Зона | Нужно? | Написано? |
-|---|---|---|
-| `ear` | если уже использовали ухо | |
+**Правило тона**: минимум 2–3 варианта строки (массив). Не писать «ничего не произошло».
 
-**Правило тона**: каждая зона должна давать что-то интересное — деталь о характере героя, наблюдение, короткую шутку. Не писать «ничего не произошло». Минимум 2–3 варианта строки (массив), чтобы повторные клики давали новый текст.
+### 5. Комбинации предмет × предмет (`src/combos.js`)
 
-### 4. Комбинации предмет × предмет (`ITEM_COMBO`)
-Для КАЖДОГО существующего предмета подумай: что происходит если их соединить?
-
-| Существующий предмет | Комбо с новым? | Что происходит |
+| Существующий предмет | Комбо? | Что происходит |
 |---|---|---|
 | `stick` | | |
 | `glowstick` | | |
@@ -65,93 +84,95 @@
 | `durian` | | |
 | `fireflower` | | |
 
-- Если комбо **осмысленное** → добавить в `ITEM_COMBO` с `condition`, `failMsg`, `apply`
-- Если комбо **бессмысленное, но смешное** → добавить `failMsg` который объясняет почему нет
-- Если комбо **совсем не предполагается** → ничего не делать (вернётся `null` = просто смена выбора)
-
-### 5. Контекст-меню и описание
-- [ ] Проверить что `description` соответствует тону игры
-- [ ] Написать `renderXIcon()` функцию и добавить ветку в `renderHotbar()` и `updateItemCursor()`
-
-### 6. Сцены с персонажем без персонажа
-- [ ] Если предмет применяется в сцене БЕЗ героя (buddha, scene2) — проверить что `itemOnZone` корректно обрабатывает зоны этой сцены, а `showMsg` заменён на `showS2Msg` / `showBMsg`
+- Осмысленное комбо → `ITEM_COMBO` с `condition`, `failMsg`, `apply`
+- Смешное несочетание → `failMsg` (объясняет почему нет)
+- Нет комбо → ничего (вернётся `null` = смена выбора)
 
 ---
 
 ## ЧЕК-ЛИСТ: Добавить новую сцену
 
-- [ ] Добавить в `SCENE_DEFS` с `canLeave` (когда можно уйти?) и `leaveBlockMsg`
-- [ ] `openSceneX()` начинается с `leaveMain()`
-- [ ] `closeSceneX()` проверяет `canLeaveScene('X')` перед закрытием
-- [ ] `closeSceneX()` вызывает `cancelAnimationFrame(sXAnimId); sXAnimId=null`
-- [ ] `window.closeSceneX = closeSceneX` (доступ из HTML back-button)
-- [ ] Сообщения только через `showMsgIn(el, text, dur)` — не через `.textContent`
-- [ ] Добавить `<link rel="preload">` для фона в `index.html` если новый asset
-- [ ] Описать сцену в `CLAUDE_INSTRUCTIONS.md`
+> **Перед написанием → прочти `scenes/_TEMPLATE.js` целиком и скопируй его.**
 
-**Паттерн сцены с картинкой** (как scene2, buddha, scene4):
+- [ ] Скопировать `scenes/_TEMPLATE.js` → `scenes/my_scene.js`
+- [ ] Заменить все `SCENEID` на реальный id (snake_case)
+- [ ] Добавить в `src/nav.js` → `NAV_MAP` одну строку
+- [ ] `openSceneXXX()` начинается с `leaveMain()`
+- [ ] `closeSceneXXX()` вызывает `cancelAnimationFrame(animId); animId = null`
+- [ ] `window.closeSceneXXX = closeSceneXXX` — в конце файла сцены (не в game.js!)
+- [ ] Сообщения через `const showMsg = (t,d) => showMsgIn(msgEl, t, d)` — не `.textContent`
+- [ ] Добавить `<link rel="preload">` для фона в `index.html` если новый ассет
+
+**Паттерн сцены с картинкой:**
 ```js
-// В createSceneXEl():
 const bg = document.createElement('img');
 bg.src = 'assets/bg/X.jpeg';
-bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;...';
+bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
 const canvas = document.createElement('canvas');
 canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
-el.appendChild(bg); el.appendChild(canvas); // bg сначала!
+el.appendChild(bg); el.appendChild(canvas); // bg ПЕРВЫМ
 ```
-Для сцен с загрузкой картинки — `showLoading` → `img.onload` → `hideLoading`.
+Загрузка: `showLoading` → `img.onload` → `hideLoading`.
+
+**Паттерн пролога (слайды)** — используй `src/sequence.js`:
+```js
+import { Sequence } from '../src/sequence.js';
+const seq = new Sequence(SLIDES, onEnd);
+// SLIDES = [{ text, duration? }, ...]
+// onEnd — вызывается после последнего слайда
+```
 
 ---
 
-## ЧЕК-ЛИСТ: Добавить новое взаимодействие (зона → действие)
+## ЧЕК-ЛИСТ: Добавить взаимодействие (зона → действие)
 
 - [ ] Это флейвор (только текст) или действие (меняет состояние)?
-- [ ] Флейвор → `ZONE_MSGS`, не трогать `itemOnZone`
-- [ ] Действие → добавить блок в `itemOnZone`, в конце `return null` (не `return 'текст'`)
+- [ ] Флейвор → `src/zone-msgs.js`, не трогать сцену
+- [ ] Действие → блок в `interactItem()` в файле сцены, в конце `return`
 - [ ] После изменения инвентаря → `renderHotbar()`
-- [ ] Сообщение через правильную функцию для текущей сцены
+- [ ] Сообщение через локальный `showMsg(text)`
 
 ---
 
-## Инварианты — никогда не нарушать:
+## Инварианты — никогда не нарушать
 
 ### Инвентарь
 - `selectedSlot` — единственный источник правды о выбранном предмете
-- `itemOnItem(a,b)` → `string` = ошибка (оставить выбор), `false` = успех (снять выбор), `null` = нет комбо
-- `itemOnZone(id,zone)` → `string` = показать сообщение, `null` = действие выполнено внутри
-- Удалить предмет: `inventory[idx]=null` + `if(selectedSlot===idx)selectedSlot=-1` + `renderHotbar()`
+- `itemOnItem(a,b)` → `string` = ошибка (оставить выбор) | `false` = успех | `null` = нет комбо
+- Удалить предмет: `inventory[idx]=null` + `if(selectedSlot===idx) selectedSlot=-1` + `renderHotbar()`
 - `renderHotbar()` уже вызывает `updateItemCursor()` — не дублировать
 
 ### Переходы между сценами
-- Открыть сцену → `leaveMain()` первым делом (сбрасывает медитацию и `draggedSym`)
-- Закрыть сцену → проверь `canLeaveScene(id)` сначала
-- `activeScreen` строго: `'main'` | `'scene2'` | `'buddha'` | `'scene3'` | `'scene4'`
+- Открыть сцену → `leaveMain()` **первым делом**
+- Закрыть сцену → `canLeave(id, S)` из `src/nav.js` перед закрытием
+- `activeScreen` — строго ключ из `NAV_MAP`: `'main'|'scene2'|'buddha'|'scene3'|'scene4'|'menu'|'prologue'`
 
 ### Медитация
-- Конец медитации — всегда через `standUp()` (чистит `pSyms`, `mParticles`, аудио)
-- `draggedSym=null` при любом выходе с главного экрана (делает `leaveMain()`)
+- Конец медитации — только через `standUp()` (чистит `pSyms`, `mParticles`, аудио)
+- `draggedSym = null` при любом выходе → делает `leaveMain()`
 - scene4 открывается только если `inscriptionReady === true`
 
-### Сообщения — строго по сцене
-| Сцена | Функция |
-|---|---|
-| main | `showMsg(text)` |
-| scene2 | `showS2Msg(text)` |
-| buddha | `showBMsg(text)` |
-| другие | `showMsgIn(el, text, dur)` |
-Никогда не трогать `.textContent` / `.style.display` напрямую у message-элементов.
+### Сообщения — единый паттерн
+**Каждая сцена** объявляет локальный алиас в начале:
+```js
+const showMsg = (t, d) => showMsgIn(msgEl, t, d);
+```
+Никаких `showS2Msg` / `showBMsg` / прямых `.textContent`.
+
+### state.js — не расширять
+Только 3 поля навсегда: `inventory`, `selectedSlot`, `activeScreen`.
+Флаги сцены → в файле сцены через `SaveManager.getScene(id)`.
 
 ---
 
-## Визуальный стиль — строгие правила
+## Визуальный стиль
 
-### Иконки предметов — только пиксель-арт SVG, никаких эмодзи
-Все предметы отображаются через функции `renderXIcon()`, возвращающие SVG-строку.
-- В `ITEM_DEFS` поле `icon` — только для fallback или внутреннего использования
-- В `renderHotbar()` и `updateItemCursor()` — ВСЕГДА проверяй есть ли render-функция
-- Каждый новый предмет требует `renderXIcon()` перед добавлением в игру
+### Иконки — только пиксель-арт SVG
+- Только `<rect>` элементы, `image-rendering:pixelated`
+- Никаких `<path>`, `<circle>`, `<polygon>`, эмодзи
+- Палитра: тёмные оттенки + один яркий акцент
 
-**Текущие SVG render-функции:**
+**Текущие функции:**
 | Предмет | Функция |
 |---|---|
 | `jar`, `jar_open` | `renderJarIcon(item)` |
@@ -160,83 +181,65 @@ el.appendChild(bg); el.appendChild(canvas); // bg сначала!
 | `dirt` | `renderDirtIcon()` |
 | `fireflower` | `renderFireflowerIcon()` |
 
-**Шаблон для нового предмета:**
-```js
-function renderXIcon() {
-  return `<svg width="48" height="48" viewBox="0 0 48 48"
-    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <!-- pixel rects only, no paths/curves -->
-  </svg>`;
-}
-```
-Пиксель-арт = только `<rect>` элементы. Никаких `<path>`, `<circle>`, `<polygon>`.
-Палитра: тёмные оттенки + один яркий акцент. Смотри `renderStickIcon()` как эталон.
-
-Добавить ветку в `renderHotbar()`:
-```js
-} else if (item.id === 'x') {
-  div.innerHTML = `<span class="slot-icon">${renderXIcon()}</span>`;
-```
-
 ### Загрузка и ошибки
-Всегда использовать единую систему:
 ```js
-showLoading('текст')   // показать оверлей с анимацией
-hideLoading()           // скрыть (fade)
-showError('текст')      // ошибка — клик закрывает
-```
-При загрузке новых assets (картинки для сцен):
-```js
-showLoading('название сцены');
-img.onerror = () => showError('не удалось загрузить сцену');
-img.onload  = () => { hideLoading(); /* продолжить */ };
+showLoading('текст')   // оверлей с анимацией
+hideLoading()          // скрыть (fade)
+showError('текст')     // ошибка — клик закрывает
 ```
 
 ---
 
-## Тон игры — для всех текстов
+## Тон игры
 
 Тихий, поэтичный, философский, чуть ироничный. Персонаж наблюдает, а не объясняет.
-- Хорошо: «Кот посмотрел на чешую. Потом на тебя. Что-то понял.»
-- Плохо: «Нельзя использовать этот предмет здесь.»
-- Хорошо: «Дерево не нуждается в твоей чешуе. Дерево вообще ни в чём не нуждается.»
-- Плохо: «Ничего не произошло.»
+- ✓ «Кот посмотрел на дуриан. Потом на тебя. Что-то понял.»
+- ✗ «Нельзя использовать этот предмет здесь.»
+- ✓ «Дерево не нуждается в твоей чешуе. Дерево вообще ни в чём не нуждается.»
+- ✗ «Ничего не произошло.»
 
-Каждый текст — это маленькая деталь мира или характера. Минимум 2 варианта в массиве.
-
----
-
-## Архитектура DATA LAYER (начало game.js):
-
-```
-ITEM_DEFS    → реестр предметов (id, label, icon, description, look)
-SCENE_DEFS   → реестр сцен (canLeave, leaveBlockMsg)
-ITEM_COMBO   → комбо предметов (condition, failMsg, apply)
-ZONE_MSGS    → флейворные сообщения (itemId:zone → string[])
-makeItem(id) → создать экземпляр предмета из реестра
-leaveMain()  → вызывать перед любым openSceneX()
-```
+Минимум 2 варианта в массиве для каждой зоны.
 
 ---
 
-## Git workflow:
-```
-git add <файл> && git commit -m 'описание' && git push origin main
-```
-Если push rejected: `git pull --rebase origin main` → затем push.
+## Ожидаемые размеры файлов
 
-Если загрузка игры зависает (кэш браузера): поднять версию в `index.html`:
+| Файл | Строк | Растёт? |
+|---|---|---|
+| `game.js` | ~30 | никогда |
+| `src/state.js` | ~10 | никогда |
+| `src/nav.js` | ~35 + N | +1 строка на сцену |
+| `src/inventory.js` | ~80 | +5 строк на предмет |
+| `src/icons.js` | ~500 | +30 строк на предмет |
+| `src/combos.js` | ~120 | +5 строк на комбо |
+| `src/zone-msgs.js` | ~150 | +3 строки на зону×предмет |
+| `src/dialogue.js` | ~150 | +N строк на диалог |
+| `src/sequence.js` | ~50 | не растёт |
+| `scenes/_TEMPLATE.js` | ~150 | никогда |
+| `scenes/my_scene.js` | 120–250 | изолировано |
+| `scenes/main.js` | ~600 | рефакторить если >700 |
+
+> Если `main.js` > 700 строк → вынести медитацию в `src/meditation.js`
+
+---
+
+## Git workflow
+```
+git add <файл> && git commit -m 'описание' && git push origin perfectmonk
+```
+Если push rejected: `git pull --rebase origin perfectmonk` → затем push.
+
+Кэш браузера завис → поднять версию в `index.html`:
 ```html
 <script src="game.js?v=N" defer></script>  <!-- N++ -->
 ```
 
 Не пушить: `CLAUDE_INSTRUCTIONS.md`, `.claude/`, `.DS_Store`.
-CLAUDE.md — пушить (это часть проекта).
+Пушить: `CLAUDE.md` (часть проекта).
 
 ---
 
 ## Правило обновления .md файлов
-- **CLAUDE_INSTRUCTIONS.md** — обновлять при каждом значимом изменении архитектуры, новых ассетах, новых правилах. Ставить дату.
-- **CLAUDE.md** — обновлять если меняются паттерны/чеклисты/инварианты.
-- **При нехватке места в беседе** — перечитывать `CLAUDE_INSTRUCTIONS.md` чтобы восстановить контекст.
-- Не переписывать полностью — только изменившиеся секции.
+- **CLAUDE.md** — обновлять при изменении паттернов, инвариантов, новых сценах/предметах
+- **CLAUDE_INSTRUCTIONS.md** — детали ассетов, спрайтов, зон (не пушить)
+- Не переписывать полностью — только изменившиеся секции

@@ -14,6 +14,8 @@ export const NAV_MAP = {
   buddha:  { open: 'scenes/buddha.js',         canLeave: (S) => !S.wishPlaying, block: 'Подожди...' },
   scene3:  { open: 'scenes/scene3.js',         canLeave: ()  => true,   block: null },
   scene4:  { open: 'scenes/scene4.js',         canLeave: ()  => true,   block: null },
+  menu:    { open: 'scenes/menu.js',           canLeave: ()  => true,   block: null },
+  prologue:{ open: 'scenes/prologue.js',       canLeave: ()  => true,   block: null },
   // new_scene: { open: 'scenes/new_scene.js', canLeave: () => true,    block: null },
 };
 
