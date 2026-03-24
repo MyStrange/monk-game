@@ -57,6 +57,21 @@ function _pick(arr) {
   return arr[idx];
 }
 
+// ── Global fallback (любой предмет × любая зона без записи) ───────────────
+const _FALLBACK = [
+  'Ничего не происходит. Предмет делает вид, что не слышит.',
+  'Снова ничего. Либо ты что-то делаешь не так, либо — всё так, и в этом проблема.',
+  'В третий раз это уже традиция.',
+];
+const _fallbackCounts = {};
+
+function _fallbackPick(key) {
+  _fallbackCounts[key] = (_fallbackCounts[key] ?? 0);
+  const msg = _FALLBACK[Math.min(_fallbackCounts[key], _FALLBACK.length - 1)];
+  _fallbackCounts[key]++;
+  return msg;
+}
+
 // ── getZoneMsg ─────────────────────────────────────────────────────────────
 // itemId: string | null (null = кнопка без предмета)
 // zone:   string
@@ -74,7 +89,6 @@ export function getZoneMsg(itemId, zone, item = null) {
   if ((itemId === 'jar' || itemId === 'jar_open') && item?.glowing) {
     const glowKey = `jar_glowing:${zone}`;
     if (ZONE_MSGS[glowKey]) return _pick(ZONE_MSGS[glowKey]);
-    // Fallback для любой другой зоны
     return 'Свет из банки. Тихо.';
   }
 
@@ -88,7 +102,8 @@ export function getZoneMsg(itemId, zone, item = null) {
     if (ZONE_MSGS[rockKey]) return _pick(ZONE_MSGS[rockKey]);
   }
 
-  return null;
+  // Глобальный fallback — ироничный текст
+  return _fallbackPick(`${itemId}:${zone}`);
 }
 
 // ── resetCounters (для тестов) ─────────────────────────────────────────────

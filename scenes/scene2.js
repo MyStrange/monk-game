@@ -8,7 +8,7 @@ import { getZoneMsg }    from '../src/zone-msgs.js';
 import { renderHotbar }  from '../src/hotbar.js';
 import { SaveManager }   from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
-import { trackZoneClick, trackEmptyClick } from '../src/achievements.js';
+import { trackZoneClick, trackEmptyClick, trackSpotClick } from '../src/achievements.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('scene2');
@@ -97,6 +97,8 @@ function interactItem(itemId, zone) {
   // glowstick on rock
   if (itemId === 'glowstick' && isRock) {
     S.rockStates[zone] = true;
+    state.selectedSlot = -1;
+    renderHotbar();
     showMsg('Свет из палки переходит в камень. Камень начинает тихо светиться.');
     return;
   }
@@ -109,11 +111,10 @@ function interactItem(itemId, zone) {
     if (!jar.glowing && !jar.released && jar.caught === 0 && !jar.hasWater) {
       showMsg('В банке ничего нет. Нечем светить.'); return;
     }
-    // stick → glowstick, jar → jar_open empty
     const stickSlot = getItemSlot('stick');
     state.inventory[stickSlot] = makeItem('glowstick');
-    const newJar = makeItem('jar_open');
-    state.inventory[jarSlot] = newJar;
+    state.inventory[jarSlot]   = makeItem('jar_open');
+    state.selectedSlot = -1;
     renderHotbar();
     showMsg('Палка коснулась банки — и впитала весь свет. Банка снова пустая.');
     return;
@@ -140,6 +141,7 @@ function zoneClick(zone) {
 // ── onTap ──────────────────────────────────────────────────────────────────
 function onTap(cx, cy) {
   if (state.activeScreen !== 'scene2') return;
+  trackSpotClick(cx, cy, 'scene2');
   const item = getSelectedItem();
   const zone = hitZone(cx, cy);
 

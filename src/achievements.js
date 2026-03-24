@@ -7,33 +7,33 @@ import { renderEyeIcon, renderCompassIcon, renderVoidIcon } from './icons.js';
 // condition(stats) → bool
 // stats: { maxZoneClicks, zonesVisited (Set), emptyClickCount }
 export const ACHIEVEMENT_DEFS = [
-  // stub — повторные клики по одному месту
+  // stub — повторные клики буквально по одному пятачку
   {
     id:        'stub_1',
     category:  'stub',
     level:     1,
     title:     'Путь паломника',
-    desc:      'Пять раз на одно место. Оно всё ещё там.',
+    desc:      'Пять раз в одну точку. Место запомнило тебя.',
     icon:      renderEyeIcon,
-    condition: s => s.maxZoneClicks >= 5,
+    condition: s => s.maxSpotClicks >= 5,
   },
   {
     id:        'stub_2',
     category:  'stub',
     level:     2,
     title:     'Колесо сансары',
-    desc:      'Пятнадцать кликов по одному месту. Ты и есть колесо.',
+    desc:      'Десять раз в одно и то же место. Ты и есть колесо.',
     icon:      renderEyeIcon,
-    condition: s => s.maxZoneClicks >= 15,
+    condition: s => s.maxSpotClicks >= 10,
   },
   {
     id:        'stub_3',
     category:  'stub',
     level:     3,
     title:     'Просветление повторением',
-    desc:      'Тридцать раз. Место устало. Ты — нет.',
+    desc:      'Пятнадцать. Точка стала частью тебя. Или ты — её.',
     icon:      renderEyeIcon,
-    condition: s => s.maxZoneClicks >= 30,
+    condition: s => s.maxSpotClicks >= 15,
   },
 
   // exp — уникальные зоны
@@ -101,10 +101,12 @@ const TOAST_DUR = 3800;
 
 let _unlocked = new Set();
 let _stats = {
-  maxZoneClicks:  0,
+  maxZoneClicks:   0,
   zoneClickCounts: {},  // zone → count
-  zonesVisited:   new Set(),
+  zonesVisited:    new Set(),
   emptyClickCount: 0,
+  maxSpotClicks:   0,
+  spotCounts:      {},  // 'scene:bx,by' → count
 };
 
 // ── Storage ────────────────────────────────────────────────────────────────
@@ -131,6 +133,15 @@ export function trackZoneClick(zone) {
 
 export function trackEmptyClick() {
   _stats.emptyClickCount++;
+  _checkAll();
+}
+
+// cx, cy — canvas coords; sceneId — 'main'|'scene2'|'buddha'
+export function trackSpotClick(cx, cy, sceneId) {
+  const BUCKET = 25;
+  const key = `${sceneId}:${Math.floor(cx / BUCKET)},${Math.floor(cy / BUCKET)}`;
+  _stats.spotCounts[key] = (_stats.spotCounts[key] ?? 0) + 1;
+  _stats.maxSpotClicks = Math.max(_stats.maxSpotClicks, _stats.spotCounts[key]);
   _checkAll();
 }
 

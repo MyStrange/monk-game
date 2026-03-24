@@ -7,7 +7,7 @@ import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
 import { AudioSystem }     from '../src/audio.js';
 import { openScene }       from '../src/nav.js';
-import { trackZoneClick, trackEmptyClick } from '../src/achievements.js';
+import { trackZoneClick, trackEmptyClick, trackSpotClick } from '../src/achievements.js';
 import { SaveManager }     from '../src/save.js';
 import {
   catMsgs, monkMsgs, MEDITATE_MSGS,
@@ -36,6 +36,7 @@ const monkSheet = new Image(); monkSheet.src = 'assets/sprites/monk_red.png';
 // ── Scene constants (in BG px, BG = 2000×1116) ────────────────────────────
 const BG_W = 2000, BG_H = 1116;
 const GROUND_Y = 920;
+const HERO_SPEED = 5;  // BG px per frame
 
 // Hero display size — proportional to sprite frame ratio (275/348 = 0.791)
 const HERO_STAND_H = 420;
@@ -70,8 +71,6 @@ const ZONES_BG = {
 // ── Persistent scene state ────────────────────────────────────────────────
 const S = SaveManager.getScene('main');
 S.stickPickedUp     = S.stickPickedUp     ?? false;
-S.dirtReady         = S.dirtReady         ?? false;
-S.dirtPickedUp      = S.dirtPickedUp      ?? false;
 S.inscriptionCharge = S.inscriptionCharge ?? 0;
 S.inscriptionReady  = S.inscriptionReady  ?? false;
 
@@ -85,10 +84,15 @@ let inscriptionGlow = 0;
 // ── Hero ───────────────────────────────────────────────────────────────────
 const hero = {
   x: 300, y: GROUND_Y,
-  vx: 0, walking: false,
-  praying: false,
+  targetX:  null,   // click-to-move target (BG px)
+  facing:   'right',
+  walking:  false,
+  praying:  false,
   frame: 0, frameTick: 0,
 };
+
+// Held keys for smooth movement
+const keysHeld = {};
 
 // ── Meditation ─────────────────────────────────────────────────────────────
 let meditationPhase  = 0;
@@ -126,11 +130,6 @@ function hitZoneBG(cx, cy) {
     if (bx >= iz.x && bx < iz.x + iz.w && by >= iz.y && by < iz.y + iz.h)
       return 'inscription';
   }
-  if (S.dirtReady && !S.dirtPickedUp) {
-    const dz = ZONES_BG.dirt;
-    if (bx >= dz.x && bx < dz.x + dz.w && by >= dz.y && by < dz.y + dz.h)
-      return 'dirt';
-  }
   for (const [name, z] of Object.entries(ZONES_BG)) {
     if (name === 'inscription' || name === 'dirt') continue;
     if (bx >= z.x && bx < z.x + z.w && by >= z.y && by < z.y + z.h) return name;
@@ -150,19 +149,6 @@ function pickUpStick() {
   AudioSystem.playPickup();
   renderHotbar();
   showMsg('Ты нашёл палку в кустах. Зачем-то взял её.');
-  saveMain();
-}
-
-// ── Dirt pickup ────────────────────────────────────────────────────────────
-function pickUpDirt() {
-  if (!S.dirtReady || S.dirtPickedUp) return;
-  if (state.selectedSlot >= 0) { showMsg('Руки заняты.'); return; }
-  S.dirtPickedUp = true;
-  S.dirtReady    = false;
-  addItem(makeItem('dirt'));
-  AudioSystem.playPickup();
-  renderHotbar();
-  showMsg('Ты подобрал горстку земли.');
   saveMain();
 }
 
@@ -226,7 +212,6 @@ function zoneClick(zone) {
   }
 
   if (zone === 'bush')   { pickUpStick(); return; }
-  if (zone === 'dirt')   { pickUpDirt();  return; }
   if (zone === 'statue') { openScene('buddha'); return; }
   if (zone === 'tree')   { openScene('scene2'); return; }
 
@@ -264,6 +249,7 @@ function interactItem(itemId, zone) {
     item.hasWater    = true;
     item.label       = 'с водой';
     item.description = 'Открытая банка с водой. Холодная. Не расплещи.';
+    state.selectedSlot = -1;
     renderHotbar();
     showMsg('Ты зачерпнул воды. Банка стала тяжелее.');
     return;
@@ -276,6 +262,7 @@ function interactItem(itemId, zone) {
 // ── onTap ──────────────────────────────────────────────────────────────────
 function onTap(cx, cy) {
   if (state.activeScreen !== 'main') return;
+  trackSpotClick(cx, cy, 'main');
 
   if (draggedSym) {
     const iz = ZONES_BG.inscription;
@@ -291,6 +278,12 @@ function onTap(cx, cy) {
 
   if (item && zone) { interactItem(item.id, zone); return; }
   if (zone)         { zoneClick(zone); return; }
+
+  // Empty click: walk to clicked position
+  if (!hero.praying) {
+    const bgX = Math.max(80, Math.min(BG_W - 80, cx * BG_W / W));
+    hero.targetX = bgX;
+  }
   trackEmptyClick();
 }
 
@@ -339,6 +332,34 @@ function animate() {
 
   const sx = W / BG_W, sy = H / BG_H;
 
+  // ── Hero movement ─────────────────────────────────────────────────────────
+  if (!hero.praying) {
+    if (keysHeld['ArrowLeft']  || keysHeld['a'] || keysHeld['ф']) {
+      hero.x       = Math.max(80, hero.x - HERO_SPEED);
+      hero.facing  = 'left';
+      hero.walking = true;
+      hero.targetX = null;
+    } else if (keysHeld['ArrowRight'] || keysHeld['d'] || keysHeld['в']) {
+      hero.x       = Math.min(BG_W - 80, hero.x + HERO_SPEED);
+      hero.facing  = 'right';
+      hero.walking = true;
+      hero.targetX = null;
+    } else if (hero.targetX !== null) {
+      const dx = hero.targetX - hero.x;
+      if (Math.abs(dx) > HERO_SPEED) {
+        hero.x      += Math.sign(dx) * HERO_SPEED;
+        hero.facing  = dx > 0 ? 'right' : 'left';
+        hero.walking = true;
+      } else {
+        hero.x       = hero.targetX;
+        hero.targetX = null;
+        hero.walking = false;
+      }
+    } else {
+      hero.walking = false;
+    }
+  }
+
   // ── Fireflies: yellow pixel rects with glow ──────────────────────────────
   for (const f of flies) {
     f.x += f.vx; f.y += f.vy;
@@ -357,16 +378,9 @@ function animate() {
     ctx.restore();
   }
 
-  // ── Dirt pile ─────────────────────────────────────────────────────────────
-  if (S.dirtReady && !S.dirtPickedUp) {
-    const dp = bgToCanvas(ZONES_BG.dirt.x + 20, ZONES_BG.dirt.y + 10);
-    ctx.fillStyle = '#6b3a1f';
-    ctx.fillRect(dp.x, dp.y, 40 * sx, 24 * sy);
-  }
-
   // ── Hero ──────────────────────────────────────────────────────────────────
   const hp  = bgToCanvas(hero.x, hero.y);
-  const heroImg = hero.praying ? heroImgS : heroImgR;
+  const heroImg = hero.praying ? heroImgS : (hero.facing === 'left' ? heroImgL : heroImgR);
   const hW  = hero.praying ? HERO_SIT_W   : HERO_STAND_W;
   const hH  = hero.praying ? HERO_SIT_H   : HERO_STAND_H;
   if (heroImg.complete && heroImg.naturalWidth) {
@@ -409,8 +423,10 @@ function animate() {
   if (catBurying) {
     catBuryTimer++;
     if (catBuryTimer > 180) {
-      catBurying  = false;
-      S.dirtReady = true;
+      catBurying = false;
+      addItem(makeItem('dirt'));
+      AudioSystem.playPickup();
+      renderHotbar();
       showMsg(catBuryDoneMsg);
       saveMain();
     }
@@ -564,7 +580,13 @@ export function initMain() {
     }
   }, { passive: false });
 
-  document.addEventListener('keydown', _onKey);
+  document.addEventListener('keydown', e => { keysHeld[e.key] = true; _onKey(e); });
+  document.addEventListener('keyup',   e => { keysHeld[e.key] = false; });
+
+  // Перезапуск анимации после скрытия вкладки
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && state.activeScreen === 'main' && !animId) animate();
+  });
 
   animate();
 }

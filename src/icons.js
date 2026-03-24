@@ -4,25 +4,34 @@
 // Шаблон: viewBox="0 0 48 48", style="image-rendering:pixelated"
 
 // ── Stick / Glowstick ──────────────────────────────────────────────────────
+// Glowstick: только верхняя треть светится жёлтым, остальное — обычное дерево
 export function renderStickIcon(glowing = false) {
-  const shaft  = glowing ? '#b8ff70' : '#8B6914';
-  const shadow = glowing ? '#5fa020' : '#5a3e00';
-  const knot1  = glowing ? '#d4ffaa' : '#a07820';
-  const knot2  = glowing ? '#4a8010' : '#6b4a00';
-  const glow   = glowing ? '#e8ffcc' : 'none';
+  // Base colours (always brown shaft)
+  const shaft  = '#8B6914';
+  const shadow = '#5a3e00';
+  const knot1  = '#a07820';
+  const knot2  = '#6b4a00';
+
+  // Top-tip glow colours (only first ~3 rects when glowing)
+  const tip    = glowing ? '#ffe860' : shaft;
+  const tipDk  = glowing ? '#ffcc20' : shadow;
+  const tipLt  = glowing ? '#fff4a0' : knot1;
+
   return `<svg width="48" height="48" viewBox="0 0 48 48"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
     ${glowing ? `
-    <rect x="8"  y="6"  width="4" height="4" fill="${glow}" opacity="0.5"/>
-    <rect x="36" y="38" width="4" height="4" fill="${glow}" opacity="0.5"/>
-    <rect x="10" y="2"  width="2" height="2" fill="${glow}" opacity="0.3"/>
-    <rect x="38" y="42" width="2" height="2" fill="${glow}" opacity="0.3"/>
+    <!-- glow aura only around top tip -->
+    <rect x="4"  y="4"  width="6" height="6" fill="#ffe860" opacity="0.45"/>
+    <rect x="6"  y="2"  width="4" height="4" fill="#fff4a0" opacity="0.3"/>
+    <rect x="2"  y="6"  width="4" height="4" fill="#ffe860" opacity="0.25"/>
     ` : ''}
-    <!-- main shaft diagonal -->
-    <rect x="8"  y="8"  width="4" height="4"  fill="${shaft}"/>
-    <rect x="10" y="10" width="4" height="4"  fill="${shaft}"/>
-    <rect x="12" y="12" width="4" height="4"  fill="${shaft}"/>
-    <rect x="14" y="14" width="4" height="4"  fill="${shadow}"/>
+    <!-- top tip — glowing yellow when glowstick -->
+    <rect x="8"  y="8"  width="4" height="4"  fill="${tip}"/>
+    <rect x="10" y="10" width="4" height="4"  fill="${tip}"/>
+    <rect x="12" y="12" width="4" height="4"  fill="${tipDk}"/>
+    <!-- transition: blend yellow→brown -->
+    <rect x="14" y="14" width="4" height="4"  fill="${glowing ? '#c09030' : shadow}"/>
+    <!-- rest of shaft: normal brown -->
     <rect x="16" y="16" width="4" height="4"  fill="${shaft}"/>
     <rect x="18" y="18" width="4" height="4"  fill="${shaft}"/>
     <rect x="20" y="20" width="4" height="4"  fill="${shadow}"/>
@@ -35,63 +44,83 @@ export function renderStickIcon(glowing = false) {
     <rect x="32" y="32" width="4" height="4"  fill="${shadow}"/>
     <rect x="34" y="34" width="4" height="4"  fill="${shaft}"/>
     <rect x="36" y="36" width="4" height="4"  fill="${shaft}"/>
-    <!-- tip -->
-    <rect x="6"  y="8"  width="4" height="2"  fill="${knot1}"/>
+    <!-- tips -->
+    <rect x="6"  y="8"  width="4" height="2"  fill="${tipLt}"/>
     <rect x="38" y="38" width="4" height="2"  fill="${shadow}"/>
   </svg>`;
 }
 
 // ── Jar (closed) / Jar open ────────────────────────────────────────────────
+// Позиции точек-светлячков внутри банки (до 9, индекс = caught-1)
+const _JAR_FLY_DOTS = [
+  [22,22],[28,26],[18,30],
+  [26,20],[20,24],[30,28],
+  [24,32],[16,22],[32,22],
+];
+
 export function renderJarIcon(item) {
-  const open    = item?.id === 'jar_open';
-  const glowing = item?.glowing;
+  const open     = item?.id === 'jar_open';
+  const glowing  = item?.glowing;
+  const released = item?.released;
   const hasWater = item?.hasWater;
-  const caught  = item?.caught ?? 0;
+  const caught   = Math.min(item?.caught ?? 0, 9);
 
-  const glass   = '#c8e8ff';
-  const glassDk = '#7ab0d0';
-  const cap     = open ? 'none' : '#e8c060';
-  const capDk   = open ? 'none' : '#a07820';
-  const base    = '#7ab0d0';
+  // Контур и стекло — почти прозрачные
+  const outline   = '#688090';
+  const glass     = '#e8f4f8';
+  const cap       = open ? 'none' : '#d4a840';
+  const capDk     = open ? 'none' : '#8a6010';
+  const waterTint = '#4880b0';
 
-  // Fly dots inside
-  const flyColor = glowing ? '#ffffa0' : (caught > 0 ? '#a0d070' : 'none');
+  // Режим: светящаяся жижка (после отпускания светлячков)
+  const gooMode = glowing && released;
 
-  // Water tint
-  const waterTint = hasWater ? '#5090c0' : 'none';
+  // Точки светлячков (только когда пойманы, но не released)
+  const flyDots = (!gooMode && caught > 0)
+    ? _JAR_FLY_DOTS.slice(0, caught).map(([x,y]) =>
+        `<rect x="${x}" y="${y}" width="2" height="2" fill="#88cc44"/>`).join('')
+    : '';
 
   return `<svg width="48" height="48" viewBox="0 0 48 48"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    ${glowing ? `
-    <rect x="10" y="10" width="4" height="4" fill="#ffffa0" opacity="0.3"/>
-    <rect x="34" y="10" width="4" height="4" fill="#ffffa0" opacity="0.3"/>
-    <rect x="10" y="34" width="4" height="4" fill="#ffffa0" opacity="0.3"/>
-    <rect x="34" y="34" width="4" height="4" fill="#ffffa0" opacity="0.3"/>
+    ${gooMode ? `
+    <!-- goo glow aura corners -->
+    <rect x="8"  y="8"  width="4" height="4" fill="#ffe040" opacity="0.2"/>
+    <rect x="36" y="8"  width="4" height="4" fill="#ffe040" opacity="0.2"/>
+    <rect x="8"  y="36" width="4" height="4" fill="#ffe040" opacity="0.2"/>
+    <rect x="36" y="36" width="4" height="4" fill="#ffe040" opacity="0.2"/>
     ` : ''}
     <!-- cap -->
     ${!open ? `
     <rect x="16" y="6"  width="16" height="4" fill="${cap}"/>
     <rect x="14" y="8"  width="20" height="2" fill="${capDk}"/>
     ` : ''}
-    <!-- neck -->
-    <rect x="18" y="10" width="12" height="4" fill="${glassDk}"/>
-    <!-- body -->
-    <rect x="12" y="14" width="24" height="22" fill="${glass}"/>
-    <rect x="10" y="16" width="28" height="18" fill="${glass}"/>
+    <!-- neck outline -->
+    <rect x="18" y="10" width="12" height="4" fill="${outline}" opacity="0.4"/>
+    <!-- body outline — очень лёгкий -->
+    <rect x="11" y="14" width="26" height="24" fill="${outline}" opacity="0.22"/>
+    <rect x="9"  y="16" width="30" height="20" fill="${outline}" opacity="0.14"/>
+    <!-- glass body — почти прозрачный -->
+    <rect x="12" y="14" width="24" height="22" fill="${glass}" opacity="0.08"/>
+    <rect x="10" y="16" width="28" height="18" fill="${glass}" opacity="0.06"/>
     <!-- water fill -->
-    ${hasWater ? `<rect x="12" y="28" width="24" height="8"  fill="${waterTint}" opacity="0.6"/>
-    <rect x="10" y="30" width="28" height="6" fill="${waterTint}" opacity="0.4"/>` : ''}
-    <!-- gloss -->
-    <rect x="14" y="16" width="4" height="10" fill="#e8f8ff" opacity="0.7"/>
-    <!-- flies / glow -->
-    ${caught > 0 || glowing ? `
-    <rect x="22" y="20" width="2" height="2" fill="${flyColor}"/>
-    <rect x="26" y="24" width="2" height="2" fill="${flyColor}"/>
-    <rect x="20" y="26" width="2" height="2" fill="${flyColor}"/>
+    ${hasWater ? `
+    <rect x="12" y="26" width="24" height="10" fill="${waterTint}" opacity="0.40"/>
+    <rect x="10" y="28" width="28" height="8"  fill="${waterTint}" opacity="0.25"/>` : ''}
+    <!-- firefly goo fill (after wish released) -->
+    ${gooMode ? `
+    <rect x="12" y="28" width="24" height="8"  fill="#ffe040" opacity="0.35"/>
+    <rect x="10" y="30" width="28" height="6"  fill="#ffcc00" opacity="0.22"/>
+    <rect x="14" y="30" width="4"  height="2"  fill="#fff080" opacity="0.55"/>
+    <rect x="28" y="32" width="3"  height="2"  fill="#fff080" opacity="0.4"/>
+    <rect x="12" y="26" width="24" height="2"  fill="#ffe860" opacity="0.18"/>
     ` : ''}
-    <!-- bottom -->
-    <rect x="12" y="36" width="24" height="4" fill="${base}"/>
-    <rect x="14" y="38" width="20" height="2" fill="${glassDk}"/>
+    <!-- gloss line -->
+    <rect x="14" y="16" width="3" height="10" fill="#ffffff" opacity="0.12"/>
+    <!-- fly dots (while catching, not yet released) -->
+    ${flyDots}
+    <!-- bottom rim -->
+    <rect x="12" y="36" width="24" height="3" fill="${outline}" opacity="0.3"/>
   </svg>`;
 }
 

@@ -102,6 +102,8 @@ function _onSlotClick(idx) {
 }
 
 // ── Item cursor (desktop) ──────────────────────────────────────────────────
+let _mouseX = 0, _mouseY = 0;
+
 export function updateItemCursor() {
   if (isMobile()) {
     if (cursorEl) cursorEl.style.display = 'none';
@@ -114,9 +116,12 @@ export function updateItemCursor() {
     document.body.appendChild(cursorEl);
 
     document.addEventListener('mousemove', e => {
-      if (cursorEl.style.display === 'none') return;
-      cursorEl.style.left = e.clientX + 'px';
-      cursorEl.style.top  = e.clientY + 'px';
+      _mouseX = e.clientX;
+      _mouseY = e.clientY;
+      if (cursorEl.style.display !== 'none') {
+        cursorEl.style.left = e.clientX + 'px';
+        cursorEl.style.top  = e.clientY + 'px';
+      }
     });
   }
 
@@ -128,6 +133,9 @@ export function updateItemCursor() {
   const svg = renderItemIcon(item);
   if (svg) {
     cursorEl.innerHTML = svg;
+    // Позиционируем сразу по текущей позиции мыши — без прыжка
+    cursorEl.style.left = _mouseX + 'px';
+    cursorEl.style.top  = _mouseY + 'px';
     cursorEl.style.display = 'block';
   } else {
     cursorEl.style.display = 'none';

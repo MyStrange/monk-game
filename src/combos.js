@@ -50,6 +50,14 @@ const ITEM_COMBO = {
   },
 };
 
+// ── Fallback для неизвестных комбо ─────────────────────────────────────────
+const _COMBO_FALLBACK = [
+  'Два предмета. Ничего не случилось.',
+  'Они не разговаривают. Предметы молчат.',
+  'Третья попытка. Молчание стало весомее.',
+];
+const _comboFallbackCounts = {};
+
 // ── itemOnItem ─────────────────────────────────────────────────────────────
 export function itemOnItem(aIdx, bIdx) {
   const a = state.inventory[aIdx];
@@ -58,7 +66,14 @@ export function itemOnItem(aIdx, bIdx) {
 
   const key = _key(a, b);
   const combo = ITEM_COMBO[key];
-  if (!combo) return null;
+
+  if (!combo) {
+    // Нет комбо → ироничный текст (не переключать выбор)
+    _comboFallbackCounts[key] = (_comboFallbackCounts[key] ?? 0);
+    const msg = _COMBO_FALLBACK[Math.min(_comboFallbackCounts[key], _COMBO_FALLBACK.length - 1)];
+    _comboFallbackCounts[key]++;
+    return msg;  // string → показать сообщение, оставить выбор
+  }
 
   if (!combo.condition(a, b)) {
     return combo.failMsg;   // string → показать сообщение
