@@ -25,7 +25,7 @@ export const ITEM_DEFS = {
   jar: {
     id:          'jar',
     label:       'банка',
-    description: 'Пустая стеклянная банка с крышкой. Поймай в неё что-нибудь.',
+    description: 'Пустая стеклянная банка с крышкой. Кулак не влезает.',
   },
   jar_open: {
     id:          'jar_open',
@@ -40,7 +40,7 @@ export const ITEM_DEFS = {
   durian: {
     id:          'durian',
     label:       'дуриан',
-    description: 'Рис с кусочками дуриана. Запах невозможный. Кот оценит.',
+    description: 'Рис с кусочками фрукта. Пахнет, как носки деда в плацкарте. Или сам дед.',
   },
   fireflower: {
     id:          'fireflower',
