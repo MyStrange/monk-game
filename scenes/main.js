@@ -22,21 +22,28 @@ const bgImg = new Image();
 bgImg.src = 'assets/bg/main.png';
 
 // ── Sprites ────────────────────────────────────────────────────────────────
-const heroSheet  = new Image(); heroSheet.src  = 'assets/sprites/hero.png';
-const catSheet   = new Image(); catSheet.src   = 'assets/sprites/cat.png';
-const monkSheet  = new Image(); monkSheet.src  = 'assets/sprites/monk.png';
+// hero_left/right.png: 1376×348, 5 frames (275×348)
+// hero_sit.png:        1376×204, 5 frames (275×204)
+// cat.png:             2048×338, 5 frames (~410×338) — display h=145
+// monk_red.png:        2000×464, 5 frames (400×464) — display h=240
+const heroImgR = new Image(); heroImgR.src = 'assets/sprites/hero_right.png';
+const heroImgL = new Image(); heroImgL.src = 'assets/sprites/hero_left.png';
+const heroImgS = new Image(); heroImgS.src = 'assets/sprites/hero_sit.png';
+const catSheet  = new Image(); catSheet.src  = 'assets/sprites/cat.png';
+const monkSheet = new Image(); monkSheet.src = 'assets/sprites/monk_red.png';
 
 // ── Scene constants (in BG px, BG = 2000×1116) ────────────────────────────
 const BG_W = 2000, BG_H = 1116;
 const GROUND_Y = 920;
 
-// Hero sprite
-const HERO_W = 96, HERO_H = 128;
-// Cat sprite
-const CAT_W = 80, CAT_H = 80;
+// Hero display size
+const HERO_W = 100, HERO_H = 420;
+const HERO_FRAMES = 5;
+// Cat display size
+const CAT_W = 175, CAT_H = 145;
 const CAT_X = 940;
-// Monk sprite
-const MONK_W = 80, MONK_H = 96;
+// Monk display size
+const MONK_W = 175, MONK_H = 240;
 const MONK_X = 1120;
 
 // ── Zones (BG px) → scaled on render ──────────────────────────────────────
@@ -358,14 +365,13 @@ function animate() {
     ctx.fillRect(dp.x, dp.y, 40 * sx, 24 * sy);
   }
 
-  // Hero (simple rect until sprites load)
+  // Hero
   const hp = bgToCanvas(hero.x, hero.y);
-  if (heroSheet.complete && heroSheet.naturalWidth) {
-    // Spritesheet frame — walking: frames 0-3 top row, sitting: frame 4
-    const frameW = heroSheet.naturalWidth / 5;
-    const frameH = heroSheet.naturalHeight;
-    const frame  = hero.praying ? 4 : Math.floor(tick / 8) % 4;
-    ctx.drawImage(heroSheet, frame * frameW, 0, frameW, frameH,
+  const heroImg = hero.praying ? heroImgS : heroImgR;
+  if (heroImg.complete && heroImg.naturalWidth) {
+    const frameW = heroImg.naturalWidth / HERO_FRAMES;
+    const frame  = Math.floor(tick / 10) % HERO_FRAMES;
+    ctx.drawImage(heroImg, frame * frameW, 0, frameW, heroImg.naturalHeight,
       hp.x - (HERO_W / 2) * sx, hp.y - HERO_H * sy, HERO_W * sx, HERO_H * sy);
   } else {
     ctx.fillStyle = '#c87040';
@@ -375,8 +381,9 @@ function animate() {
   // Cat
   const cp = bgToCanvas(CAT_X, GROUND_Y - CAT_H);
   if (catSheet.complete && catSheet.naturalWidth) {
-    const frame  = catBurying ? Math.min(Math.floor(catBuryTimer / 8), 3) : Math.floor(tick / 12) % 2;
-    const frameW = catSheet.naturalWidth / 4;
+    const frame  = catBurying ? Math.min(Math.floor(catBuryTimer / 10), HERO_FRAMES - 1)
+                              : Math.floor(tick / 12) % HERO_FRAMES;
+    const frameW = catSheet.naturalWidth / HERO_FRAMES;
     ctx.drawImage(catSheet, frame * frameW, 0, frameW, catSheet.naturalHeight,
       cp.x, cp.y, CAT_W * sx, CAT_H * sy);
   } else {
@@ -387,7 +394,9 @@ function animate() {
   // Monk
   const mp = bgToCanvas(MONK_X, GROUND_Y - MONK_H);
   if (monkSheet.complete && monkSheet.naturalWidth) {
-    ctx.drawImage(monkSheet, 0, 0, monkSheet.naturalWidth, monkSheet.naturalHeight,
+    const frameW = monkSheet.naturalWidth / HERO_FRAMES;
+    const frame  = Math.floor(tick / 14) % HERO_FRAMES;
+    ctx.drawImage(monkSheet, frame * frameW, 0, frameW, monkSheet.naturalHeight,
       mp.x, mp.y, MONK_W * sx, MONK_H * sy);
   } else {
     ctx.fillStyle = '#c04030';
