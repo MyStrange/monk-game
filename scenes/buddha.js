@@ -68,16 +68,18 @@ function _startWish(jar) {
       y:          startY,
       trail:      [],
       alpha:      1.0,
+      sz:         14 + Math.random() * 14,  // same size as ambient bFlies
     };
   });
 
   setTimeout(() => {
-    S.wishPlaying   = false;
-    jar.glowing     = true;
-    jar.released    = true;
-    jar.caught      = 0;
-    jar.label       = 'банка';
-    jar.description = 'Светляковая жижка. Внутри мерцает тихий свет — след от десяти светлячков.';
+    S.wishPlaying      = false;
+    jar.glowing        = true;
+    jar.released       = true;
+    jar.caught         = 0;
+    jar.label          = 'банка';
+    jar.description    = 'Светляковая жижка. Внутри мерцает тихий свет — след от десяти светлячков.';
+    state.selectedSlot = -1;  // снять с руки после завершения желания
     renderHotbar();
     showMsg(wishDoneMsg, 4000);
   }, (WISH_DURATION / 60) * 1000 + 200);
@@ -155,10 +157,21 @@ function _buildFlyroom() {
   // Canvas glow animation
   let frW = 0, frH = 0;
   const frCtx = frCanvas.getContext('2d');
+  // Брюшки светлячков — оба жёлтые, чуть ниже центра тела
   const flyGlows = [
-    { x: 0.35, y: 0.68, color: '#ffcc40' },
-    { x: 0.65, y: 0.68, color: '#80c8ff' },
+    { x: 0.35, y: 0.72, color: '#ffcc30' },
+    { x: 0.65, y: 0.72, color: '#ffe050' },
   ];
+  // Мелкая пыльца в воздухе
+  const frDust = Array.from({ length: 50 }, () => ({
+    x:  Math.random(),
+    y:  Math.random(),
+    vx: (Math.random() - 0.5) * 0.00015,
+    vy: -0.00008 - Math.random() * 0.00015,
+    sz: 0.8 + Math.random() * 1.4,
+    br: Math.random(),
+    bv: (Math.random() - 0.5) * 0.012,
+  }));
   let frTick = 0;
   _frAnimateFn = function frAnimate() {
     if (flyroomEl.style.display === 'none') { flyroomAnimId = null; return; }
@@ -167,17 +180,33 @@ function _buildFlyroom() {
     if (r.height !== frH) { frH = frCanvas.height = Math.round(r.height); }
     frCtx.clearRect(0, 0, frW, frH);
     frTick++;
+
+    // Свечение брюшков
     for (const g of flyGlows) {
-      const alpha = 0.5 + 0.5 * Math.sin(frTick * 0.05);
-      const grd   = frCtx.createRadialGradient(g.x*frW, g.y*frH, 0, g.x*frW, g.y*frH, 28);
-      grd.addColorStop(0, g.color + 'ff');
-      grd.addColorStop(1, g.color + '00');
+      const alpha = 0.55 + 0.45 * Math.sin(frTick * 0.05);
+      const grd   = frCtx.createRadialGradient(g.x*frW, g.y*frH, 0, g.x*frW, g.y*frH, 56);
+      grd.addColorStop(0,   g.color + 'ee');
+      grd.addColorStop(0.4, g.color + '88');
+      grd.addColorStop(1,   g.color + '00');
       frCtx.globalAlpha = alpha;
       frCtx.fillStyle   = grd;
       frCtx.beginPath();
-      frCtx.arc(g.x*frW, g.y*frH, 28, 0, Math.PI * 2);
+      frCtx.arc(g.x*frW, g.y*frH, 56, 0, Math.PI * 2);
       frCtx.fill();
     }
+
+    // Пыльца
+    for (const d of frDust) {
+      d.x += d.vx; d.y += d.vy;
+      if (d.y < 0)  { d.y = 1; d.x = Math.random(); }
+      if (d.x < 0 || d.x > 1) { d.x = Math.random(); }
+      d.br += d.bv;
+      if (d.br < 0 || d.br > 1) d.bv *= -1;
+      frCtx.globalAlpha = 0.15 + d.br * 0.35;
+      frCtx.fillStyle   = '#ffee88';
+      frCtx.fillRect(Math.round(d.x * frW), Math.round(d.y * frH), Math.ceil(d.sz), Math.ceil(d.sz));
+    }
+
     frCtx.globalAlpha = 1;
     flyroomAnimId = requestAnimationFrame(_frAnimateFn);
   };
@@ -294,8 +323,7 @@ function onTap(cx, cy) {
         f.alive = false;
         item.caught = (item.caught ?? 0) + 1;
 
-        // Deselect — предмет больше не в руке после успешного действия
-        state.selectedSlot = -1;
+        // Оставляем банку в руке — обновляем только иконку (caught увеличился)
         renderHotbar();
 
         if (item.caught >= 10) {
@@ -365,6 +393,7 @@ function animate() {
       if (wf.trail.length > 38) wf.trail.shift();
 
       // Draw trail
+      const trailSz = Math.max(2, Math.round(wf.sz * 0.25));
       wCtx.save();
       for (let ti = 0; ti < wf.trail.length; ti++) {
         const p  = wf.trail[ti];
@@ -372,13 +401,14 @@ function animate() {
         wCtx.shadowColor = `rgba(255,200,0,${ta * 0.8})`;
         wCtx.shadowBlur  = 10;
         wCtx.fillStyle   = `rgba(255,220,60,${ta})`;
-        wCtx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2);
+        wCtx.fillRect(Math.round(p.x), Math.round(p.y), trailSz, trailSz);
       }
-      // Fly itself — bright core
+      // Fly itself — same size as ambient flies
+      const half = Math.round(wf.sz / 2);
       wCtx.shadowColor = `rgba(255,240,100,${wf.alpha})`;
-      wCtx.shadowBlur  = 18 + Math.sin(wf.t * 0.25) * 8;
+      wCtx.shadowBlur  = 20 + wf.sz + Math.sin(wf.t * 0.25) * 10;
       wCtx.fillStyle   = `rgba(255,255,180,${wf.alpha})`;
-      wCtx.fillRect(Math.round(wf.x) - 1, Math.round(wf.y) - 1, 4, 4);
+      wCtx.fillRect(Math.round(wf.x) - half, Math.round(wf.y) - half, Math.ceil(wf.sz), Math.ceil(wf.sz));
       wCtx.restore();
     }
   }

@@ -79,7 +79,8 @@ export function itemOnItem(aIdx, bIdx) {
     return combo.failMsg;   // string → показать сообщение
   }
 
-  const msg = combo.apply(aIdx, bIdx);
+  combo.apply(aIdx, bIdx);
+  state.selectedSlot = -1;  // верхнеуровневое правило: после крафта убрать из руки
   renderHotbar();
   return false;             // false → успех, снять выбор
 }

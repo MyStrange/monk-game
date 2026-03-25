@@ -65,15 +65,14 @@ export function renderJarIcon(item) {
   const hasWater = item?.hasWater;
   const caught   = Math.min(item?.caught ?? 0, 9);
 
-  // Контур и стекло — почти прозрачные
   const outline   = '#688090';
   const glass     = '#e8f4f8';
-  const cap       = open ? 'none' : '#d4a840';
-  const capDk     = open ? 'none' : '#8a6010';
   const waterTint = '#4880b0';
 
   // Режим: светящаяся жижка (после отпускания светлячков)
   const gooMode = glowing && released;
+  // Крышка: скрыта если открытая банка или gooMode
+  const showCap = !open && !gooMode;
 
   // Точки светлячков (только когда пойманы, но не released)
   const flyDots = (!gooMode && caught > 0)
@@ -81,45 +80,67 @@ export function renderJarIcon(item) {
         `<rect x="${x}" y="${y}" width="2" height="2" fill="#88cc44"/>`).join('')
     : '';
 
+  if (gooMode) {
+    // Банка со светляковой жижкой — без крышки, яркий жёлтый, анимация свечения
+    return `<svg width="48" height="48" viewBox="0 0 48 48"
+      xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+      <!-- анимированное внешнее свечение -->
+      <rect x="4"  y="8"  width="40" height="32" fill="#ffe000">
+        <animate attributeName="opacity" values="0.06;0.22;0.06" dur="1.3s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="0"  y="12" width="48" height="24" fill="#ffcc00">
+        <animate attributeName="opacity" values="0.03;0.12;0.03" dur="1.3s" begin="0.2s" repeatCount="indefinite"/>
+      </rect>
+      <!-- горлышко (без крышки) -->
+      <rect x="17" y="10" width="14" height="2" fill="${outline}" opacity="0.7"/>
+      <rect x="15" y="12" width="18" height="2" fill="${outline}" opacity="0.55"/>
+      <!-- корпус — чёткий контур -->
+      <rect x="10" y="14" width="28" height="26" fill="${outline}" opacity="0.6"/>
+      <rect x="11" y="15" width="26" height="24" fill="#08070f"/>
+      <!-- жижка — пульсирует -->
+      <rect x="11" y="22" width="26" height="17" fill="#ffe200">
+        <animate attributeName="opacity" values="0.55;0.88;0.55" dur="1.0s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="11" y="25" width="26" height="14" fill="#ffd000">
+        <animate attributeName="opacity" values="0.4;0.7;0.4" dur="1.0s" begin="0.25s" repeatCount="indefinite"/>
+      </rect>
+      <!-- блики жижки -->
+      <rect x="14" y="24" width="6"  height="2" fill="#fff8a0" opacity="0.9"/>
+      <rect x="30" y="28" width="4"  height="2" fill="#fff8a0" opacity="0.7"/>
+      <rect x="15" y="31" width="4"  height="2" fill="#fffbd0" opacity="0.6"/>
+      <!-- стеклянная верхняя часть -->
+      <rect x="11" y="15" width="26" height="7" fill="${glass}" opacity="0.05"/>
+      <!-- блик стекла -->
+      <rect x="13" y="17" width="2"  height="9" fill="#ffffff" opacity="0.18"/>
+      <!-- нижний ободок -->
+      <rect x="10" y="39" width="28" height="3" fill="${outline}" opacity="0.6"/>
+    </svg>`;
+  }
+
   return `<svg width="48" height="48" viewBox="0 0 48 48"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    ${gooMode ? `
-    <!-- goo glow aura corners -->
-    <rect x="8"  y="8"  width="4" height="4" fill="#ffe040" opacity="0.2"/>
-    <rect x="36" y="8"  width="4" height="4" fill="#ffe040" opacity="0.2"/>
-    <rect x="8"  y="36" width="4" height="4" fill="#ffe040" opacity="0.2"/>
-    <rect x="36" y="36" width="4" height="4" fill="#ffe040" opacity="0.2"/>
+    <!-- крышка -->
+    ${showCap ? `
+    <rect x="16" y="6"  width="16" height="4" fill="#d4a840"/>
+    <rect x="14" y="8"  width="20" height="2" fill="#8a6010"/>
     ` : ''}
-    <!-- cap -->
-    ${!open ? `
-    <rect x="16" y="6"  width="16" height="4" fill="${cap}"/>
-    <rect x="14" y="8"  width="20" height="2" fill="${capDk}"/>
-    ` : ''}
-    <!-- neck outline -->
+    <!-- горлышко -->
     <rect x="18" y="10" width="12" height="4" fill="${outline}" opacity="0.4"/>
-    <!-- body outline — очень лёгкий -->
+    <!-- корпус — очень лёгкий -->
     <rect x="11" y="14" width="26" height="24" fill="${outline}" opacity="0.22"/>
     <rect x="9"  y="16" width="30" height="20" fill="${outline}" opacity="0.14"/>
-    <!-- glass body — почти прозрачный -->
+    <!-- стекло — почти прозрачное -->
     <rect x="12" y="14" width="24" height="22" fill="${glass}" opacity="0.08"/>
     <rect x="10" y="16" width="28" height="18" fill="${glass}" opacity="0.06"/>
-    <!-- water fill -->
+    <!-- вода -->
     ${hasWater ? `
     <rect x="12" y="26" width="24" height="10" fill="${waterTint}" opacity="0.40"/>
     <rect x="10" y="28" width="28" height="8"  fill="${waterTint}" opacity="0.25"/>` : ''}
-    <!-- firefly goo fill (after wish released) -->
-    ${gooMode ? `
-    <rect x="12" y="28" width="24" height="8"  fill="#ffe040" opacity="0.35"/>
-    <rect x="10" y="30" width="28" height="6"  fill="#ffcc00" opacity="0.22"/>
-    <rect x="14" y="30" width="4"  height="2"  fill="#fff080" opacity="0.55"/>
-    <rect x="28" y="32" width="3"  height="2"  fill="#fff080" opacity="0.4"/>
-    <rect x="12" y="26" width="24" height="2"  fill="#ffe860" opacity="0.18"/>
-    ` : ''}
-    <!-- gloss line -->
+    <!-- блик стекла -->
     <rect x="14" y="16" width="3" height="10" fill="#ffffff" opacity="0.12"/>
-    <!-- fly dots (while catching, not yet released) -->
+    <!-- точки светлячков -->
     ${flyDots}
-    <!-- bottom rim -->
+    <!-- нижний ободок -->
     <rect x="12" y="36" width="24" height="3" fill="${outline}" opacity="0.3"/>
   </svg>`;
 }

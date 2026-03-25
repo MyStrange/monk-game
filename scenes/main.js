@@ -1,7 +1,7 @@
 // scenes/main.js — главная сцена: герой, зоны, медитация, символы
 
 import { state }           from '../src/state.js';
-import { showMsgIn }       from '../src/utils.js';
+import { showMsgIn, showLoading, hideLoading } from '../src/utils.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
@@ -41,6 +41,9 @@ const HERO_SPEED = 5;  // BG px per frame
 
 // Hero display size — proportional to sprite frame ratio (275/348 = 0.791)
 const HERO_STAND_H = 420;
+// Vertical offset compensation for left sprite (BG px, positive = lower)
+// Adjust if left/right sprites have different character-height within the frame
+const HERO_LEFT_YOFF = 0;
 const HERO_STAND_W = Math.round(HERO_STAND_H * 275 / 348); // 332
 // Sit sprite ratio: 275/204 = 1.348 — keep same width, compute height
 const HERO_SIT_W   = HERO_STAND_W;                          // 332
@@ -182,13 +185,16 @@ function _spawnSym() {
   if (!hero.praying) return;
   const ch = THAI_CHARS[Math.floor(Math.random() * THAI_CHARS.length)];
   const p  = bgToCanvas(hero.x, hero.y - HERO_STAND_H * 0.8);
-  pSyms.push({ ch, x: p.x, y: p.y, vy: -0.6 - Math.random() * 0.4, life: 1.0,
-                dragging: false, vx: (Math.random() - 0.5) * 0.3 });
+  pSyms.push({ ch, x: p.x, y: p.y, vy: -1.2 - Math.random() * 0.8, life: 1.0,
+                dragging: false, vx: (Math.random() - 0.5) * 1.2,
+                ax: (Math.random() - 0.5) * 0.03,
+                size: 32 + Math.random() * 28 });
 }
 
 function _symTick() {
   pSyms = pSyms.filter(s => {
     if (s.dragging) return true;
+    s.vx += s.ax ?? 0;
     s.x  += s.vx;
     s.y  += s.vy;
     s.life -= 0.003;
@@ -373,7 +379,7 @@ function animate() {
     const py    = Math.round(f.y * sy);
     ctx.save();
     ctx.shadowColor = `rgba(255,210,40,${alpha})`;
-    ctx.shadowBlur  = 6 + f.brightness * 12;
+    ctx.shadowBlur  = 18 + f.brightness * 28;
     ctx.fillStyle   = `rgba(255,220,80,${alpha})`;
     ctx.fillRect(px, py, f.sz, f.sz);
     ctx.restore();
@@ -405,10 +411,11 @@ function animate() {
   }
 
   // ── Hero — рисуется после монаха/кота (ближе к камере) ───────────────────
-  const hp  = bgToCanvas(hero.x, hero.y);
   const heroImg = hero.praying ? heroImgS : (hero.facing === 'left' ? heroImgL : heroImgR);
   const hW  = hero.praying ? HERO_SIT_W   : HERO_STAND_W;
   const hH  = hero.praying ? HERO_SIT_H   : HERO_STAND_H;
+  const heroYOff = (!hero.praying && hero.facing === 'left') ? HERO_LEFT_YOFF : 0;
+  const hp  = bgToCanvas(hero.x, hero.y + heroYOff);
   if (heroImg.complete && heroImg.naturalWidth) {
     const frameW = heroImg.naturalWidth / HERO_FRAMES;
     const frame  = Math.floor(tick / 10) % HERO_FRAMES;
@@ -448,7 +455,7 @@ function animate() {
     for (const s of pSyms) {
       ctx.globalAlpha = s.life * meditationPhase;
       ctx.fillStyle   = '#d4b8ff';
-      ctx.font        = `${Math.round(24 * sx)}px serif`;
+      ctx.font        = `${Math.round((s.size ?? 24) * sx)}px serif`;
       ctx.textAlign   = 'center';
       ctx.fillText(s.ch, s.x, s.y);
     }
@@ -460,29 +467,29 @@ function animate() {
     const ih = ZONES_BG.inscription.h * sy;
 
     ctx.save();
-    ctx.globalAlpha = 0.5 + inscriptionGlow * 0.3;
-    ctx.strokeStyle = S.inscriptionReady ? '#ffe080' : '#a090d0';
-    ctx.lineWidth   = 2;
-    ctx.strokeRect(iz.x, iz.y, iw, ih);
-
+    // Charge dots (без рамки/обводки)
     for (let i = 0; i < 5; i++) {
       const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      const r     = 18 * sx;
+      const r     = 16 * sx;
       const cx2   = iz.x + iw / 2 + Math.cos(angle) * r;
       const cy2   = iz.y + ih / 2 + Math.sin(angle) * r;
-      ctx.fillStyle = i < S.inscriptionCharge ? '#ffe080' : '#504060';
+      ctx.globalAlpha = 0.6 + inscriptionGlow * 0.3;
+      ctx.fillStyle   = i < S.inscriptionCharge ? '#ffe080' : '#302040';
       ctx.beginPath();
-      ctx.arc(cx2, cy2, 4 * sx, 0, Math.PI * 2);
+      ctx.arc(cx2, cy2, 3 * sx, 0, Math.PI * 2);
       ctx.fill();
     }
-
-    if (S.inscriptionReady) {
-      ctx.globalAlpha = 0.8 + inscriptionGlow * 0.2;
-      ctx.fillStyle   = '#ffe080';
-      ctx.font        = `${Math.round(32 * sx)}px serif`;
-      ctx.textAlign   = 'center';
-      ctx.fillText('ᩮ', iz.x + iw / 2, iz.y + ih / 2 + 8 * sy);
-    }
+    // Символ — виден всегда: тусклый пока не заряжен, яркий когда готов
+    const _symAlpha = S.inscriptionReady
+      ? 0.85 + inscriptionGlow * 0.15
+      : 0.12 + S.inscriptionCharge * 0.05 + inscriptionGlow * 0.15;
+    ctx.globalAlpha  = _symAlpha;
+    ctx.fillStyle    = S.inscriptionReady ? '#ffe080' : '#9080d0';
+    ctx.font         = `${Math.round(44 * sx)}px serif`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('ᩮ', iz.x + iw / 2, iz.y + ih / 2);
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
@@ -504,7 +511,7 @@ export function leaveMain() {
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
-export function initMain() {
+export async function initMain() {
   canvas = document.getElementById('main-canvas');
   msgEl  = document.getElementById('main-msg');
   if (!canvas || !msgEl) {
@@ -589,5 +596,16 @@ export function initMain() {
     if (!document.hidden && state.activeScreen === 'main' && !animId) animate();
   });
 
+  // Ждём загрузки всех спрайтов — чтобы сцена появилась без рывков
+  const _sprites = [bgImg, heroImgR, heroImgL, heroImgS, catSheet, monkSheet];
+  if (!_sprites.every(img => img.complete && img.naturalWidth)) {
+    showLoading('...');
+    await Promise.all(_sprites.map(img =>
+      img.complete && img.naturalWidth
+        ? Promise.resolve()
+        : new Promise(r => { img.onload = r; img.onerror = r; })
+    ));
+    hideLoading();
+  }
   animate();
 }

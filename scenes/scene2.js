@@ -96,7 +96,11 @@ function interactItem(itemId, zone) {
 
   // glowstick on rock
   if (itemId === 'glowstick' && isRock) {
+    if (S.rockStates[zone]) { showMsg('Этот камень уже впитал свет.'); return; }
     S.rockStates[zone] = true;
+    // Свет уходит в камень — палка становится обычной
+    const gsSlot = state.inventory.findIndex(i => i === item);
+    state.inventory[gsSlot >= 0 ? gsSlot : getItemSlot('glowstick')] = makeItem('stick');
     state.selectedSlot = -1;
     renderHotbar();
     showMsg('Свет из палки переходит в камень. Камень начинает тихо светиться.');
@@ -236,6 +240,10 @@ function createEl() {
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
+const _waitImg = img => img.complete && img.naturalWidth
+  ? Promise.resolve()
+  : new Promise(r => { img.onload = r; img.onerror = r; });
+
 export async function openSceneScene2() {
   leaveMain();
   createEl();
@@ -244,18 +252,18 @@ export async function openSceneScene2() {
 
   const bgImg = el.querySelector('img');
   bgImg.onerror = () => showError('не удалось загрузить сцену');
-  bgImg.onload  = () => {
-    hideLoading();
-    state.activeScreen = 'scene2';
-    el.style.display   = 'block';
-    requestAnimationFrame(() => {
-      const r = el.getBoundingClientRect();
-      W = canvas.width  = Math.round(r.width);
-      H = canvas.height = Math.round(r.height);
-      if (!animId) animate();
-    });
-  };
-  if (bgImg.complete && bgImg.naturalWidth) bgImg.onload();
+  await Promise.all([_waitImg(bgImg), _waitImg(bottleImg)]);
+  if (!bgImg.naturalWidth) return;
+
+  hideLoading();
+  state.activeScreen = 'scene2';
+  el.style.display   = 'block';
+  requestAnimationFrame(() => {
+    const r = el.getBoundingClientRect();
+    W = canvas.width  = Math.round(r.width);
+    H = canvas.height = Math.round(r.height);
+    if (!animId) animate();
+  });
 }
 
 export function closeSceneScene2() {
