@@ -2,7 +2,7 @@
 
 import { state }         from '../src/state.js';
 import { showMsgIn, showLoading, hideLoading, showError } from '../src/utils.js';
-import { leaveMain }     from './main.js';
+import { leaveMain, resumeMain } from './main.js';
 import { SaveManager }   from '../src/save.js';
 import { trackZoneClick } from '../src/achievements.js';
 import { scene4OpenMsg } from '../src/dialogue.js';
@@ -117,5 +117,6 @@ export function closeSceneScene4() {
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   SaveManager.setScene('scene4', S);
+  resumeMain();
 }
 window.closeSceneScene4 = closeSceneScene4;

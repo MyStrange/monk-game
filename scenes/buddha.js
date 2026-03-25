@@ -2,7 +2,7 @@
 
 import { state }         from '../src/state.js';
 import { showMsgIn, showLoading, hideLoading, showError } from '../src/utils.js';
-import { leaveMain }     from './main.js';
+import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
 import { renderHotbar }  from '../src/hotbar.js';
 import { SaveManager }   from '../src/save.js';
@@ -505,5 +505,6 @@ export function closeSceneBuddha() {
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   SaveManager.setScene('buddha', S);
+  resumeMain();
 }
 window.closeSceneBuddha = closeSceneBuddha;

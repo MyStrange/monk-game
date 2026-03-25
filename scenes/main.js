@@ -35,15 +35,15 @@ const monkSheet = new Image(); monkSheet.src = 'assets/sprites/monk_red.png';
 
 // ── Scene constants (in BG px, BG = 2000×1116) ────────────────────────────
 const BG_W = 2000, BG_H = 1116;
-const GROUND_Y      = 920;   // плоскость монаха/кота (фон)
-const HERO_GROUND_Y = 980;   // плоскость героя — чуть ближе к камере
+const GROUND_Y      = 920;   // единая плоскость героя/монаха/кота
+const HERO_GROUND_Y = GROUND_Y;
 const HERO_SPEED = 5;  // BG px per frame
 
 // Hero display size — proportional to sprite frame ratio (275/348 = 0.791)
 const HERO_STAND_H = 420;
-// Vertical offset compensation for left sprite (BG px, positive = lower)
-// Adjust if left/right sprites have different character-height within the frame
-const HERO_LEFT_YOFF = 0;
+// Vertical offset compensation for left sprite (BG px, positive = lower).
+// Left sprite last visible row = 317, right = 344 → diff 27px × (420/348) ≈ 33 BG px
+const HERO_LEFT_YOFF = 33;
 const HERO_STAND_W = Math.round(HERO_STAND_H * 275 / 348); // 332
 // Sit sprite ratio: 275/204 = 1.348 — keep same width, compute height
 const HERO_SIT_W   = HERO_STAND_W;                          // 332
@@ -106,15 +106,17 @@ let draggedSym = null;
 
 const THAI_CHARS = 'ธมอนภวตสกรคทยชพระศษสหฬ';
 
-// ── Ambient fireflies (100, yellow pixel) ─────────────────────────────────
-const flies = Array.from({ length: 100 }, () => ({
+// ── Ambient fireflies (180, yellow pixel, varied sizes + glow) ────────────
+const _SIZES = [1,1,2,2,2,2,3,3,3,4,5];
+const flies = Array.from({ length: 180 }, () => ({
   x:          Math.random() * BG_W,
-  y:          Math.random() * (BG_H * 0.5),
+  y:          Math.random() * (BG_H * 0.55),
   vx:         (Math.random() - 0.5) * 0.8,
   vy:         (Math.random() - 0.5) * 0.4,
   brightness: Math.random(),
   bv:         (Math.random() - 0.5) * 0.02,
-  sz:         Math.random() < 0.3 ? 3 : 2,  // occasional bigger pixel
+  sz:         _SIZES[Math.floor(Math.random() * _SIZES.length)],
+  glow:       Math.random() < 0.28 ? 2.2 : 1.0,  // 28% have extra halo
 }));
 
 // ── Message cycling ────────────────────────────────────────────────────────
@@ -178,17 +180,17 @@ function sitDown() {
   if (hero.praying) { standUp(); return; }
   hero.praying = true;
   AudioSystem.playPrayerSound();
-  AudioSystem.setMode('meditation');
+  AudioSystem.setMode('sitting');
 }
 
 function _spawnSym() {
   if (!hero.praying) return;
   const ch = THAI_CHARS[Math.floor(Math.random() * THAI_CHARS.length)];
   const p  = bgToCanvas(hero.x, hero.y - HERO_STAND_H * 0.8);
-  pSyms.push({ ch, x: p.x, y: p.y, vy: -1.2 - Math.random() * 0.8, life: 1.0,
-                dragging: false, vx: (Math.random() - 0.5) * 1.2,
-                ax: (Math.random() - 0.5) * 0.03,
-                size: 32 + Math.random() * 28 });
+  pSyms.push({ ch, x: p.x, y: p.y, vy: -0.55 - Math.random() * 0.45, life: 1.0,
+                dragging: false, vx: (Math.random() - 0.5) * 0.55,
+                ax: (Math.random() - 0.5) * 0.015,
+                size: 30 + Math.random() * 32 });
 }
 
 function _symTick() {
@@ -197,7 +199,7 @@ function _symTick() {
     s.vx += s.ax ?? 0;
     s.x  += s.vx;
     s.y  += s.vy;
-    s.life -= 0.003;
+    s.life -= 0.0016;
     return s.life > 0;
   });
 }
@@ -379,7 +381,7 @@ function animate() {
     const py    = Math.round(f.y * sy);
     ctx.save();
     ctx.shadowColor = `rgba(255,210,40,${alpha})`;
-    ctx.shadowBlur  = 18 + f.brightness * 28;
+    ctx.shadowBlur  = (18 + f.brightness * 28) * (f.glow ?? 1.0);
     ctx.fillStyle   = `rgba(255,220,80,${alpha})`;
     ctx.fillRect(px, py, f.sz, f.sz);
     ctx.restore();
@@ -417,8 +419,9 @@ function animate() {
   const heroYOff = (!hero.praying && hero.facing === 'left') ? HERO_LEFT_YOFF : 0;
   const hp  = bgToCanvas(hero.x, hero.y + heroYOff);
   if (heroImg.complete && heroImg.naturalWidth) {
-    const frameW = heroImg.naturalWidth / HERO_FRAMES;
-    const frame  = Math.floor(tick / 10) % HERO_FRAMES;
+    const frameW   = heroImg.naturalWidth / HERO_FRAMES;
+    const frameTick = hero.praying ? 20 : 10;
+    const frame    = Math.floor(tick / frameTick) % HERO_FRAMES;
     ctx.drawImage(heroImg,
       frame * frameW, 0, frameW, heroImg.naturalHeight,
       hp.x - (hW / 2) * sx, hp.y - hH * sy, hW * sx, hH * sy);
@@ -448,7 +451,7 @@ function animate() {
     ctx.fillStyle = `rgba(20,10,40,${meditationPhase * 0.35})`;
     ctx.fillRect(0, 0, W, H);
 
-    if (hero.praying && tick % 28 === 0) _spawnSym();
+    if (hero.praying && tick % 42 === 0) _spawnSym();
     _symTick();
 
     ctx.save();
@@ -502,6 +505,11 @@ function _onKey(e) {
   const k = e.key.toLowerCase();
   if (k === 'arrowdown' || k === 's' || k === 'ы') sitDown();
   if (k === 'arrowup'   || k === 'w' || k === 'щ') standUp();
+}
+
+// ── resumeMain — вызывается из closeScene* чтобы перезапустить loop ───────
+export function resumeMain() {
+  if (state.activeScreen === 'main' && !animId) animate();
 }
 
 // ── leaveMain ─────────────────────────────────────────────────────────────

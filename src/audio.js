@@ -7,9 +7,10 @@ export const AudioSystem = {
   masterGain:     null,
   ambientGain:    null,
   meditationGain: null,
+  sittingGain:    null,
   muted:          false,
   _started:       false,
-  _mode:          'silent',  // 'ambient' | 'meditation' | 'silent'
+  _mode:          'silent',  // 'ambient' | 'meditation' | 'sitting' | 'silent'
 
   // ── Init ──────────────────────────────────────────────────────────────
   init() {
@@ -33,8 +34,10 @@ export const AudioSystem = {
 
     this.ambientGain    = this.ctx.createGain();  this.ambientGain.gain.value    = 1.0;
     this.meditationGain = this.ctx.createGain();  this.meditationGain.gain.value = 0.0;
+    this.sittingGain    = this.ctx.createGain();  this.sittingGain.gain.value    = 0.0;
     this.ambientGain.connect(this.masterGain);
     this.meditationGain.connect(this.masterGain);
+    this.sittingGain.connect(this.masterGain);
 
     this._startAmbient();
   },
@@ -47,20 +50,28 @@ export const AudioSystem = {
     if (mode === 'ambient') {
       this.masterGain.gain.linearRampToValueAtTime(this.muted ? 0 : 0.18, now + 2.8);
       this.ambientGain.gain.linearRampToValueAtTime(1.0,  now + 2.8);
-      this.meditationGain.gain.linearRampToValueAtTime(0, now + 2.8);
+      this.meditationGain.gain.linearRampToValueAtTime(0,   now + 2.8);
+      if (this.sittingGain) this.sittingGain.gain.linearRampToValueAtTime(0, now + 2.8);
       if (!this._meditationStarted) this._startMeditation();
     } else if (mode === 'meditation') {
       this.masterGain.gain.linearRampToValueAtTime(this.muted ? 0 : 0.28, now + 2.8);
       this.ambientGain.gain.linearRampToValueAtTime(0.08, now + 2.8);
       this.meditationGain.gain.linearRampToValueAtTime(1.0, now + 2.8);
+      if (this.sittingGain) this.sittingGain.gain.linearRampToValueAtTime(0, now + 2.8);
       if (!this._meditationStarted) this._startMeditation();
+    } else if (mode === 'sitting') {
+      this.masterGain.gain.linearRampToValueAtTime(this.muted ? 0 : 0.22, now + 2.8);
+      this.ambientGain.gain.linearRampToValueAtTime(0.06, now + 2.8);
+      this.meditationGain.gain.linearRampToValueAtTime(0,   now + 2.8);
+      if (this.sittingGain) this.sittingGain.gain.linearRampToValueAtTime(1.0, now + 2.8);
+      if (!this._sittingStarted) this._startSitting();
     }
   },
 
   toggle() {
     this.muted = !this.muted;
     if (this.masterGain) {
-      const vol = this.muted ? 0 : (this._mode === 'meditation' ? 0.28 : 0.18);
+      const vol = this.muted ? 0 : (this._mode === 'meditation' ? 0.28 : this._mode === 'sitting' ? 0.22 : 0.18);
       this.masterGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.1);
     }
     return this.muted;
@@ -194,6 +205,76 @@ export const AudioSystem = {
       setTimeout(_schedMBell, 2200 + Math.random() * 3000);
     };
     setTimeout(_schedMBell, 800);
+  },
+
+  // ── Sitting music (lighter, melodic — отличается от медитации) ────────
+  _sittingStarted: false,
+  _startSitting() {
+    this._sittingStarted = true;
+    const ac  = this.ctx;
+    const out = this.sittingGain;
+
+    // Мягкий средний дрон (не такой низкий как медитация)
+    [[110, 0.16, 0.04], [165, 0.09, 0.06], [220, 0.05, 0.05]].forEach(([freq, amp, lfoHz]) => {
+      const osc = ac.createOscillator();
+      const g   = ac.createGain();
+      const lfo = ac.createOscillator();
+      const lg  = ac.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      g.gain.value = amp;
+      lfo.frequency.value = lfoHz; lg.gain.value = amp * 0.2;
+      lfo.connect(lg); lg.connect(g.gain);
+      osc.connect(g); g.connect(out);
+      osc.start(); lfo.start();
+    });
+
+    // Реверб для мелодии
+    const reverb = ac.createConvolver();
+    const irLen  = ac.sampleRate * 3.5;
+    const irBuf  = ac.createBuffer(2, irLen, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = irBuf.getChannelData(ch);
+      for (let i = 0; i < irLen; i++)
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 1.8);
+    }
+    reverb.buffer = irBuf;
+    reverb.connect(out);
+
+    // Плавающая пентатоника — редкие длинные ноты
+    const NOTES = [440, 528, 594, 660, 792, 880, 1056];
+    const _schedNote = () => {
+      const freq = NOTES[Math.floor(Math.random() * NOTES.length)];
+      const dur  = 6 + Math.random() * 6;
+      const osc  = ac.createOscillator();
+      const g    = ac.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq * (1 + (Math.random() - 0.5) * 0.002);
+      g.gain.setValueAtTime(0, ac.currentTime);
+      g.gain.linearRampToValueAtTime(0.09, ac.currentTime + 1.8);
+      g.gain.linearRampToValueAtTime(0, ac.currentTime + dur);
+      osc.connect(g); g.connect(reverb);
+      osc.start(); osc.stop(ac.currentTime + dur + 0.1);
+      setTimeout(_schedNote, 3500 + Math.random() * 4500);
+    };
+    for (let i = 0; i < 2; i++) setTimeout(_schedNote, i * 1400);
+
+    // Звуки поющей чаши — редкие, чистые
+    const BOWL = [396, 528, 660, 792];
+    const _schedBowl = () => {
+      const f   = BOWL[Math.floor(Math.random() * BOWL.length)];
+      const now = ac.currentTime;
+      [[f, 0.13, 5.5], [f * 2, 0.035, 3.5]].forEach(([freq, amp, dec]) => {
+        const osc = ac.createOscillator();
+        const g   = ac.createGain();
+        osc.type = 'sine'; osc.frequency.value = freq;
+        g.gain.setValueAtTime(amp, now);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + dec);
+        osc.connect(g); g.connect(out);
+        osc.start(now); osc.stop(now + dec);
+      });
+      setTimeout(_schedBowl, 4500 + Math.random() * 5500);
+    };
+    setTimeout(_schedBowl, 600);
   },
 
   // ── SFX ───────────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@
 
 import { state }        from '../src/state.js';
 import { showMsgIn }    from '../src/utils.js';
-import { leaveMain }    from './main.js';
+import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem } from '../src/inventory.js';
 import { renderHotbar } from '../src/hotbar.js';
 import { SaveManager }  from '../src/save.js';
@@ -256,5 +256,6 @@ export function closeSceneScene3() {
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   SaveManager.setScene('scene3', S);
+  resumeMain();
 }
 window.closeSceneScene3 = closeSceneScene3;
