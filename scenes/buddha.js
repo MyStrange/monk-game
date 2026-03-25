@@ -259,6 +259,18 @@ function interactItem(itemId, zone) {
   // All other item×zone: no actions here (zone msgs handled via zone-msgs.js)
 }
 
+// ── Hit test (for cursor) ─────────────────────────────────────────────────
+function _hitBuddha(cx, cy) {
+  if (!S.earUsed && cx > bW*0.60 && cx < bW*0.73 && cy > bH*0.44 && cy < bH*0.60) return true;
+  const item = getSelectedItem();
+  if (item && (item.id === 'jar' || item.id === 'jar_open') && !item.released) {
+    for (const f of bFlies) {
+      if (f.alive && Math.hypot(cx - f.x, cy - f.y) < f.sz * 5 + 14) return true;
+    }
+  }
+  return false;
+}
+
 // ── onTap ──────────────────────────────────────────────────────────────────
 function onTap(cx, cy) {
   if (state.activeScreen !== 'buddha') return;
@@ -420,6 +432,12 @@ function createEl() {
     const r = bCanvas.getBoundingClientRect();
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
+  bCanvas.addEventListener('mousemove', e => {
+    if (state.activeScreen !== 'buddha') return;
+    const r = bCanvas.getBoundingClientRect();
+    bCanvas.style.cursor = _hitBuddha(e.clientX - r.left, e.clientY - r.top) ? 'pointer' : 'default';
+  });
+  bCanvas.addEventListener('mouseleave', () => { bCanvas.style.cursor = 'default'; });
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────

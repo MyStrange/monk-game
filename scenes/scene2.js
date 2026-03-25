@@ -225,6 +225,12 @@ function createEl() {
     const r = canvas.getBoundingClientRect();
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
+  canvas.addEventListener('mousemove', e => {
+    if (state.activeScreen !== 'scene2') return;
+    const r = canvas.getBoundingClientRect();
+    canvas.style.cursor = hitZone(e.clientX - r.left, e.clientY - r.top) ? 'pointer' : 'default';
+  });
+  canvas.addEventListener('mouseleave', () => { canvas.style.cursor = 'default'; });
 
   document.addEventListener('keydown', _onKey);
 }

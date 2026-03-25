@@ -43,10 +43,18 @@
 <!-- Hotbar (поверх всех сцен) -->
 <div id="hotbar"></div>
 
-<!-- UI buttons -->
-<button id="sound-btn"    class="ui-btn" onclick="toggleSound()"      title="Звук"></button>
-<button id="ach-btn"      class="ui-btn" onclick="openAchievements()" title="Достижения"></button>
-<button id="fullscreen-btn" class="ui-btn" onclick="toggleFullscreen()" title="Полный экран"></button>
+<!-- Menu button + overlay -->
+<button id="menu-btn" class="ui-btn" title="Меню"><svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated"><rect x="2" y="4" width="16" height="2" fill="currentColor"/><rect x="2" y="9" width="16" height="2" fill="currentColor"/><rect x="2" y="14" width="16" height="2" fill="currentColor"/></svg></button>
+<div id="game-menu" style="display:none">
+  <div class="game-menu-backdrop"></div>
+  <div class="game-menu-panel">
+    <button id="gm-sound">♪ Звук вкл</button>
+    <button id="gm-ach">★ Достижения</button>
+    <button id="gm-fs">⛶ Полный экран</button>
+    <div class="game-menu-sep"></div>
+    <button id="gm-reset">↺ Начать сначала</button>
+  </div>
+</div>
 
 <!-- Game wrap — все сцены внутри -->
 <div id="wrap">

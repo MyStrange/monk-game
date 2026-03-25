@@ -145,8 +145,8 @@ const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 function pickUpStick() {
   if (S.stickPickedUp) { showMsg('Здесь больше ничего нет.'); return; }
   if (state.selectedSlot >= 0) { showMsg('Руки заняты.'); return; }
+  if (!addItem(makeItem('stick'))) { showMsg('Инвентарь полон.'); return; }
   S.stickPickedUp = true;
-  addItem(makeItem('stick'));
   AudioSystem.playPickup();
   renderHotbar();
   showMsg('Ты нашёл палку в кустах. Зачем-то взял её.');

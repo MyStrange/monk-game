@@ -32,13 +32,37 @@ AudioSystem.init();
 renderHotbar();
 initMain();
 
-// ── Временная кнопка сброса (потом убрать) ──────────────────────────────────
+// ── Game menu ────────────────────────────────────────────────────────────────
 {
-  const btn = document.createElement('button');
-  btn.className = 'ui-btn';
-  btn.title = 'Сбросить игру';
-  btn.textContent = '↺';
-  btn.style.cssText = 'position:fixed;top:14px;right:56px;z-index:300;';
-  btn.onclick = () => { SaveManager.reset(); location.reload(); };
-  document.body.appendChild(btn);
+  const menuBtn  = document.getElementById('menu-btn');
+  const gameMenu = document.getElementById('game-menu');
+  const gmSound  = document.getElementById('gm-sound');
+  const gmAch    = document.getElementById('gm-ach');
+  const gmFs     = document.getElementById('gm-fs');
+  const gmReset  = document.getElementById('gm-reset');
+  const backdrop = gameMenu?.querySelector('.game-menu-backdrop');
+
+  function _openMenu() {
+    if (gmSound) gmSound.textContent = AudioSystem.muted ? '♪ Звук выкл' : '♪ Звук вкл';
+    if (gameMenu) gameMenu.style.display = 'block';
+  }
+  function _closeMenu() {
+    if (gameMenu) gameMenu.style.display = 'none';
+  }
+
+  menuBtn?.addEventListener('click', () => {
+    gameMenu?.style.display === 'block' ? _closeMenu() : _openMenu();
+  });
+  backdrop?.addEventListener('click', _closeMenu);
+
+  gmSound?.addEventListener('click', () => { toggleSound(); _closeMenu(); });
+  gmAch?.addEventListener('click',   () => { openAchievements(); _closeMenu(); });
+  gmFs?.addEventListener('click',    () => { toggleFullscreen(); _closeMenu(); });
+  gmReset?.addEventListener('click', () => {
+    _closeMenu();
+    if (confirm('Начать игру заново? Весь прогресс будет удалён.')) {
+      SaveManager.reset();
+      location.reload();
+    }
+  });
 }

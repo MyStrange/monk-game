@@ -224,6 +224,14 @@ function createEl() {
     const r = canvas.getBoundingClientRect();
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
+  canvas.addEventListener('mousemove', e => {
+    if (state.activeScreen !== 'scene3') return;
+    const r = canvas.getBoundingClientRect();
+    const cx = e.clientX - r.left, cy = e.clientY - r.top;
+    canvas.style.cursor = (!S.fireFlowerPicked &&
+      Math.abs(cx - s3W * 0.5) < 40 && Math.abs(cy - s3H * 0.58) < 40) ? 'pointer' : 'default';
+  });
+  canvas.addEventListener('mouseleave', () => { canvas.style.cursor = 'default'; });
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
