@@ -329,6 +329,28 @@ export const AudioSystem = {
     }
   },
 
+  playFlyFlutter() {
+    if (!this.ctx) return;
+    const ac  = this.ctx;
+    const now = ac.currentTime;
+    // Мягкое жужжание светлячка: быстрое FM
+    const osc = ac.createOscillator();
+    const g   = ac.createGain();
+    const lfo = ac.createOscillator();
+    const lg  = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.linearRampToValueAtTime(300, now + 0.06);
+    osc.frequency.linearRampToValueAtTime(120, now + 0.2);
+    lfo.frequency.value = 48; lg.gain.value = 70;
+    lfo.connect(lg); lg.connect(osc.frequency);
+    g.gain.setValueAtTime(0.055, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+    osc.connect(g); g.connect(this.masterGain);
+    osc.start(now); osc.stop(now + 0.38);
+    lfo.start(now); lfo.stop(now + 0.38);
+  },
+
   playPickup() {
     if (!this.ctx) return;
     const ac  = this.ctx;

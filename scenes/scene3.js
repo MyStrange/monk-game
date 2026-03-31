@@ -1,7 +1,7 @@
 // scenes/scene3.js — поле огненных цветов (процедурная графика)
 
 import { state }        from '../src/state.js';
-import { showMsgIn }    from '../src/utils.js';
+import { showMsgIn, CURSOR_DEF, CURSOR_PTR } from '../src/utils.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem } from '../src/inventory.js';
 import { renderHotbar } from '../src/hotbar.js';
@@ -229,9 +229,9 @@ function createEl() {
     const r = canvas.getBoundingClientRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
     canvas.style.cursor = (!S.fireFlowerPicked &&
-      Math.abs(cx - s3W * 0.5) < 40 && Math.abs(cy - s3H * 0.58) < 40) ? 'pointer' : 'default';
+      Math.abs(cx - s3W * 0.5) < 40 && Math.abs(cy - s3H * 0.58) < 40) ? CURSOR_PTR : CURSOR_DEF;
   });
-  canvas.addEventListener('mouseleave', () => { canvas.style.cursor = 'default'; });
+  canvas.addEventListener('mouseleave', () => { canvas.style.cursor = CURSOR_DEF; });
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────

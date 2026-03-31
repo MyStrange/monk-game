@@ -1,7 +1,7 @@
 // scenes/main.js — главная сцена: герой, зоны, медитация, символы
 
 import { state }           from '../src/state.js';
-import { showMsgIn, showLoading, hideLoading } from '../src/utils.js';
+import { showMsgIn, showLoading, hideLoading, CURSOR_DEF, CURSOR_PTR } from '../src/utils.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
@@ -66,8 +66,8 @@ const ZONES_BG = {
   tree:        { x: 1600,  y: 300,            w: 200,    h: 580 },
   cat:         { x: CAT_X, y: GROUND_Y-CAT_H, w: CAT_W,  h: CAT_H },
   monk:        { x: MONK_X,y: GROUND_Y-MONK_H,w: MONK_W, h: MONK_H },
-  bush:        { x: 0,     y: 580,            w: 500,    h: 420 },
-  water:       { x: 0,     y: 920,            w: 1800,   h: 170 },
+  bush:        { x: 60,    y: 580,            w: 620,    h: 420 },
+  water:       { x: 900,   y: 920,            w: 900,    h: 170 },
   dirt:        { x: 870,   y: 890,            w: 100,    h: 80 },
   inscription: { x: 700,   y: 760,            w: 180,    h: 110 },
 };
@@ -106,17 +106,17 @@ let draggedSym = null;
 
 const THAI_CHARS = 'ธมอนภวตสกรคทยชพระศษสหฬ';
 
-// ── Ambient fireflies (180, yellow pixel, varied sizes + glow) ────────────
+// ── Ambient fireflies (240, yellow pixel, varied sizes + glow) ────────────
 const _SIZES = [1,1,2,2,2,2,3,3,3,4,5];
-const flies = Array.from({ length: 180 }, () => ({
+const flies = Array.from({ length: 240 }, () => ({
   x:          Math.random() * BG_W,
-  y:          Math.random() * (BG_H * 0.55),
-  vx:         (Math.random() - 0.5) * 0.8,
-  vy:         (Math.random() - 0.5) * 0.4,
+  y:          Math.random() * (BG_H * 0.6),
+  vx:         (Math.random() - 0.5) * 0.9,
+  vy:         (Math.random() - 0.5) * 0.5,
   brightness: Math.random(),
-  bv:         (Math.random() - 0.5) * 0.02,
+  bv:         (Math.random() < 0.5 ? 1 : -1) * (0.018 + Math.random() * 0.028),
   sz:         _SIZES[Math.floor(Math.random() * _SIZES.length)],
-  glow:       Math.random() < 0.28 ? 2.2 : 1.0,  // 28% have extra halo
+  glow:       Math.random() < 0.32 ? 2.4 : 1.0,  // 32% с усиленным ореолом
 }));
 
 // ── Message cycling ────────────────────────────────────────────────────────
@@ -559,13 +559,13 @@ export async function initMain() {
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
     onDragMove(cx, cy);
     // Pointer cursor over clickable zones
-    canvas.style.cursor = hitZoneBG(cx, cy) ? 'pointer' : 'default';
+    canvas.style.cursor = hitZoneBG(cx, cy) ? CURSOR_PTR : CURSOR_DEF;
   });
   canvas.addEventListener('mouseup', () => {
     if (draggedSym) { _deliverSym(); draggedSym = null; }
   });
   canvas.addEventListener('mouseleave', () => {
-    canvas.style.cursor = 'default';
+    canvas.style.cursor = CURSOR_DEF;
   });
 
   // Touch events

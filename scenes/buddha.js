@@ -1,7 +1,7 @@
 // scenes/buddha.js — Будда: светлячки, желание, ухо, диалог философов
 
 import { state }         from '../src/state.js';
-import { showMsgIn, showLoading, hideLoading, showError } from '../src/utils.js';
+import { showMsgIn, showLoading, hideLoading, showError, CURSOR_DEF, CURSOR_PTR } from '../src/utils.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
 import { renderHotbar }  from '../src/hotbar.js';
@@ -26,6 +26,8 @@ const showMsg = (t, d) => showMsgIn(bMsgEl, t, d);
 
 // ── Fireflies ──────────────────────────────────────────────────────────────
 let bFlies = [];
+let bDust  = [];  // фоновые некликабельные частицы
+
 function _spawnFlies(n) {
   bFlies = Array.from({ length: n }, () => ({
     x:  Math.random() * bW,
@@ -36,6 +38,16 @@ function _spawnFlies(n) {
     br: Math.random(),
     bv: (Math.random() - 0.5) * 0.025,
     alive: true,
+    trail: [],
+  }));
+  bDust = Array.from({ length: 40 }, () => ({
+    x:  Math.random() * bW,
+    y:  Math.random() * bH,
+    vx: (Math.random() - 0.5) * 0.22,
+    vy: -0.08 - Math.random() * 0.14,
+    sz: 1 + Math.random() * 1.8,
+    br: Math.random(),
+    bv: (Math.random() - 0.5) * 0.008,
   }));
 }
 
@@ -291,11 +303,8 @@ function interactItem(itemId, zone) {
 // ── Hit test (for cursor) ─────────────────────────────────────────────────
 function _hitBuddha(cx, cy) {
   if (!S.earUsed && cx > bW*0.60 && cx < bW*0.73 && cy > bH*0.44 && cy < bH*0.60) return true;
-  const item = getSelectedItem();
-  if (item && (item.id === 'jar' || item.id === 'jar_open') && !item.released) {
-    for (const f of bFlies) {
-      if (f.alive && Math.hypot(cx - f.x, cy - f.y) < f.sz * 5 + 14) return true;
-    }
+  for (const f of bFlies) {
+    if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < f.sz * 5 + 14) return true;
   }
   return false;
 }
@@ -311,6 +320,21 @@ function onTap(cx, cy) {
   // Ear hit zone
   if (!S.earUsed && cx > bW*0.60 && cx < bW*0.73 && cy > bH*0.44 && cy < bH*0.60) {
     if (item) { interactItem(item.id, 'ear'); return; }
+  }
+
+  // No jar: click on fly → it escapes with buzz + trail
+  if (!item || (item.id !== 'jar' && item.id !== 'jar_open')) {
+    for (const f of bFlies) {
+      if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < f.sz * 5 + 14) {
+        f.escaping = true;
+        const angle = Math.random() * Math.PI * 2;
+        f.escapeVx  = Math.cos(angle) * (5 + Math.random() * 4);
+        f.escapeVy  = Math.sin(angle) * (5 + Math.random() * 4);
+        f.escapeA   = 1.0;
+        AudioSystem.playFlyFlutter?.();
+        return;
+      }
+    }
   }
 
   // Jar: catch firefly
@@ -347,9 +371,52 @@ function animate() {
   bCtx.clearRect(0, 0, bW, bH);
   bTick++;
 
+  // ── Background dust (dim, non-interactive) ────────────────────────────────
+  for (const d of bDust) {
+    d.x += d.vx; d.y += d.vy;
+    if (d.y < 0) { d.y = bH; d.x = Math.random() * bW; }
+    if (d.x < 0 || d.x > bW) d.x = Math.random() * bW;
+    d.br += d.bv; if (d.br < 0 || d.br > 1) d.bv *= -1;
+    bCtx.globalAlpha = 0.07 + d.br * 0.16;
+    bCtx.fillStyle   = '#ffe8a0';
+    bCtx.fillRect(Math.round(d.x), Math.round(d.y), Math.ceil(d.sz), Math.ceil(d.sz));
+  }
+  bCtx.globalAlpha = 1;
+
   // ── Ambient fireflies (yellow pixels with glow) ───────────────────────────
   for (const f of bFlies) {
     if (!f.alive) continue;
+
+    if (f.escaping) {
+      // Убегающий светлячок: ускоряется, оставляет след
+      f.trail.push({ x: f.x, y: f.y });
+      if (f.trail.length > 18) f.trail.shift();
+      f.x += f.escapeVx; f.y += f.escapeVy;
+      f.escapeVx *= 0.95; f.escapeVy *= 0.95;
+      f.escapeA  -= 0.022;
+      if (f.escapeA <= 0 || f.x < -80 || f.x > bW + 80 || f.y < -80 || f.y > bH + 80) {
+        f.alive = false; continue;
+      }
+      // Светящийся след
+      bCtx.save();
+      for (let ti = 0; ti < f.trail.length; ti++) {
+        const p = f.trail[ti];
+        const ta = (ti / f.trail.length) * f.escapeA * 0.7;
+        bCtx.shadowColor = `rgba(255,200,0,${ta})`;
+        bCtx.shadowBlur  = 8;
+        bCtx.fillStyle   = `rgba(255,220,60,${ta})`;
+        bCtx.fillRect(Math.round(p.x), Math.round(p.y), 3, 3);
+      }
+      // Сам светлячок
+      const half = Math.round(f.sz / 2);
+      bCtx.shadowColor = `rgba(255,240,80,${f.escapeA})`;
+      bCtx.shadowBlur  = 14 + f.sz;
+      bCtx.fillStyle   = `rgba(255,255,160,${f.escapeA})`;
+      bCtx.fillRect(Math.round(f.x) - half, Math.round(f.y) - half, Math.ceil(f.sz), Math.ceil(f.sz));
+      bCtx.restore();
+      continue;
+    }
+
     f.x += f.vx; f.y += f.vy;
     f.br += f.bv;
     if (f.br < 0 || f.br > 1) f.bv *= -1;
@@ -462,12 +529,23 @@ function createEl() {
     const r = bCanvas.getBoundingClientRect();
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
+  let _stickHintZone = false;
   bCanvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== 'buddha') return;
-    const r = bCanvas.getBoundingClientRect();
-    bCanvas.style.cursor = _hitBuddha(e.clientX - r.left, e.clientY - r.top) ? 'pointer' : 'default';
+    const r  = bCanvas.getBoundingClientRect();
+    const cx = e.clientX - r.left, cy = e.clientY - r.top;
+    bCanvas.style.cursor = _hitBuddha(cx, cy) ? CURSOR_PTR : CURSOR_DEF;
+    // Подсказка: стик над зоной уха
+    const item = getSelectedItem();
+    const inEar = !S.earUsed && cx > bW*0.60 && cx < bW*0.73 && cy > bH*0.44 && cy < bH*0.60;
+    if (item?.id === 'stick' && inEar && !_stickHintZone) {
+      _stickHintZone = true;
+      showMsg('Что-то мешает внутри. Может, посветить?');
+    } else if (!inEar) {
+      _stickHintZone = false;
+    }
   });
-  bCanvas.addEventListener('mouseleave', () => { bCanvas.style.cursor = 'default'; });
+  bCanvas.addEventListener('mouseleave', () => { bCanvas.style.cursor = CURSOR_DEF; });
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
