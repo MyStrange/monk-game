@@ -27,6 +27,7 @@ const showMsg = (t, d) => showMsgIn(bMsgEl, t, d);
 // ── Fireflies ──────────────────────────────────────────────────────────────
 let bFlies = [];
 let bDust  = [];  // фоновые некликабельные частицы
+let bFlash = [];  // вспышки при поимке светлячка
 
 function _spawnFlies(n) {
   bFlies = Array.from({ length: n }, () => ({
@@ -130,11 +131,11 @@ function _buildFlyroom() {
   // Speech bubbles
   _bubA = document.createElement('div');
   _bubA.className = 'fly-bubble bubble-a';
-  _bubA.style.cssText = 'left:35%;bottom:36%;';
+  _bubA.style.cssText = 'left:27%;bottom:16%;';
 
   _bubB = document.createElement('div');
   _bubB.className = 'fly-bubble bubble-b';
-  _bubB.style.cssText = 'left:65%;bottom:36%;';
+  _bubB.style.cssText = 'left:70%;bottom:16%;';
 
   _bubNarr = document.createElement('div');
   _bubNarr.className = 'fly-bubble bubble-narrator';
@@ -169,20 +170,30 @@ function _buildFlyroom() {
   // Canvas glow animation
   let frW = 0, frH = 0;
   const frCtx = frCanvas.getContext('2d');
-  // Брюшки светлячков — оба жёлтые, чуть ниже центра тела
+  // Брюшки-фонарики: левый светлячок ~x=0.27, правый ~x=0.70, оба ~y=0.73
   const flyGlows = [
-    { x: 0.35, y: 0.72, color: '#ffcc30' },
-    { x: 0.65, y: 0.72, color: '#ffe050' },
+    { x: 0.27, y: 0.73, color: '#ffcc30' },
+    { x: 0.70, y: 0.73, color: '#ffe050' },
   ];
+  // Пар над кашей (миска по центру стола ~x=0.50, y≈0.62)
+  const frSteam = Array.from({ length: 10 }, () => ({
+    x:   0.45 + Math.random() * 0.10,
+    y:   0.58 + Math.random() * 0.06,
+    vx:  (Math.random() - 0.5) * 0.00014,
+    vy:  -0.00024 - Math.random() * 0.00018,
+    sz:  2 + Math.random() * 3,
+    life: Math.random(),
+    lv:  0.0035 + Math.random() * 0.0030,
+  }));
   // Мелкая пыльца в воздухе
   const frDust = Array.from({ length: 50 }, () => ({
     x:  Math.random(),
     y:  Math.random(),
-    vx: (Math.random() - 0.5) * 0.00015,
-    vy: -0.00008 - Math.random() * 0.00015,
-    sz: 0.8 + Math.random() * 1.4,
+    vx: (Math.random() - 0.5) * 0.00040,
+    vy: -0.00012 - Math.random() * 0.00020,
+    sz: 1.0 + Math.random() * 2.0,
     br: Math.random(),
-    bv: (Math.random() - 0.5) * 0.012,
+    bv: (Math.random() - 0.5) * 0.015,
   }));
   let frTick = 0;
   _frAnimateFn = function frAnimate() {
@@ -193,18 +204,33 @@ function _buildFlyroom() {
     frCtx.clearRect(0, 0, frW, frH);
     frTick++;
 
-    // Свечение брюшков
+    // Свечение брюшков-фонариков
     for (const g of flyGlows) {
-      const alpha = 0.55 + 0.45 * Math.sin(frTick * 0.05);
-      const grd   = frCtx.createRadialGradient(g.x*frW, g.y*frH, 0, g.x*frW, g.y*frH, 56);
-      grd.addColorStop(0,   g.color + 'ee');
-      grd.addColorStop(0.4, g.color + '88');
+      const alpha = 0.60 + 0.40 * Math.sin(frTick * 0.05);
+      const grd   = frCtx.createRadialGradient(g.x*frW, g.y*frH, 0, g.x*frW, g.y*frH, 70);
+      grd.addColorStop(0,   g.color + 'ff');
+      grd.addColorStop(0.35, g.color + '99');
       grd.addColorStop(1,   g.color + '00');
       frCtx.globalAlpha = alpha;
       frCtx.fillStyle   = grd;
       frCtx.beginPath();
-      frCtx.arc(g.x*frW, g.y*frH, 56, 0, Math.PI * 2);
+      frCtx.arc(g.x*frW, g.y*frH, 70, 0, Math.PI * 2);
       frCtx.fill();
+    }
+
+    // Пар над кашей
+    for (const s of frSteam) {
+      s.x += s.vx; s.y += s.vy;
+      s.life += s.lv;
+      if (s.life >= 1) {
+        s.life = 0;
+        s.x = 0.45 + Math.random() * 0.10;
+        s.y = 0.58 + Math.random() * 0.04;
+      }
+      const fa = s.life < 0.3 ? s.life / 0.3 : (1 - s.life);
+      frCtx.globalAlpha = fa * 0.32;
+      frCtx.fillStyle   = '#fffde8';
+      frCtx.fillRect(Math.round(s.x * frW), Math.round(s.y * frH), Math.ceil(s.sz), Math.ceil(s.sz));
     }
 
     // Пыльца
@@ -214,7 +240,7 @@ function _buildFlyroom() {
       if (d.x < 0 || d.x > 1) { d.x = Math.random(); }
       d.br += d.bv;
       if (d.br < 0 || d.br > 1) d.bv *= -1;
-      frCtx.globalAlpha = 0.15 + d.br * 0.35;
+      frCtx.globalAlpha = 0.22 + d.br * 0.40;
       frCtx.fillStyle   = '#ffee88';
       frCtx.fillRect(Math.round(d.x * frW), Math.round(d.y * frH), Math.ceil(d.sz), Math.ceil(d.sz));
     }
@@ -337,13 +363,14 @@ function onTap(cx, cy) {
     }
   }
 
-  // Jar: catch firefly
+  // Jar: catch firefly (small precision radius)
   if (item && (item.id === 'jar' || item.id === 'jar_open')) {
     if (item.released) { showMsg('В банке уже был свет. Хватит.'); return; }
     for (let i = 0; i < bFlies.length; i++) {
       const f = bFlies[i];
       if (!f.alive) continue;
-      if (Math.hypot(cx - f.x, cy - f.y) < f.sz * 5 + 14) {
+      if (Math.hypot(cx - f.x, cy - f.y) < f.sz * 1.5 + 6) {
+        bFlash.push({ x: f.x, y: f.y, t: 0 });
         f.alive = false;
         item.caught = (item.caught ?? 0) + 1;
 
@@ -428,6 +455,26 @@ function animate() {
     bCtx.shadowBlur  = 6 + f.br * 10;
     bCtx.fillStyle   = `rgba(255,220,80,${a})`;
     bCtx.fillRect(Math.round(f.x), Math.round(f.y), Math.ceil(f.sz), Math.ceil(f.sz));
+    bCtx.restore();
+  }
+
+  // ── Catch flashes ─────────────────────────────────────────────────────────
+  for (let i = bFlash.length - 1; i >= 0; i--) {
+    const fl = bFlash[i];
+    fl.t++;
+    if (fl.t >= 20) { bFlash.splice(i, 1); continue; }
+    const prog = fl.t / 20;
+    const radius = 18 + prog * 44;
+    const a = (1 - prog) * 0.72;
+    bCtx.save();
+    const grd = bCtx.createRadialGradient(fl.x, fl.y, 0, fl.x, fl.y, radius);
+    grd.addColorStop(0,   `rgba(255,255,220,${a})`);
+    grd.addColorStop(0.5, `rgba(255,210,50,${a * 0.55})`);
+    grd.addColorStop(1,   'rgba(255,180,0,0)');
+    bCtx.fillStyle = grd;
+    bCtx.beginPath();
+    bCtx.arc(fl.x, fl.y, radius, 0, Math.PI * 2);
+    bCtx.fill();
     bCtx.restore();
   }
 

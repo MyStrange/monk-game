@@ -81,37 +81,28 @@ export function renderJarIcon(item) {
     : '';
 
   if (gooMode) {
-    // Банка со светляковой жижкой — без крышки, яркий жёлтый, анимация свечения
+    // Банка с остатками жижки — тёмное стекло, тонкий слой мерцающего осадка внизу
     return `<svg width="48" height="48" viewBox="0 0 48 48"
       xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-      <!-- анимированное внешнее свечение -->
-      <rect x="4"  y="8"  width="40" height="32" fill="#ffe000">
-        <animate attributeName="opacity" values="0.06;0.22;0.06" dur="1.3s" repeatCount="indefinite"/>
-      </rect>
-      <rect x="0"  y="12" width="48" height="24" fill="#ffcc00">
-        <animate attributeName="opacity" values="0.03;0.12;0.03" dur="1.3s" begin="0.2s" repeatCount="indefinite"/>
+      <!-- слабое внешнее свечение -->
+      <rect x="8" y="12" width="32" height="26" fill="#ffe000">
+        <animate attributeName="opacity" values="0.02;0.08;0.02" dur="2.2s" repeatCount="indefinite"/>
       </rect>
       <!-- горлышко (без крышки) -->
-      <rect x="17" y="10" width="14" height="2" fill="${outline}" opacity="0.7"/>
-      <rect x="15" y="12" width="18" height="2" fill="${outline}" opacity="0.55"/>
-      <!-- корпус — чёткий контур -->
-      <rect x="10" y="14" width="28" height="26" fill="${outline}" opacity="0.6"/>
+      <rect x="17" y="10" width="14" height="2" fill="${outline}" opacity="0.6"/>
+      <rect x="15" y="12" width="18" height="2" fill="${outline}" opacity="0.45"/>
+      <!-- корпус: тёмное стекло -->
+      <rect x="10" y="14" width="28" height="26" fill="${outline}" opacity="0.55"/>
       <rect x="11" y="15" width="26" height="24" fill="#08070f"/>
-      <!-- жижка — пульсирует -->
-      <rect x="11" y="22" width="26" height="17" fill="#ffe200">
-        <animate attributeName="opacity" values="0.55;0.88;0.55" dur="1.0s" repeatCount="indefinite"/>
+      <!-- тонкий осадок внизу — мерцает -->
+      <rect x="11" y="34" width="26" height="5" fill="#ffe200">
+        <animate attributeName="opacity" values="0.30;0.62;0.30" dur="1.8s" repeatCount="indefinite"/>
       </rect>
-      <rect x="11" y="25" width="26" height="14" fill="#ffd000">
-        <animate attributeName="opacity" values="0.4;0.7;0.4" dur="1.0s" begin="0.25s" repeatCount="indefinite"/>
+      <rect x="14" y="35" width="18" height="2" fill="#fffaaa">
+        <animate attributeName="opacity" values="0.15;0.45;0.15" dur="1.8s" begin="0.5s" repeatCount="indefinite"/>
       </rect>
-      <!-- блики жижки -->
-      <rect x="14" y="24" width="6"  height="2" fill="#fff8a0" opacity="0.9"/>
-      <rect x="30" y="28" width="4"  height="2" fill="#fff8a0" opacity="0.7"/>
-      <rect x="15" y="31" width="4"  height="2" fill="#fffbd0" opacity="0.6"/>
-      <!-- стеклянная верхняя часть -->
-      <rect x="11" y="15" width="26" height="7" fill="${glass}" opacity="0.05"/>
       <!-- блик стекла -->
-      <rect x="13" y="17" width="2"  height="9" fill="#ffffff" opacity="0.18"/>
+      <rect x="13" y="17" width="2" height="10" fill="#ffffff" opacity="0.12"/>
       <!-- нижний ободок -->
       <rect x="10" y="39" width="28" height="3" fill="${outline}" opacity="0.6"/>
     </svg>`;

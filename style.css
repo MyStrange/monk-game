@@ -367,10 +367,10 @@ canvas{
 /* ── Flyroom speech bubbles ── */
 .fly-bubble{
   position:absolute;
-  max-width:42%;min-width:120px;
+  max-width:24%;min-width:100px;
   background:rgba(0,0,0,0.9);
-  color:#e8d8b0;font-family:monospace;font-size:13px;
-  padding:10px 14px;line-height:1.55;
+  color:#e8d8b0;font-family:monospace;font-size:12px;
+  padding:8px 12px;line-height:1.5;
   text-align:center;border-radius:4px;
   cursor:pointer;
   transform:translateX(-50%);
@@ -381,18 +381,18 @@ canvas{
 .fly-bubble.bubble-narrator{
   border:1px solid rgba(255,255,255,0.2);
   font-style:italic;color:rgba(255,255,255,0.55);
-  max-width:70%;min-width:160px;
+  max-width:68%;min-width:160px;
 }
-/* Tail triangles */
+/* Tail triangles — pointing UP toward the fly above */
 .fly-bubble::after{
   content:'';position:absolute;
-  bottom:-8px;left:50%;transform:translateX(-50%);
+  top:-8px;left:50%;transform:translateX(-50%);
   width:0;height:0;
   border-left:5px solid transparent;
   border-right:5px solid transparent;
 }
-.fly-bubble.bubble-a::after{border-top:8px solid rgba(255,200,60,0.6);}
-.fly-bubble.bubble-b::after{border-top:8px solid rgba(100,180,255,0.6);}
+.fly-bubble.bubble-a::after{border-bottom:8px solid rgba(255,200,60,0.6);}
+.fly-bubble.bubble-b::after{border-bottom:8px solid rgba(100,180,255,0.6);}
 .fly-bubble.bubble-narrator::after{display:none;}
 /* Pause indicator */
 .fly-pause-dots{
