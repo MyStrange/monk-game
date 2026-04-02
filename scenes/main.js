@@ -103,8 +103,27 @@ let meditationPhase  = 0;
 let pSyms    = [];
 let mParticles = [];
 let draggedSym = null;
+let statueParticles = [];  // вспышки при доставке символа
 
-const THAI_CHARS = 'ธมอนภวตสกรคทยชพระศษสหฬ';
+const THAI_CHARS = 'ธมอนภวตสกรคทยชพระศษสหฬาิีุูเแโใไ';
+const PURPLE_PALETTE = [
+  '#ffffff','#f0e8ff','#e2d4ff','#c8aaff',
+  '#b888ff','#9966ee','#ddaaff','#ffe8ff','#ccbbff','#aa88ee',
+];
+
+// ── Pixel-art Thai glyph (cached, drawn at 10px → scaled up) ───────────────
+let _thaiGlyphPurple = null;
+let _thaiGlyphGold   = null;
+function _makeThaiGlyph(color) {
+  const c = document.createElement('canvas');
+  c.width = 48; c.height = 14;
+  const tc = c.getContext('2d');
+  tc.fillStyle = color;
+  tc.font = 'bold 10px sans-serif';
+  tc.textAlign = 'center'; tc.textBaseline = 'middle';
+  tc.fillText('ธรรม', 24, 7);
+  return c;
+}
 
 // ── Ambient fireflies (240, yellow pixel, varied sizes + glow) ────────────
 const _SIZES = [1,1,2,2,2,2,3,3,3,4,5];
@@ -168,11 +187,12 @@ function startBury() {
 
 // ── Meditation ─────────────────────────────────────────────────────────────
 export function standUp() {
-  hero.praying    = false;
-  meditationPhase = 0;
-  pSyms           = [];
-  mParticles      = [];
-  draggedSym      = null;
+  hero.praying      = false;
+  meditationPhase   = 0;
+  pSyms             = [];
+  mParticles        = [];
+  draggedSym        = null;
+  statueParticles   = [];
   AudioSystem.setMode('ambient');
 }
 
@@ -185,22 +205,52 @@ function sitDown() {
 
 function _spawnSym() {
   if (!hero.praying) return;
-  const ch = THAI_CHARS[Math.floor(Math.random() * THAI_CHARS.length)];
-  const p  = bgToCanvas(hero.x, hero.y - HERO_STAND_H * 0.8);
-  pSyms.push({ ch, x: p.x, y: p.y, vy: -0.55 - Math.random() * 0.45, life: 1.0,
-                dragging: false, vx: (Math.random() - 0.5) * 0.55,
-                ax: (Math.random() - 0.5) * 0.015,
-                size: 30 + Math.random() * 32 });
+  const ch   = THAI_CHARS[Math.floor(Math.random() * THAI_CHARS.length)];
+  const p    = bgToCanvas(hero.x, hero.y - HERO_STAND_H * 0.8);
+  const path = Math.floor(Math.random() * 4);
+  pSyms.push({
+    ch,
+    x: p.x, y: p.y, x0: p.x, y0: p.y,
+    t: 0, path,
+    phase:      Math.random() * Math.PI * 2,
+    ampX:       20 + Math.random() * (path === 1 ? 55 : 26),
+    freqX:      0.7 + Math.random() * 1.1,
+    riseSpeed:  0.85 + Math.random() * 0.65,
+    life:       1.0,
+    dragging:   false,
+    vx: 0, vy: 0, ax: 0,
+    size:       26 + Math.random() * 36,
+    color:      PURPLE_PALETTE[Math.floor(Math.random() * PURPLE_PALETTE.length)],
+  });
 }
 
 function _symTick() {
   pSyms = pSyms.filter(s => {
     if (s.dragging) return true;
-    s.vx += s.ax ?? 0;
-    s.x  += s.vx;
-    s.y  += s.vy;
-    s.life -= 0.0016;
-    return s.life > 0;
+    s.t++;
+    const sec = s.t / 60;
+    // Parametric position by path type — all gently accelerate upward
+    switch (s.path) {
+      case 0: // Плавная синусоида
+        s.x = s.x0 + Math.sin(sec * s.freqX * Math.PI + s.phase) * s.ampX;
+        break;
+      case 1: // Широкая дуга-sweep
+        s.x = s.x0 + Math.sin(sec * s.freqX * 1.5 + s.phase) * (s.ampX * 1.9);
+        break;
+      case 2: // Лемниската / восьмёрка
+        s.x = s.x0
+            + Math.sin(sec * s.freqX * 2.6 + s.phase)  * s.ampX
+            + Math.cos(sec * s.freqX * 1.3)             * (s.ampX * 0.45);
+        break;
+      case 3: // Спиральная штопор
+        const spiralR = s.ampX * (0.35 + 0.65 * Math.abs(Math.sin(sec * 1.1)));
+        s.x = s.x0 + spiralR * Math.cos(sec * s.freqX * 3.8 + s.phase);
+        break;
+    }
+    // Ускоряющийся подъём
+    s.y = s.y0 - (s.riseSpeed * s.t + 0.0022 * s.t * s.t);
+    s.life -= 0.0013;
+    return s.life > 0 && s.y > -80;
   });
 }
 
@@ -320,9 +370,43 @@ function _deliverSym() {
   inscriptionGlow     = 1.0;
   AudioSystem.playBell();
 
+  // Burst of sparks at inscription zone
+  const iz  = ZONES_BG.inscription;
+  const ip  = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
+  const csx = W / BG_W, csy = H / BG_H;
+  const spd = Math.min(csx, csy);
+  for (let i = 0; i < 32; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const v     = (1.8 + Math.random() * 3.8) * spd;
+    const col   = i % 3 === 0 ? '#ffe080' : (i % 3 === 1 ? '#cc88ff' : '#ffffff');
+    statueParticles.push({
+      x: ip.x, y: ip.y,
+      vx: Math.cos(angle) * v,
+      vy: Math.sin(angle) * v - 2.2 * spd,
+      life: 1.0,
+      lv: 0.020 + Math.random() * 0.018,
+      sz: Math.max(1, Math.round((1 + Math.random() * 2) * spd)),
+      color: col,
+    });
+  }
+
   if (S.inscriptionCharge >= 5 && !S.inscriptionReady) {
-    S.inscriptionReady = true;
-    inscriptionGlow    = 2.0;
+    S.inscriptionReady  = true;
+    inscriptionGlow     = 2.0;
+    // Extra large burst for completion
+    for (let i = 0; i < 24; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const v     = (3 + Math.random() * 6) * spd;
+      statueParticles.push({
+        x: ip.x, y: ip.y,
+        vx: Math.cos(angle) * v,
+        vy: Math.sin(angle) * v - 4 * spd,
+        life: 1.0,
+        lv: 0.012 + Math.random() * 0.012,
+        sz: Math.max(1, Math.round((2 + Math.random() * 3) * spd)),
+        color: i % 2 === 0 ? '#ffe080' : '#ffffff',
+      });
+    }
   }
   saveMain();
 }
@@ -451,18 +535,68 @@ function animate() {
     ctx.fillStyle = `rgba(20,10,40,${meditationPhase * 0.35})`;
     ctx.fillRect(0, 0, W, H);
 
-    if (hero.praying && tick % 42 === 0) _spawnSym();
+    if (hero.praying) {
+      if (tick % 22 === 0) _spawnSym();
+      if (tick % 22 === 11 && Math.random() < 0.45) _spawnSym();
+    }
     _symTick();
 
+    // Symbols — purple/white palette, per-symbol colour + glow
     ctx.save();
     for (const s of pSyms) {
-      ctx.globalAlpha = s.life * meditationPhase;
-      ctx.fillStyle   = '#d4b8ff';
+      const a = s.life * meditationPhase;
+      ctx.globalAlpha = a;
+      ctx.shadowColor = s.color ?? '#c8aaff';
+      ctx.shadowBlur  = 10;
+      ctx.fillStyle   = s.color ?? '#c8aaff';
       ctx.font        = `${Math.round((s.size ?? 24) * sx)}px serif`;
       ctx.textAlign   = 'center';
       ctx.fillText(s.ch, s.x, s.y);
     }
     ctx.restore();
+
+    // Sparkle particles (delivery burst)
+    ctx.save();
+    statueParticles = statueParticles.filter(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.vy += 0.14;
+      p.vx *= 0.97;
+      p.life -= p.lv;
+      if (p.life <= 0) return false;
+      ctx.globalAlpha = p.life * meditationPhase;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur  = 6;
+      ctx.fillStyle   = p.color;
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), p.sz, p.sz);
+      return true;
+    });
+    ctx.restore();
+
+    // Thai pixel inscription on statue
+    if (!_thaiGlyphPurple) _thaiGlyphPurple = _makeThaiGlyph('#c0a0ff');
+    if (!_thaiGlyphGold)   _thaiGlyphGold   = _makeThaiGlyph('#ffe080');
+    {
+      const tsz  = ZONES_BG.statue;
+      const tPos = bgToCanvas(tsz.x + tsz.w * 0.5, tsz.y + tsz.h * 0.74);
+      const tScale = Math.max(1.2, 1.8 * sx);
+      const gW = 48, gH = 14;
+      const glyph = S.inscriptionReady ? _thaiGlyphGold : _thaiGlyphPurple;
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = Math.min(
+        0.18 + S.inscriptionCharge * 0.10 + inscriptionGlow * 0.38
+        + (S.inscriptionReady ? 0.28 : 0),
+        0.92
+      );
+      ctx.shadowColor = S.inscriptionReady ? '#ffd040' : '#7744bb';
+      ctx.shadowBlur  = (2 + inscriptionGlow * 14) * tScale;
+      ctx.drawImage(glyph,
+        Math.round(tPos.x - gW * tScale / 2),
+        Math.round(tPos.y - gH * tScale / 2),
+        Math.round(gW * tScale),
+        Math.round(gH * tScale));
+      ctx.restore();
+    }
 
     inscriptionGlow = Math.max(inscriptionGlow - 0.02, 0);
     const iz = bgToCanvas(ZONES_BG.inscription.x, ZONES_BG.inscription.y);
