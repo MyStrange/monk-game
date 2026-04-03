@@ -6,7 +6,7 @@ import { SaveManager }                      from './src/save.js';
 import { state }                            from './src/state.js';
 import { AudioSystem, toggleSound }         from './src/audio.js';
 import { renderHotbar }                     from './src/hotbar.js';
-import { toggleFullscreen, initHoverAnim }  from './src/utils.js';
+import { toggleFullscreen, initHoverAnim, initRotateOverlay } from './src/utils.js';
 import { openAchievements, closeAchievements, loadAchievements } from './src/achievements.js';
 import { initMain, leaveMain }              from './scenes/main.js';
 
@@ -32,6 +32,7 @@ AudioSystem.init();
 renderHotbar();
 initMain();
 initHoverAnim();
+initRotateOverlay();
 
 // ── Game menu ────────────────────────────────────────────────────────────────
 {

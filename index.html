@@ -30,6 +30,29 @@
 </head>
 <body>
 
+<!-- Portrait rotate overlay (mobile only) -->
+<div id="rotate-overlay">
+  <canvas id="rotate-canvas"></canvas>
+  <div class="rotate-content">
+    <svg class="rotate-phone" width="56" height="72" viewBox="0 0 56 72" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+      <!-- phone body -->
+      <rect x="10" y="4"  width="36" height="58" fill="#2a1e0c"/>
+      <rect x="12" y="6"  width="32" height="54" fill="#0a0812"/>
+      <!-- screen -->
+      <rect x="14" y="12" width="28" height="40" fill="#111018"/>
+      <!-- speaker -->
+      <rect x="20" y="8"  width="16" height="2"  fill="#f0c040" opacity="0.4"/>
+      <!-- home btn -->
+      <rect x="22" y="56" width="12" height="4"  fill="#f0c040" opacity="0.4"/>
+      <!-- pixel glow dots on screen -->
+      <rect x="20" y="22" width="4" height="4" fill="#c8ff60" opacity="0.6"/>
+      <rect x="28" y="28" width="4" height="4" fill="#60ffc0" opacity="0.6"/>
+      <rect x="24" y="36" width="4" height="4" fill="#ffe880" opacity="0.6"/>
+    </svg>
+    <div class="rotate-msg">Переверни телефон</div>
+  </div>
+</div>
+
 <!-- Loading overlay -->
 <div id="loading-overlay" style="display:none">
   <div class="loading-inner">

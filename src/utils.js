@@ -87,6 +87,70 @@ export function showError(text) {
   el.onclick = () => { el.style.display = 'none'; };
 }
 
+// ── Portrait rotate overlay — pixel fireflies ──────────────────────────────
+export function initRotateOverlay() {
+  if (!window.matchMedia('(pointer:coarse)').matches) return; // desktop: skip
+  const overlay = document.getElementById('rotate-overlay');
+  const canvas  = document.getElementById('rotate-canvas');
+  if (!overlay || !canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const COLORS = ['#c8ff60','#60ffc0','#f0ffb0','#ffe880','#a0ffcc','#b8ffb0','#ffffff'];
+  const N = 60;
+  let flies = [], animId = null;
+
+  function _spawnFlies() {
+    const W = canvas.width, H = canvas.height;
+    flies = Array.from({length: N}, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: -(Math.random() * 0.6 + 0.15),
+      sz: Math.random() < 0.4 ? 4 : 2,
+      col: COLORS[Math.floor(Math.random() * COLORS.length)],
+      phase: Math.random() * Math.PI * 2,
+      rate:  Math.random() * 0.025 + 0.008,
+    }));
+  }
+
+  function _resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    if (flies.length === 0) _spawnFlies();
+  }
+
+  function _tick() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    for (const f of flies) {
+      f.phase += f.rate;
+      const alpha = 0.35 + 0.65 * Math.abs(Math.sin(f.phase));
+      f.x += f.vx + Math.sin(f.phase * 0.6) * 0.35;
+      f.y += f.vy;
+      if (f.y < -8)    { f.y = H + 4; f.x = Math.random() * W; }
+      if (f.x < -8)    f.x = W + 4;
+      if (f.x > W + 8) f.x = -4;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.shadowBlur  = f.sz * 6;
+      ctx.shadowColor = f.col;
+      ctx.fillStyle   = f.col;
+      ctx.fillRect(Math.round(f.x), Math.round(f.y), f.sz, f.sz);
+      ctx.restore();
+    }
+    animId = requestAnimationFrame(_tick);
+  }
+
+  function _start() { _resize(); if (!animId) animId = requestAnimationFrame(_tick); }
+  function _stop()  { if (animId) { cancelAnimationFrame(animId); animId = null; } }
+
+  const mq = window.matchMedia('(orientation:portrait)');
+  function _onOrient() { mq.matches ? _start() : _stop(); }
+  mq.addEventListener('change', _onOrient);
+  window.addEventListener('resize', () => { if (mq.matches) _resize(); });
+  _onOrient();
+}
+
 // ── Fullscreen ─────────────────────────────────────────────────────────────
 export function toggleFullscreen() {
   if (!document.fullscreenElement) {

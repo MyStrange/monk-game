@@ -40,6 +40,44 @@
   --pad-btn: 12px 22px;
 }
 
+/* ══════════════════════════════════════════════════════
+   ROTATE OVERLAY — portrait mobile only
+   ══════════════════════════════════════════════════════ */
+#rotate-overlay{
+  display:none;
+  position:fixed;inset:0;z-index:999999;
+  background:#0a0812;
+  align-items:center;justify-content:center;
+}
+#rotate-canvas{
+  position:absolute;inset:0;width:100%;height:100%;
+  image-rendering:pixelated;
+}
+.rotate-content{
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;gap:28px;
+  pointer-events:none;
+}
+.rotate-phone{
+  filter:drop-shadow(0 0 10px rgba(240,192,64,0.5));
+  animation:rotateHint 2.4s ease-in-out infinite;
+  transform-origin:center center;
+}
+@keyframes rotateHint{
+  0%,20%  {transform:rotate(0deg);}
+  60%,80% {transform:rotate(90deg);}
+  100%    {transform:rotate(0deg);}
+}
+.rotate-msg{
+  font-family:var(--font);font-size:var(--sz-lg);
+  color:var(--c-text);letter-spacing:0.05em;
+  text-shadow:0 0 12px rgba(240,192,64,0.6);
+}
+/* Show only in portrait on touch devices */
+@media (orientation:portrait) and (pointer:coarse){
+  #rotate-overlay{display:flex;}
+}
+
 /* ── Pixel-art cursors (pointer:fine = desktop only) ── */
 /* Default: chunky lotus bud 20×28, hotspot(10,2). Hover: open lotus 20×20, hotspot(10,10). */
 @media (pointer:fine){
