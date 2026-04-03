@@ -68,11 +68,7 @@
   60%,80% {transform:rotate(90deg);}
   100%    {transform:rotate(0deg);}
 }
-.rotate-msg{
-  font-family:var(--font);font-size:var(--sz-xl);
-  color:var(--c-text);letter-spacing:0.12em;
-  text-shadow:0 0 14px var(--c-gold-dim), 0 0 32px var(--c-gold-trace);
-}
+
 /* Show only in portrait on touch devices */
 @media (orientation:portrait) and (pointer:coarse){
   #rotate-overlay{display:flex;}
