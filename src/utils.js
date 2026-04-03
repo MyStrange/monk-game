@@ -96,22 +96,25 @@ export function initRotateOverlay() {
 
   const ctx = canvas.getContext('2d');
   // Purple / white palette
-  const COLORS = ['#c080ff','#a050e8','#e0b0ff','#ff80ff','#ffffff','#d0a0ff','#8840ff','#f0d0ff'];
-  const N = 65;
+  const COLORS = ['#c080ff','#a050e8','#e0b0ff','#ff80ff','#ffffff','#d0a0ff','#8840ff','#f0d0ff','#cc99ff'];
+  const N = 80;
   let flies = [], animId = null;
 
   function _spawnFlies() {
     const W = canvas.width, H = canvas.height;
-    flies = Array.from({length: N}, () => ({
-      x: Math.random() * W,
-      y: Math.random() * H,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: -(Math.random() * 0.55 + 0.12),
-      sz: Math.random() < 0.35 ? 4 : 2,
-      col: COLORS[Math.floor(Math.random() * COLORS.length)],
-      phase: Math.random() * Math.PI * 2,
-      rate:  Math.random() * 0.022 + 0.007,
-    }));
+    flies = Array.from({length: N}, () => {
+      const r = Math.random();
+      return {
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: -(Math.random() * 0.55 + 0.1),
+        sz: r < 0.15 ? 6 : r < 0.45 ? 4 : 2,  // mix: few big, many small
+        col: COLORS[Math.floor(Math.random() * COLORS.length)],
+        phase: Math.random() * Math.PI * 2,
+        rate:  Math.random() * 0.022 + 0.007,
+      };
+    });
   }
 
   function _resize() {
@@ -125,26 +128,26 @@ export function initRotateOverlay() {
     ctx.clearRect(0, 0, W, H);
     for (const f of flies) {
       f.phase += f.rate;
-      const alpha = 0.4 + 0.6 * Math.abs(Math.sin(f.phase));
+      // pulse: 0.3…1.0, same formula as scene4
+      const br = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(f.phase));
       f.x += f.vx + Math.sin(f.phase * 0.6) * 0.35;
       f.y += f.vy;
       if (f.y < -8)    { f.y = H + 4; f.x = Math.random() * W; }
       if (f.x < -8)    f.x = W + 4;
       if (f.x > W + 8) f.x = -4;
       const px = Math.round(f.x), py = Math.round(f.y);
-      ctx.save();
-      // Pass 1 — wide soft halo
-      ctx.globalAlpha = alpha * 0.45;
-      ctx.shadowBlur  = f.sz * 18;
-      ctx.shadowColor = f.col;
-      ctx.fillStyle   = f.col;
+      ctx.fillStyle = f.col;
+      // soft glow halo — larger rect at low alpha (project style, no shadowBlur)
+      ctx.globalAlpha = br * 0.22;
+      ctx.fillRect(px - f.sz, py - f.sz, f.sz * 3, f.sz * 3);
+      // outer halo ring
+      ctx.globalAlpha = br * 0.10;
+      ctx.fillRect(px - f.sz * 2, py - f.sz * 2, f.sz * 5, f.sz * 5);
+      // bright pixel core
+      ctx.globalAlpha = br;
       ctx.fillRect(px, py, f.sz, f.sz);
-      // Pass 2 — tight bright core
-      ctx.globalAlpha = alpha;
-      ctx.shadowBlur  = f.sz * 5;
-      ctx.fillRect(px, py, f.sz, f.sz);
-      ctx.restore();
     }
+    ctx.globalAlpha = 1;
     animId = requestAnimationFrame(_tick);
   }
 
