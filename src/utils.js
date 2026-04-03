@@ -2,16 +2,17 @@
 // Не знает ни об одном DOM-элементе сцены.
 
 // ── Custom pixel-art cursors ────────────────────────────────────────────────
-// Default cursor: closed lotus bud 20×26, tip at top, hotspot (10,1). No shadow.
-const _SVG_DEF = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='26'%3E%3Crect x='9' y='0' width='2' height='2' fill='%23fffce8'/%3E%3Crect x='8' y='2' width='4' height='3' fill='%23f0c040'/%3E%3Crect x='7' y='5' width='6' height='3' fill='%23f0c040'/%3E%3Crect x='4' y='6' width='4' height='4' fill='%23d4a028'/%3E%3Crect x='12' y='6' width='4' height='4' fill='%23d4a028'/%3E%3Crect x='7' y='8' width='6' height='3' fill='%23c09020'/%3E%3Crect x='5' y='11' width='10' height='2' fill='%238a6010'/%3E%3Crect x='3' y='12' width='2' height='2' fill='%235a7010'/%3E%3Crect x='15' y='12' width='2' height='2' fill='%235a7010'/%3E%3Crect x='9' y='13' width='2' height='10' fill='%235a7010'/%3E%3C%2Fsvg%3E";
-// Hover cursor: open lotus 24×24, centered, hotspot (12,12). No shadow.
-const _SVG_PTR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect x='10' y='3' width='3' height='3' fill='%23f0c040'/%3E%3Crect x='10' y='18' width='3' height='3' fill='%23f0c040'/%3E%3Crect x='3' y='10' width='3' height='3' fill='%23f0c040'/%3E%3Crect x='18' y='10' width='3' height='3' fill='%23f0c040'/%3E%3Crect x='7' y='7' width='3' height='3' fill='%23f0c040'/%3E%3Crect x='13' y='7' width='3' height='3' fill='%23f0c040'/%3E%3Crect x='7' y='13' width='3' height='3' fill='%23f0c040'/%3E%3Crect x='13' y='13' width='3' height='3' fill='%23f0c040'/%3E%3Crect x='10' y='6' width='3' height='12' fill='%23f0c040'/%3E%3Crect x='6' y='10' width='12' height='3' fill='%23f0c040'/%3E%3Crect x='10' y='10' width='3' height='3' fill='%23fffce8'/%3E%3C%2Fsvg%3E";
+// Default: chunky bud 20×28 — 5 blocks, no fine details, hotspot (10, 2)
+const _SVG_DEF = "data:image/svg+xml,%3Csvg width='20' height='28' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='8' y='0' width='4' height='4' fill='%23fffce8'/%3E%3Crect x='6' y='4' width='8' height='6' fill='%23f0c040'/%3E%3Crect x='4' y='10' width='12' height='6' fill='%23d4a028'/%3E%3Crect x='6' y='16' width='8' height='4' fill='%23c09020'/%3E%3Crect x='8' y='20' width='4' height='8' fill='%234a6018'/%3E%3C%2Fsvg%3E";
+// Hover: chunky open lotus 20×20 — 9 blocks, centered, hotspot (10, 10)
+const _SVG_PTR = "data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='8' y='2' width='4' height='6' fill='%23f0c040'/%3E%3Crect x='8' y='12' width='4' height='6' fill='%23f0c040'/%3E%3Crect x='2' y='8' width='6' height='4' fill='%23f0c040'/%3E%3Crect x='12' y='8' width='6' height='4' fill='%23f0c040'/%3E%3Crect x='4' y='4' width='4' height='4' fill='%23d4a028'/%3E%3Crect x='12' y='4' width='4' height='4' fill='%23d4a028'/%3E%3Crect x='4' y='12' width='4' height='4' fill='%23d4a028'/%3E%3Crect x='12' y='12' width='4' height='4' fill='%23d4a028'/%3E%3Crect x='8' y='8' width='4' height='4' fill='%23fffce8'/%3E%3C%2Fsvg%3E";
 // Full cursor CSS values — ready to assign to canvas.style.cursor
-export const CURSOR_DEF = `url("${_SVG_DEF}") 10 1, default`;
-export const CURSOR_PTR = `url("${_SVG_PTR}") 12 12, pointer`;
+export const CURSOR_DEF = `url("${_SVG_DEF}") 10 2, default`;
+export const CURSOR_PTR = `url("${_SVG_PTR}") 10 10, pointer`;
 
 // ── Hover glow animation (desktop only) ─────────────────────────────────────
 // Pulsing golden ring around interactive elements on hover.
+// Detects both DOM buttons and canvas game objects (via cursor check).
 // Call once after DOM is ready (from game.js).
 export function initHoverAnim() {
   if (window.matchMedia('(pointer:coarse)').matches) return;
@@ -19,17 +20,18 @@ export function initHoverAnim() {
   ring.id = 'hover-glow';
   document.body.appendChild(ring);
 
+  const SEL = 'button, .slot, .back-btn, #menu-btn, .ui-btn';
+
   document.addEventListener('mousemove', e => {
     ring.style.left = e.clientX + 'px';
     ring.style.top  = e.clientY + 'px';
-  });
-
-  const SEL = 'button, .slot, .back-btn, #menu-btn, .ui-btn';
-  document.addEventListener('mouseover', e => {
-    if (e.target.closest(SEL)) { ring.style.display = 'block'; ring.classList.add('active'); }
-  });
-  document.addEventListener('mouseout', e => {
-    if (e.target.closest(SEL)) { ring.style.display = 'none'; ring.classList.remove('active'); }
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const isHot = el && (
+      el.closest(SEL) ||
+      (el.tagName === 'CANVAS' && el.style.cursor === CURSOR_PTR)
+    );
+    if (isHot) { ring.style.display = 'block'; ring.classList.add('active'); }
+    else        { ring.style.display = 'none';  ring.classList.remove('active'); }
   });
 }
 
@@ -37,15 +39,21 @@ export function initHoverAnim() {
 export const isMobile = () =>
   window.matchMedia('(pointer:coarse)').matches || window.innerWidth < 768;
 
-// ── Scene messages ─────────────────────────────────────────────────────────
+// ── Scene messages — stacking system ──────────────────────────────────────
+// Each call creates a .scene-msg-item child that slides in and auto-removes.
+// Multiple calls stack messages above each other with smooth animation.
 // Каждая сцена делает: const showMsg = (t,d) => showMsgIn(myMsgEl, t, d)
-let _msgTimer = null;
 export function showMsgIn(el, text, dur = 3200) {
   if (!el) return;
-  el.textContent = text;
-  el.classList.add('visible');
-  clearTimeout(_msgTimer);
-  _msgTimer = setTimeout(() => el.classList.remove('visible'), dur);
+  const item = document.createElement('div');
+  item.className = 'scene-msg-item';
+  item.textContent = text;
+  el.appendChild(item);
+  requestAnimationFrame(() => item.classList.add('visible'));
+  setTimeout(() => {
+    item.classList.remove('visible');
+    setTimeout(() => item.remove(), 300);
+  }, dur);
 }
 
 // ── Loading overlay ────────────────────────────────────────────────────────
