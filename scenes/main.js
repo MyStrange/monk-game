@@ -66,7 +66,7 @@ const ZONES_BG = {
   tree:        { x: 1600,  y: 300,            w: 200,    h: 580 },
   cat:         { x: CAT_X, y: GROUND_Y-CAT_H, w: CAT_W,  h: CAT_H },
   monk:        { x: MONK_X,y: GROUND_Y-MONK_H,w: MONK_W, h: MONK_H },
-  bush:        { x: 60,    y: 680,            w: 180,    h: 160 },
+  bush:        { x: 20,    y: 900,            w: 320,    h: 216 },
   water:       { x: 900,   y: 920,            w: 900,    h: 170 },
   dirt:        { x: 870,   y: 890,            w: 100,    h: 80 },
   inscription: { x: 700,   y: 760,            w: 180,    h: 110 },
