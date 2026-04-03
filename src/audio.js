@@ -33,6 +33,12 @@ export const AudioSystem = {
   _create() {
     this.ctx  = new (window.AudioContext || window.webkitAudioContext)();
     this.ctx.resume(); // iOS creates context in 'suspended' state — force resume
+    // iOS interrupts context on phone call / app switch — auto-resume when possible
+    this.ctx.addEventListener('statechange', () => {
+      if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
+        this.ctx.resume();
+      }
+    });
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.18;
     this.masterGain.connect(this.ctx.destination);

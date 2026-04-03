@@ -332,6 +332,17 @@ function onTap(cx, cy) {
     return;
   }
 
+  // Tap directly on a floating symbol — deliver it immediately (mobile-friendly)
+  if (hero.praying || meditationPhase > 0) {
+    for (const s of pSyms) {
+      if (Math.hypot(cx - s.x, cy - s.y) < 36) {
+        draggedSym = s;
+        _deliverSym();
+        return;
+      }
+    }
+  }
+
   const item = getSelectedItem();
   const zone = hitZoneBG(cx, cy);
 
@@ -350,7 +361,7 @@ function onDragStart(cx, cy) {
   if (state.activeScreen !== 'main') return;
   if (!hero.praying && meditationPhase <= 0) return;
   for (const s of pSyms) {
-    if (Math.hypot(cx - s.x, cy - s.y) < 20) {
+    if (Math.hypot(cx - s.x, cy - s.y) < 36) {
       s.dragging = true;
       draggedSym = s;
       return;
