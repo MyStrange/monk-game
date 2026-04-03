@@ -95,8 +95,9 @@ export function initRotateOverlay() {
   if (!overlay || !canvas) return;
 
   const ctx = canvas.getContext('2d');
-  const COLORS = ['#c8ff60','#60ffc0','#f0ffb0','#ffe880','#a0ffcc','#b8ffb0','#ffffff'];
-  const N = 60;
+  // Purple / white palette
+  const COLORS = ['#c080ff','#a050e8','#e0b0ff','#ff80ff','#ffffff','#d0a0ff','#8840ff','#f0d0ff'];
+  const N = 65;
   let flies = [], animId = null;
 
   function _spawnFlies() {
@@ -105,11 +106,11 @@ export function initRotateOverlay() {
       x: Math.random() * W,
       y: Math.random() * H,
       vx: (Math.random() - 0.5) * 0.5,
-      vy: -(Math.random() * 0.6 + 0.15),
-      sz: Math.random() < 0.4 ? 4 : 2,
+      vy: -(Math.random() * 0.55 + 0.12),
+      sz: Math.random() < 0.35 ? 4 : 2,
       col: COLORS[Math.floor(Math.random() * COLORS.length)],
       phase: Math.random() * Math.PI * 2,
-      rate:  Math.random() * 0.025 + 0.008,
+      rate:  Math.random() * 0.022 + 0.007,
     }));
   }
 
@@ -124,18 +125,24 @@ export function initRotateOverlay() {
     ctx.clearRect(0, 0, W, H);
     for (const f of flies) {
       f.phase += f.rate;
-      const alpha = 0.35 + 0.65 * Math.abs(Math.sin(f.phase));
+      const alpha = 0.4 + 0.6 * Math.abs(Math.sin(f.phase));
       f.x += f.vx + Math.sin(f.phase * 0.6) * 0.35;
       f.y += f.vy;
       if (f.y < -8)    { f.y = H + 4; f.x = Math.random() * W; }
       if (f.x < -8)    f.x = W + 4;
       if (f.x > W + 8) f.x = -4;
+      const px = Math.round(f.x), py = Math.round(f.y);
       ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.shadowBlur  = f.sz * 6;
+      // Pass 1 — wide soft halo
+      ctx.globalAlpha = alpha * 0.45;
+      ctx.shadowBlur  = f.sz * 18;
       ctx.shadowColor = f.col;
       ctx.fillStyle   = f.col;
-      ctx.fillRect(Math.round(f.x), Math.round(f.y), f.sz, f.sz);
+      ctx.fillRect(px, py, f.sz, f.sz);
+      // Pass 2 — tight bright core
+      ctx.globalAlpha = alpha;
+      ctx.shadowBlur  = f.sz * 5;
+      ctx.fillRect(px, py, f.sz, f.sz);
       ctx.restore();
     }
     animId = requestAnimationFrame(_tick);
