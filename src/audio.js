@@ -19,15 +19,20 @@ export const AudioSystem = {
       this._started = true;
       this._create();
       this.setMode('ambient');
-      ['click','touchend','keydown'].forEach(e =>
-        document.removeEventListener(e, start));
     };
     ['click','touchend','keydown'].forEach(e =>
       document.addEventListener(e, start, { once: true }));
+
+    // iOS suspends AudioContext on tab switch / lock screen — resume on any interaction
+    const _resume = () => { if (this.ctx?.state === 'suspended') this.ctx.resume(); };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) _resume(); });
+    document.addEventListener('touchend', _resume, { passive: true });
+    document.addEventListener('click',    _resume);
   },
 
   _create() {
     this.ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    this.ctx.resume(); // iOS creates context in 'suspended' state — force resume
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.18;
     this.masterGain.connect(this.ctx.destination);
