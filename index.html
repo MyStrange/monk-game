@@ -30,8 +30,34 @@
 <!-- Loading overlay -->
 <div id="loading-overlay" style="display:none">
   <div class="loading-inner">
-    <div class="loading-label"></div>
-    <div class="loading-dots"><span>·</span><span>·</span><span>·</span></div>
+    <svg id="loading-wheel" width="80" height="80" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated;display:block;">
+      <!-- outer rim -->
+      <rect x="13" y="1" width="6" height="2" fill="#a07828"/>
+      <rect x="13" y="29" width="6" height="2" fill="#a07828"/>
+      <rect x="1" y="13" width="2" height="6" fill="#a07828"/>
+      <rect x="29" y="13" width="2" height="6" fill="#a07828"/>
+      <rect x="3" y="3" width="2" height="2" fill="#a07828" opacity="0.7"/>
+      <rect x="27" y="3" width="2" height="2" fill="#a07828" opacity="0.7"/>
+      <rect x="3" y="27" width="2" height="2" fill="#a07828" opacity="0.7"/>
+      <rect x="27" y="27" width="2" height="2" fill="#a07828" opacity="0.7"/>
+      <!-- cardinal spokes -->
+      <rect x="15" y="3" width="2" height="11" fill="#f0c040"/>
+      <rect x="15" y="18" width="2" height="11" fill="#f0c040"/>
+      <rect x="3" y="15" width="11" height="2" fill="#f0c040"/>
+      <rect x="18" y="15" width="11" height="2" fill="#f0c040"/>
+      <!-- diagonal spokes (pixel-art stepped) -->
+      <rect x="5" y="5" width="2" height="2" fill="#c09030"/>
+      <rect x="8" y="8" width="2" height="2" fill="#c09030"/>
+      <rect x="25" y="5" width="2" height="2" fill="#c09030"/>
+      <rect x="22" y="8" width="2" height="2" fill="#c09030"/>
+      <rect x="5" y="25" width="2" height="2" fill="#c09030"/>
+      <rect x="8" y="22" width="2" height="2" fill="#c09030"/>
+      <rect x="25" y="25" width="2" height="2" fill="#c09030"/>
+      <rect x="22" y="22" width="2" height="2" fill="#c09030"/>
+      <!-- hub -->
+      <rect x="13" y="13" width="6" height="6" fill="#f0c040"/>
+      <rect x="14" y="14" width="4" height="4" fill="#fffce8"/>
+    </svg>
   </div>
 </div>
 

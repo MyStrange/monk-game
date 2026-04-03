@@ -21,21 +21,27 @@ let el, canvas, ctx, msgEl;
 let s4W = 0, s4H = 0;
 const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
-// ── Fireflies — deterministic seed-based ──────────────────────────────────
+// ── Fireflies — pixel-art squares, deterministic seed-based ───────────────
 function _seeded(s) { return ((s * 1664525 + 1013904223) & 0xffffffff) >>> 0; }
 
-const flies = Array.from({ length: 28 }, (_, i) => {
+// 5 colours: warm yellow-green, cold blue-green, white, amber, pale cyan
+const _FLY_COLS = ['#c8ff60','#60ffc0','#f0ffb0','#ffe880','#80ffee'];
+
+const flies = Array.from({ length: 36 }, (_, i) => {
   const s1 = _seeded(i * 73 + 1);
   const s2 = _seeded(s1);
   const s3 = _seeded(s2);
   const s4 = _seeded(s3);
+  const s5 = _seeded(s4);
   return {
-    x:    (s1 / 0xffffffff),
-    y:    (s2 / 0xffffffff),
-    vx:   ((s3 / 0xffffffff) - 0.5) * 1.2,
-    vy:   ((s4 / 0xffffffff) - 0.5) * 0.8,
-    tick: i * 23,
-    sz:   1.5 + (s1 % 10) / 10 * 2,
+    x:     (s1 / 0xffffffff),
+    y:     (s2 / 0xffffffff),
+    vx:    ((s3 / 0xffffffff) - 0.5) * 0.9,
+    vy:    ((s4 / 0xffffffff) - 0.5) * 0.6,
+    tick:  i * 19,
+    sz:    3 + (s1 % 5),            // 3–7 px square
+    color: _FLY_COLS[s5 % 5],
+    phOff: (s2 / 0xffffffff) * Math.PI * 2,  // blink phase offset
   };
 });
 
@@ -210,16 +216,20 @@ function animate() {
   if (state.activeScreen !== 'scene4') { animId = null; return; }
   ctx.clearRect(0, 0, s4W, s4H);
 
-  // Fireflies — pixel squares
+  // Fireflies — pixel-art coloured squares with glow
   for (const f of flies) {
     f.tick++;
     f.x = (f.x + f.vx / s4W + 1) % 1;
     f.y = (f.y + f.vy / s4H + 1) % 1;
-    const br = 0.4 + 0.6 * Math.abs(Math.sin(f.tick * 0.04));
+    const br = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(f.tick * 0.038 + f.phOff));
+    const px = f.x * s4W | 0, py = f.y * s4H | 0;
+    // soft glow (larger rect, low alpha)
+    ctx.globalAlpha = br * 0.18;
+    ctx.fillStyle = f.color;
+    ctx.fillRect(px - f.sz, py - f.sz, f.sz * 3, f.sz * 3);
+    // core pixel square
     ctx.globalAlpha = br;
-    ctx.fillStyle = '#b0ffa0';
-    const sz = Math.ceil(f.sz * 2);
-    ctx.fillRect(f.x * s4W | 0, f.y * s4H | 0, sz, sz);
+    ctx.fillRect(px, py, f.sz, f.sz);
   }
   ctx.globalAlpha = 1;
 

@@ -66,7 +66,7 @@ const ZONES_BG = {
   tree:        { x: 1600,  y: 300,            w: 200,    h: 580 },
   cat:         { x: CAT_X, y: GROUND_Y-CAT_H, w: CAT_W,  h: CAT_H },
   monk:        { x: MONK_X,y: GROUND_Y-MONK_H,w: MONK_W, h: MONK_H },
-  bush:        { x: 60,    y: 580,            w: 620,    h: 420 },
+  bush:        { x: 60,    y: 680,            w: 180,    h: 160 },
   water:       { x: 900,   y: 920,            w: 900,    h: 170 },
   dirt:        { x: 870,   y: 890,            w: 100,    h: 80 },
   inscription: { x: 700,   y: 760,            w: 180,    h: 110 },
@@ -577,7 +577,7 @@ function animate() {
     if (!_thaiGlyphGold)   _thaiGlyphGold   = _makeThaiGlyph('#ffe080');
     {
       const tsz  = ZONES_BG.statue;
-      const tPos = bgToCanvas(tsz.x + tsz.w * 0.5, tsz.y + tsz.h * 0.74);
+      const tPos = bgToCanvas(tsz.x + tsz.w * 0.5, tsz.y + tsz.h * 1.05);
       const tScale = Math.max(1.2, 1.8 * sx);
       const gW = 48, gH = 14;
       const glyph = S.inscriptionReady ? _thaiGlyphGold : _thaiGlyphPurple;

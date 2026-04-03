@@ -306,8 +306,16 @@ function startFireflyDialog() {
   _dlgIdx    = 0;
   _dlgActive = true;
   _dlgOnEnd  = () => {
-    addItem(makeItem('durian'));
-    renderHotbar();
+    if (!S.durianPickedUp) {
+      if (addItem(makeItem('durian'))) {
+        S.durianPickedUp = true;
+        SaveManager.setScene('buddha', S);
+        renderHotbar();
+      } else {
+        showMsg('Руки заняты. Некуда взять миску.', 3200);
+        return;
+      }
+    }
     showMsg(durianAfterDialog, 4500);
   };
   setTimeout(() => _dlgShowLine(_dlgLines[0]), 200);
@@ -330,7 +338,7 @@ function interactItem(itemId, zone) {
 function _hitBuddha(cx, cy) {
   if (!S.earUsed && cx > bW*0.60 && cx < bW*0.73 && cy > bH*0.44 && cy < bH*0.60) return true;
   for (const f of bFlies) {
-    if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < f.sz * 5 + 14) return true;
+    if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < f.sz * 1.2 + 10) return true;
   }
   return false;
 }
@@ -351,7 +359,7 @@ function onTap(cx, cy) {
   // No jar: click on fly → it escapes with buzz + trail
   if (!item || (item.id !== 'jar' && item.id !== 'jar_open')) {
     for (const f of bFlies) {
-      if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < f.sz * 5 + 14) {
+      if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < f.sz * 1.2 + 10) {
         f.escaping = true;
         const angle = Math.random() * Math.PI * 2;
         f.escapeVx  = Math.cos(angle) * (5 + Math.random() * 4);
