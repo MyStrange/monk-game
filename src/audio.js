@@ -14,26 +14,30 @@ export const AudioSystem = {
 
   // ── Init ──────────────────────────────────────────────────────────────
   init() {
-    const start = () => {
+    // Start audio on first user gesture — await resume so iOS unlocks BEFORE oscillators fire
+    const start = async () => {
       if (this._started) return;
       this._started = true;
       this._create();
+      try { await this.ctx.resume(); } catch (_) {}
       this.setMode('ambient');
     };
-    ['click','touchend','keydown'].forEach(e =>
-      document.addEventListener(e, start, { once: true }));
+    ['click', 'touchstart', 'touchend', 'keydown'].forEach(e =>
+      document.addEventListener(e, start, { once: true, passive: true }));
 
-    // iOS suspends AudioContext on tab switch / lock screen — resume on any interaction
-    const _resume = () => { if (this.ctx?.state === 'suspended') this.ctx.resume(); };
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) _resume(); });
-    document.addEventListener('touchend', _resume, { passive: true });
-    document.addEventListener('click',    _resume);
+    // Re-unlock on every touch — iOS suspends ctx on call / app switch / lock screen
+    const _unlock = () => {
+      if (this.ctx && this.ctx.state !== 'running') this.ctx.resume();
+    };
+    document.addEventListener('touchstart', _unlock, { passive: true });
+    document.addEventListener('touchend',   _unlock, { passive: true });
+    document.addEventListener('click',      _unlock);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) _unlock(); });
   },
 
   _create() {
-    this.ctx  = new (window.AudioContext || window.webkitAudioContext)();
-    this.ctx.resume(); // iOS creates context in 'suspended' state — force resume
-    // iOS interrupts context on phone call / app switch — auto-resume when possible
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // statechange: auto-resume if interrupted (iOS phone call, app switch)
     this.ctx.addEventListener('statechange', () => {
       if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
         this.ctx.resume();
