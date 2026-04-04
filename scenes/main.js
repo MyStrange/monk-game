@@ -332,17 +332,6 @@ function onTap(cx, cy) {
     return;
   }
 
-  // Tap directly on a floating symbol — deliver it immediately (mobile-friendly)
-  if (hero.praying || meditationPhase > 0) {
-    for (const s of pSyms) {
-      if (Math.hypot(cx - s.x, cy - s.y) < 36) {
-        draggedSym = s;
-        _deliverSym();
-        return;
-      }
-    }
-  }
-
   const item = getSelectedItem();
   const zone = hitZoneBG(cx, cy);
 
@@ -717,7 +706,19 @@ export async function initMain() {
   canvas.addEventListener('touchstart', e => {
     const t = e.touches[0];
     const r = canvas.getBoundingClientRect();
-    onDragStart(t.clientX - r.left, t.clientY - r.top);
+    const cx = t.clientX - r.left, cy = t.clientY - r.top;
+    // Tap on symbol — deliver immediately at touchstart (symbol moves each frame,
+    // waiting for touchend means coordinates drift and hit-test fails)
+    if (hero.praying || meditationPhase > 0) {
+      for (const s of pSyms) {
+        if (Math.hypot(cx - s.x, cy - s.y) < 52) {
+          draggedSym = s;
+          _deliverSym();
+          return; // skip drag mode
+        }
+      }
+    }
+    onDragStart(cx, cy);
   }, { passive: true });
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
