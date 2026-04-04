@@ -14,36 +14,42 @@ export const AudioSystem = {
 
   // ── Init ──────────────────────────────────────────────────────────────
   init() {
-    // Start audio on first user gesture — everything SYNCHRONOUS (iOS requires it)
+    // Start audio on first user gesture — SYNCHRONOUS, touchend preferred on iOS
     const start = () => {
       if (this._started) return;
-      this._started = true;
-      this._create();                            // context + gains, no oscillators
-      this.ctx.resume();                         // sync call inside user gesture = unlock
-      this._startAmbient();                      // oscillators right after unlock
-      this.setMode('ambient');
+      try {
+        this._started = true;
+        this._create();
+        this.ctx.resume();
+        this._startAmbient();
+        this.setMode('ambient');
+      } catch (e) {
+        this._started = false; // allow retry on next gesture
+      }
     };
-    ['click', 'touchstart', 'touchend', 'keydown'].forEach(e =>
+    // touchend + click — iOS WKWebView (Chrome) requires touchend, not touchstart
+    ['touchend', 'click', 'keydown'].forEach(e =>
       document.addEventListener(e, start, { once: true }));
 
-    // Re-unlock on every touch — iOS suspends ctx on call / app switch / lock screen
+    // Re-unlock on every gesture — iOS suspends ctx on call / lock / app switch
     const _unlock = () => {
-      if (this.ctx && this.ctx.state !== 'running') this.ctx.resume();
+      if (!this.ctx) return;
+      if (this.ctx.state !== 'running') this.ctx.resume();
     };
-    document.addEventListener('touchstart', _unlock, { passive: true });
-    document.addEventListener('touchend',   _unlock, { passive: true });
-    document.addEventListener('click',      _unlock);
+    document.addEventListener('touchend', _unlock);
+    document.addEventListener('click',    _unlock);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) _unlock(); });
   },
 
   _create() {
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // statechange: auto-resume if interrupted (iOS phone call, app switch)
-    this.ctx.addEventListener('statechange', () => {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AC();
+    // onstatechange property (safer than addEventListener which may not exist on iOS)
+    this.ctx.onstatechange = () => {
       if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
         this.ctx.resume();
       }
-    });
+    };
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.18;
     this.masterGain.connect(this.ctx.destination);
@@ -54,9 +60,6 @@ export const AudioSystem = {
     this.ambientGain.connect(this.masterGain);
     this.meditationGain.connect(this.masterGain);
     this.sittingGain.connect(this.masterGain);
-    // DO NOT start oscillators here — context may still be 'suspended' on iOS.
-    // Oscillators started in suspended context are permanently dead.
-    // _startAmbient() is called from init() AFTER ctx.resume() resolves.
   },
 
   // ── Mode switch ────────────────────────────────────────────────────────
