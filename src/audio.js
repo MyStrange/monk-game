@@ -14,31 +14,45 @@ export const AudioSystem = {
 
   // ── Init ──────────────────────────────────────────────────────────────
   init() {
-    // Start audio on first user gesture — SYNCHRONOUS, touchend preferred on iOS
+    // Start audio on first user gesture — fully synchronous, touchend for iOS
     const start = () => {
       if (this._started) return;
       try {
         this._started = true;
         this._create();
         this.ctx.resume();
+        this._playsilent();                      // kick iOS AVAudioSession hardware
         this._startAmbient();
         this.setMode('ambient');
       } catch (e) {
-        this._started = false; // allow retry on next gesture
+        this._started = false;                   // allow retry on next gesture
       }
     };
-    // touchend + click — iOS WKWebView (Chrome) requires touchend, not touchstart
     ['touchend', 'click', 'keydown'].forEach(e =>
       document.addEventListener(e, start, { once: true }));
 
-    // Re-unlock on every gesture — iOS suspends ctx on call / lock / app switch
+    // Re-unlock on every gesture — iOS suspends ctx on background / lock / call
     const _unlock = () => {
       if (!this.ctx) return;
-      if (this.ctx.state !== 'running') this.ctx.resume();
+      if (this.ctx.state !== 'running') {
+        this.ctx.resume();
+        this._playsilent();
+      }
     };
     document.addEventListener('touchend', _unlock);
     document.addEventListener('click',    _unlock);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) _unlock(); });
+  },
+
+  // Silent buffer trick — forces iOS WebKit to activate hardware audio session.
+  // resume() alone flips the state flag but doesn't route audio to speakers.
+  _playsilent() {
+    if (!this.ctx) return;
+    const buf = this.ctx.createBuffer(1, 1, 22050);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(this.ctx.destination);
+    src.start();
   },
 
   _create() {
