@@ -125,10 +125,9 @@ function _makeThaiGlyph(color) {
   return c;
 }
 
-// ── Ambient fireflies (fewer on mobile for performance) ───────────────────
+// ── Ambient fireflies (240, yellow pixel, varied sizes + glow) ────────────
 const _SIZES = [1,1,2,2,2,2,3,3,3,4,5];
-const _FLY_COUNT = window.matchMedia('(pointer:coarse)').matches ? 100 : 200;
-const flies = Array.from({ length: _FLY_COUNT }, () => ({
+const flies = Array.from({ length: 240 }, () => ({
   x:          Math.random() * BG_W,
   y:          Math.random() * (BG_H * 0.6),
   vx:         (Math.random() - 0.5) * 0.9,
@@ -447,24 +446,23 @@ function animate() {
     }
   }
 
-  // ── Fireflies: rect-based glow (no shadowBlur — fast on mobile) ──────────
-  ctx.fillStyle = 'rgba(255,220,80,1)';
+  // ── Fireflies: yellow pixel rects with glow ──────────────────────────────
   for (const f of flies) {
     f.x += f.vx; f.y += f.vy;
     f.brightness += f.bv;
     if (f.brightness < 0 || f.brightness > 1) f.bv *= -1;
     if (f.x < 0) f.x = BG_W; if (f.x > BG_W) f.x = 0;
     if (f.y < 0) f.y = BG_H * 0.5; if (f.y > BG_H * 0.5) f.y = 0;
-    const br = 0.3 + f.brightness * 0.7;
-    const px = Math.round(f.x * sx), py = Math.round(f.y * sy);
-    // halo — larger rect at low alpha
-    ctx.globalAlpha = br * 0.15;
-    ctx.fillRect(px - f.sz, py - f.sz, f.sz * 3, f.sz * 3);
-    // core pixel
-    ctx.globalAlpha = br;
+    const alpha = 0.4 + f.brightness * 0.6;
+    const px    = Math.round(f.x * sx);
+    const py    = Math.round(f.y * sy);
+    ctx.save();
+    ctx.shadowColor = `rgba(255,210,40,${alpha})`;
+    ctx.shadowBlur  = (18 + f.brightness * 28) * (f.glow ?? 1.0);
+    ctx.fillStyle   = `rgba(255,220,80,${alpha})`;
     ctx.fillRect(px, py, f.sz, f.sz);
+    ctx.restore();
   }
-  ctx.globalAlpha = 1;
 
   // ── Cat ───────────────────────────────────────────────────────────────────
   const cp = bgToCanvas(CAT_X, GROUND_Y - CAT_H);
@@ -536,25 +534,22 @@ function animate() {
     }
     _symTick();
 
-    // Symbols — purple/white, no shadowBlur (fast on mobile)
-    ctx.textAlign = 'center';
+    // Symbols — purple/white palette, per-symbol colour + glow
+    ctx.save();
     for (const s of pSyms) {
       const a = s.life * meditationPhase;
-      const col = s.color ?? '#c8aaff';
-      // soft glow halo (cheap rect instead of shadowBlur)
-      ctx.globalAlpha = a * 0.2;
-      ctx.fillStyle   = col;
-      const gs = (s.size ?? 24) * sx * 0.6;
-      ctx.fillRect(s.x - gs, s.y - gs * 1.5, gs * 2, gs * 2);
-      // text
       ctx.globalAlpha = a;
-      ctx.fillStyle   = col;
+      ctx.shadowColor = s.color ?? '#c8aaff';
+      ctx.shadowBlur  = 10;
+      ctx.fillStyle   = s.color ?? '#c8aaff';
       ctx.font        = `${Math.round((s.size ?? 24) * sx)}px serif`;
+      ctx.textAlign   = 'center';
       ctx.fillText(s.ch, s.x, s.y);
     }
-    ctx.globalAlpha = 1;
+    ctx.restore();
 
-    // Sparkle particles (delivery burst) — no shadowBlur, in-place cleanup
+    // Sparkle particles (delivery burst) — in-place cleanup, no filter alloc
+    ctx.save();
     for (let i = statueParticles.length - 1; i >= 0; i--) {
       const p = statueParticles[i];
       p.x += p.vx; p.y += p.vy;
@@ -562,14 +557,12 @@ function animate() {
       p.life -= p.lv;
       if (p.life <= 0) { statueParticles.splice(i, 1); continue; }
       ctx.globalAlpha = p.life * meditationPhase;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur  = 6;
       ctx.fillStyle   = p.color;
-      // halo
-      ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, p.sz + 2, p.sz + 2);
-      // core
-      ctx.globalAlpha = p.life * meditationPhase * 1.5;
       ctx.fillRect(Math.round(p.x), Math.round(p.y), p.sz, p.sz);
     }
-    ctx.globalAlpha = 1;
+    ctx.restore();
 
     // Thai pixel inscription on statue
     if (!_thaiGlyphPurple) _thaiGlyphPurple = _makeThaiGlyph('#c0a0ff');
