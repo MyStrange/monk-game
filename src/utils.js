@@ -95,8 +95,8 @@ export function initRotateOverlay() {
   if (!overlay || !canvas) return;
 
   const ctx = canvas.getContext('2d');
-  // Purple / white palette
-  const COLORS = ['#c080ff','#a050e8','#e0b0ff','#ff80ff','#ffffff','#d0a0ff','#8840ff','#f0d0ff','#cc99ff'];
+  // Yellow / orange / white palette
+  const COLORS = ['#f0c040','#ffe066','#ffb020','#ff8800','#ffd080','#fff0a0','#ffffff','#ffcc44','#ffa030','#ffe8b0'];
   const N = 80;
   let flies = [], animId = null;
 
@@ -109,7 +109,7 @@ export function initRotateOverlay() {
         y: Math.random() * H,
         vx: (Math.random() - 0.5) * 0.5,
         vy: -(Math.random() * 0.55 + 0.1),
-        sz: r < 0.15 ? 6 : r < 0.45 ? 4 : 2,  // mix: few big, many small
+        sz: r < 0.15 ? 3 : 2,  // smaller: max 3px
         col: COLORS[Math.floor(Math.random() * COLORS.length)],
         phase: Math.random() * Math.PI * 2,
         rate:  Math.random() * 0.022 + 0.007,
