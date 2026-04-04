@@ -14,17 +14,17 @@ export const AudioSystem = {
 
   // ── Init ──────────────────────────────────────────────────────────────
   init() {
-    // Start audio on first user gesture — await resume so iOS unlocks BEFORE oscillators fire
-    const start = async () => {
+    // Start audio on first user gesture — everything SYNCHRONOUS (iOS requires it)
+    const start = () => {
       if (this._started) return;
       this._started = true;
-      this._create();                            // graph only, no oscillators
-      try { await this.ctx.resume(); } catch (_) {}  // iOS: wait until 'running'
-      this._startAmbient();                      // oscillators AFTER context is live
+      this._create();                            // context + gains, no oscillators
+      this.ctx.resume();                         // sync call inside user gesture = unlock
+      this._startAmbient();                      // oscillators right after unlock
       this.setMode('ambient');
     };
     ['click', 'touchstart', 'touchend', 'keydown'].forEach(e =>
-      document.addEventListener(e, start, { once: true, passive: true }));
+      document.addEventListener(e, start, { once: true }));
 
     // Re-unlock on every touch — iOS suspends ctx on call / app switch / lock screen
     const _unlock = () => {
