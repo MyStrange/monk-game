@@ -125,9 +125,10 @@ function _makeThaiGlyph(color) {
   return c;
 }
 
-// ── Ambient fireflies (240, yellow pixel, varied sizes + glow) ────────────
+// ── Ambient fireflies (fewer on mobile for performance) ───────────────────
 const _SIZES = [1,1,2,2,2,2,3,3,3,4,5];
-const flies = Array.from({ length: 240 }, () => ({
+const _FLY_COUNT = window.matchMedia('(pointer:coarse)').matches ? 100 : 200;
+const flies = Array.from({ length: _FLY_COUNT }, () => ({
   x:          Math.random() * BG_W,
   y:          Math.random() * (BG_H * 0.6),
   vx:         (Math.random() - 0.5) * 0.9,
@@ -225,33 +226,26 @@ function _spawnSym() {
 }
 
 function _symTick() {
-  pSyms = pSyms.filter(s => {
-    if (s.dragging) return true;
+  for (let i = pSyms.length - 1; i >= 0; i--) {
+    const s = pSyms[i];
+    if (s.dragging) continue;
     s.t++;
     const sec = s.t / 60;
-    // Parametric position — slow, meditative float
     switch (s.path) {
-      case 0: // Плавная синусоида
-        s.x = s.x0 + Math.sin(sec * s.freqX * Math.PI + s.phase) * s.ampX;
-        break;
-      case 1: // Широкая дуга-sweep
-        s.x = s.x0 + Math.sin(sec * s.freqX * 1.2 + s.phase) * (s.ampX * 1.9);
-        break;
-      case 2: // Лемниската / восьмёрка
-        s.x = s.x0
-            + Math.sin(sec * s.freqX * 1.8 + s.phase)  * s.ampX
-            + Math.cos(sec * s.freqX * 0.9)             * (s.ampX * 0.45);
-        break;
-      case 3: // Спиральная штопор
+      case 0: s.x = s.x0 + Math.sin(sec * s.freqX * Math.PI + s.phase) * s.ampX; break;
+      case 1: s.x = s.x0 + Math.sin(sec * s.freqX * 1.2 + s.phase) * (s.ampX * 1.9); break;
+      case 2: s.x = s.x0
+            + Math.sin(sec * s.freqX * 1.8 + s.phase) * s.ampX
+            + Math.cos(sec * s.freqX * 0.9) * (s.ampX * 0.45); break;
+      case 3: {
         const spiralR = s.ampX * (0.35 + 0.65 * Math.abs(Math.sin(sec * 0.7)));
-        s.x = s.x0 + spiralR * Math.cos(sec * s.freqX * 2.4 + s.phase);
-        break;
+        s.x = s.x0 + spiralR * Math.cos(sec * s.freqX * 2.4 + s.phase); break;
+      }
     }
-    // Медленный плавный подъём
     s.y = s.y0 - (s.riseSpeed * s.t + 0.0008 * s.t * s.t);
     s.life -= 0.0008;
-    return s.life > 0 && s.y > -80;
-  });
+    if (s.life <= 0 || s.y < -80) pSyms.splice(i, 1);
+  }
 }
 
 // ── Zone click (no item) ───────────────────────────────────────────────────
@@ -453,23 +447,24 @@ function animate() {
     }
   }
 
-  // ── Fireflies: yellow pixel rects with glow ──────────────────────────────
+  // ── Fireflies: rect-based glow (no shadowBlur — fast on mobile) ──────────
+  ctx.fillStyle = 'rgba(255,220,80,1)';
   for (const f of flies) {
     f.x += f.vx; f.y += f.vy;
     f.brightness += f.bv;
     if (f.brightness < 0 || f.brightness > 1) f.bv *= -1;
     if (f.x < 0) f.x = BG_W; if (f.x > BG_W) f.x = 0;
     if (f.y < 0) f.y = BG_H * 0.5; if (f.y > BG_H * 0.5) f.y = 0;
-    const alpha = 0.4 + f.brightness * 0.6;
-    const px    = Math.round(f.x * sx);
-    const py    = Math.round(f.y * sy);
-    ctx.save();
-    ctx.shadowColor = `rgba(255,210,40,${alpha})`;
-    ctx.shadowBlur  = (18 + f.brightness * 28) * (f.glow ?? 1.0);
-    ctx.fillStyle   = `rgba(255,220,80,${alpha})`;
+    const br = 0.3 + f.brightness * 0.7;
+    const px = Math.round(f.x * sx), py = Math.round(f.y * sy);
+    // halo — larger rect at low alpha
+    ctx.globalAlpha = br * 0.15;
+    ctx.fillRect(px - f.sz, py - f.sz, f.sz * 3, f.sz * 3);
+    // core pixel
+    ctx.globalAlpha = br;
     ctx.fillRect(px, py, f.sz, f.sz);
-    ctx.restore();
   }
+  ctx.globalAlpha = 1;
 
   // ── Cat ───────────────────────────────────────────────────────────────────
   const cp = bgToCanvas(CAT_X, GROUND_Y - CAT_H);
@@ -541,36 +536,40 @@ function animate() {
     }
     _symTick();
 
-    // Symbols — purple/white palette, per-symbol colour + glow
-    ctx.save();
+    // Symbols — purple/white, no shadowBlur (fast on mobile)
+    ctx.textAlign = 'center';
     for (const s of pSyms) {
       const a = s.life * meditationPhase;
+      const col = s.color ?? '#c8aaff';
+      // soft glow halo (cheap rect instead of shadowBlur)
+      ctx.globalAlpha = a * 0.2;
+      ctx.fillStyle   = col;
+      const gs = (s.size ?? 24) * sx * 0.6;
+      ctx.fillRect(s.x - gs, s.y - gs * 1.5, gs * 2, gs * 2);
+      // text
       ctx.globalAlpha = a;
-      ctx.shadowColor = s.color ?? '#c8aaff';
-      ctx.shadowBlur  = 10;
-      ctx.fillStyle   = s.color ?? '#c8aaff';
+      ctx.fillStyle   = col;
       ctx.font        = `${Math.round((s.size ?? 24) * sx)}px serif`;
-      ctx.textAlign   = 'center';
       ctx.fillText(s.ch, s.x, s.y);
     }
-    ctx.restore();
+    ctx.globalAlpha = 1;
 
-    // Sparkle particles (delivery burst)
-    ctx.save();
-    statueParticles = statueParticles.filter(p => {
+    // Sparkle particles (delivery burst) — no shadowBlur, in-place cleanup
+    for (let i = statueParticles.length - 1; i >= 0; i--) {
+      const p = statueParticles[i];
       p.x += p.vx; p.y += p.vy;
-      p.vy += 0.14;
-      p.vx *= 0.97;
+      p.vy += 0.14; p.vx *= 0.97;
       p.life -= p.lv;
-      if (p.life <= 0) return false;
+      if (p.life <= 0) { statueParticles.splice(i, 1); continue; }
       ctx.globalAlpha = p.life * meditationPhase;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur  = 6;
       ctx.fillStyle   = p.color;
+      // halo
+      ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, p.sz + 2, p.sz + 2);
+      // core
+      ctx.globalAlpha = p.life * meditationPhase * 1.5;
       ctx.fillRect(Math.round(p.x), Math.round(p.y), p.sz, p.sz);
-      return true;
-    });
-    ctx.restore();
+    }
+    ctx.globalAlpha = 1;
 
     // Thai pixel inscription on statue
     if (!_thaiGlyphPurple) _thaiGlyphPurple = _makeThaiGlyph('#c0a0ff');
