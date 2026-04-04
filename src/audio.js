@@ -18,8 +18,9 @@ export const AudioSystem = {
     const start = async () => {
       if (this._started) return;
       this._started = true;
-      this._create();
-      try { await this.ctx.resume(); } catch (_) {}
+      this._create();                            // graph only, no oscillators
+      try { await this.ctx.resume(); } catch (_) {}  // iOS: wait until 'running'
+      this._startAmbient();                      // oscillators AFTER context is live
       this.setMode('ambient');
     };
     ['click', 'touchstart', 'touchend', 'keydown'].forEach(e =>
@@ -53,8 +54,9 @@ export const AudioSystem = {
     this.ambientGain.connect(this.masterGain);
     this.meditationGain.connect(this.masterGain);
     this.sittingGain.connect(this.masterGain);
-
-    this._startAmbient();
+    // DO NOT start oscillators here — context may still be 'suspended' on iOS.
+    // Oscillators started in suspended context are permanently dead.
+    // _startAmbient() is called from init() AFTER ctx.resume() resolves.
   },
 
   // ── Mode switch ────────────────────────────────────────────────────────

@@ -214,8 +214,8 @@ function _spawnSym() {
     t: 0, path,
     phase:      Math.random() * Math.PI * 2,
     ampX:       20 + Math.random() * (path === 1 ? 55 : 26),
-    freqX:      0.7 + Math.random() * 1.1,
-    riseSpeed:  0.85 + Math.random() * 0.65,
+    freqX:      0.35 + Math.random() * 0.55,
+    riseSpeed:  0.38 + Math.random() * 0.32,
     life:       1.0,
     dragging:   false,
     vx: 0, vy: 0, ax: 0,
@@ -229,27 +229,27 @@ function _symTick() {
     if (s.dragging) return true;
     s.t++;
     const sec = s.t / 60;
-    // Parametric position by path type — all gently accelerate upward
+    // Parametric position — slow, meditative float
     switch (s.path) {
       case 0: // Плавная синусоида
         s.x = s.x0 + Math.sin(sec * s.freqX * Math.PI + s.phase) * s.ampX;
         break;
       case 1: // Широкая дуга-sweep
-        s.x = s.x0 + Math.sin(sec * s.freqX * 1.5 + s.phase) * (s.ampX * 1.9);
+        s.x = s.x0 + Math.sin(sec * s.freqX * 1.2 + s.phase) * (s.ampX * 1.9);
         break;
       case 2: // Лемниската / восьмёрка
         s.x = s.x0
-            + Math.sin(sec * s.freqX * 2.6 + s.phase)  * s.ampX
-            + Math.cos(sec * s.freqX * 1.3)             * (s.ampX * 0.45);
+            + Math.sin(sec * s.freqX * 1.8 + s.phase)  * s.ampX
+            + Math.cos(sec * s.freqX * 0.9)             * (s.ampX * 0.45);
         break;
       case 3: // Спиральная штопор
-        const spiralR = s.ampX * (0.35 + 0.65 * Math.abs(Math.sin(sec * 1.1)));
-        s.x = s.x0 + spiralR * Math.cos(sec * s.freqX * 3.8 + s.phase);
+        const spiralR = s.ampX * (0.35 + 0.65 * Math.abs(Math.sin(sec * 0.7)));
+        s.x = s.x0 + spiralR * Math.cos(sec * s.freqX * 2.4 + s.phase);
         break;
     }
-    // Ускоряющийся подъём
-    s.y = s.y0 - (s.riseSpeed * s.t + 0.0022 * s.t * s.t);
-    s.life -= 0.0013;
+    // Медленный плавный подъём
+    s.y = s.y0 - (s.riseSpeed * s.t + 0.0008 * s.t * s.t);
+    s.life -= 0.0008;
     return s.life > 0 && s.y > -80;
   });
 }
