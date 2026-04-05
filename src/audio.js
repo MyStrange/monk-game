@@ -24,8 +24,21 @@ export const AudioSystem = {
         this._playsilent();                      // kick iOS AVAudioSession hardware
         this._startAmbient();
         this.setMode('ambient');
-        // DEBUG: show state after 200ms (resume() is async on iOS)
-        setTimeout(() => this._debugBadge('🔊 ' + this.ctx.state), 200);
+        // DEBUG: show state + play loud test beep directly to destination
+        setTimeout(() => {
+          this._debugBadge('🔊 ' + this.ctx.state);
+          // Test beep: bypass all gain nodes, connect straight to destination
+          const testOsc = this.ctx.createOscillator();
+          const testGain = this.ctx.createGain();
+          testOsc.type = 'sine';
+          testOsc.frequency.value = 440;
+          testGain.gain.value = 0.5; // loud
+          testOsc.connect(testGain);
+          testGain.connect(this.ctx.destination);
+          testOsc.start();
+          testOsc.stop(this.ctx.currentTime + 0.3);
+          this._debugBadge('🔊 ' + this.ctx.state + ' beep!');
+        }, 300);
       } catch (e) {
         this._started = false;                   // allow retry on next gesture
         this._debugBadge('❌ ' + e.message);
