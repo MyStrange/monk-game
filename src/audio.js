@@ -24,12 +24,23 @@ export const AudioSystem = {
         this._playsilent();                      // kick iOS AVAudioSession hardware
         this._startAmbient();
         this.setMode('ambient');
+        // DEBUG: temporary visual indicator — remove after confirming audio works
+        this._debugBadge('🔊 ctx:' + this.ctx.state);
       } catch (e) {
         this._started = false;                   // allow retry on next gesture
+        this._debugBadge('❌ ' + e.message);
+      }
+    };
+    // NOT once:true — keep retrying until success (rotate overlay may eat first gesture)
+    const _tryStart = (e) => {
+      start();
+      if (this._started) {
+        ['touchend', 'click', 'keydown'].forEach(ev =>
+          document.removeEventListener(ev, _tryStart));
       }
     };
     ['touchend', 'click', 'keydown'].forEach(e =>
-      document.addEventListener(e, start, { once: true }));
+      document.addEventListener(e, _tryStart));
 
     // Re-unlock on every gesture — iOS suspends ctx on background / lock / call
     const _unlock = () => {
@@ -42,6 +53,20 @@ export const AudioSystem = {
     document.addEventListener('touchend', _unlock);
     document.addEventListener('click',    _unlock);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) _unlock(); });
+  },
+
+  // DEBUG — temporary visual badge for mobile debugging (no console access)
+  _debugBadge(text) {
+    let el = document.getElementById('audio-debug');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'audio-debug';
+      el.style.cssText = 'position:fixed;top:4px;right:4px;z-index:999999;' +
+        'background:rgba(0,0,0,0.85);color:#f0c040;font:14px monospace;' +
+        'padding:4px 8px;border-radius:4px;pointer-events:none;';
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
   },
 
   // Silent buffer trick — forces iOS WebKit to activate hardware audio session.
