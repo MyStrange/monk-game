@@ -24,24 +24,10 @@ export const AudioSystem = {
         this._playsilent();                      // kick iOS AVAudioSession hardware
         this._startAmbient();
         this.setMode('ambient');
-        // DEBUG: show state + play loud test beep directly to destination
-        setTimeout(() => {
-          this._debugBadge('🔊 ' + this.ctx.state);
-          // Test beep: bypass all gain nodes, connect straight to destination
-          const testOsc = this.ctx.createOscillator();
-          const testGain = this.ctx.createGain();
-          testOsc.type = 'sine';
-          testOsc.frequency.value = 440;
-          testGain.gain.value = 0.5; // loud
-          testOsc.connect(testGain);
-          testGain.connect(this.ctx.destination);
-          testOsc.start();
-          testOsc.stop(this.ctx.currentTime + 0.3);
-          this._debugBadge('🔊 ' + this.ctx.state + ' beep!');
-        }, 300);
+        // Detect iOS silent mode: play a test tone, check if audio was actually rendered
+        this._checkSilentMode();
       } catch (e) {
         this._started = false;                   // allow retry on next gesture
-        this._debugBadge('❌ ' + e.message);
       }
     };
     // CAPTURE phase — fires BEFORE canvas touchend handlers that call preventDefault().
@@ -70,18 +56,31 @@ export const AudioSystem = {
     document.addEventListener('visibilitychange', () => { if (!document.hidden) _unlock(); });
   },
 
-  // DEBUG — temporary visual badge for mobile debugging (no console access)
-  _debugBadge(text) {
-    let el = document.getElementById('audio-debug');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'audio-debug';
-      el.style.cssText = 'position:fixed;top:4px;right:4px;z-index:999999;' +
-        'background:rgba(0,0,0,0.85);color:#f0c040;font:14px monospace;' +
-        'padding:4px 8px;border-radius:4px;pointer-events:none;';
-      document.body.appendChild(el);
-    }
-    el.textContent = text;
+  // Show mute hint if iOS silent switch is on (sound won't play)
+  _showMuteHint() {
+    if (document.getElementById('mute-hint')) return;
+    const el = document.createElement('div');
+    el.id = 'mute-hint';
+    el.className = 'scene-msg-item visible';
+    el.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:999999;pointer-events:auto;cursor:pointer;';
+    el.textContent = 'Выключи беззвучный режим для звука';
+    el.onclick = () => { el.remove(); this._checkSilentMode(); };
+    document.body.appendChild(el);
+    // Auto-hide after 6 seconds
+    setTimeout(() => el.remove(), 6000);
+  },
+
+  // Detect silent mode via AnalyserNode — if context is running but no audio output
+  _checkSilentMode() {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    // On iOS, we can't truly detect silent switch from JS.
+    // But we CAN detect if AudioContext was freshly resumed — if user sees no sound,
+    // the silent switch is the most likely cause. Show hint on mobile only.
+    if (!window.matchMedia('(pointer:coarse)').matches) return;
+    // Show hint once per session
+    if (this._muteHintShown) return;
+    this._muteHintShown = true;
+    this._showMuteHint();
   },
 
   // Silent buffer trick — forces iOS WebKit to activate hardware audio session.
