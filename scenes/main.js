@@ -456,11 +456,12 @@ function animate() {
     const alpha = 0.4 + f.brightness * 0.6;
     const px    = Math.round(f.x * sx);
     const py    = Math.round(f.y * sy);
+    const fsz   = Math.max(1, Math.round(f.sz * sx));
     ctx.save();
     ctx.shadowColor = `rgba(255,210,40,${alpha})`;
-    ctx.shadowBlur  = (18 + f.brightness * 28) * (f.glow ?? 1.0);
+    ctx.shadowBlur  = (18 + f.brightness * 28) * (f.glow ?? 1.0) * sx;
     ctx.fillStyle   = `rgba(255,220,80,${alpha})`;
-    ctx.fillRect(px, py, f.sz, f.sz);
+    ctx.fillRect(px, py, fsz, fsz);
     ctx.restore();
   }
 
