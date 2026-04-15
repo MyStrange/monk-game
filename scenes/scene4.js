@@ -21,29 +21,20 @@ let el, canvas, ctx, msgEl;
 let s4W = 0, s4H = 0;
 const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
-// ── Fireflies — pixel-art squares, deterministic seed-based ───────────────
-function _seeded(s) { return ((s * 1664525 + 1013904223) & 0xffffffff) >>> 0; }
-
+// ── Fireflies — pixel-art squares, random flight ──────────────────────────
 // 5 colours: warm yellow-green, cold blue-green, white, amber, pale cyan
 const _FLY_COLS = ['#c8ff60','#60ffc0','#f0ffb0','#ffe880','#80ffee'];
 
-const flies = Array.from({ length: 36 }, (_, i) => {
-  const s1 = _seeded(i * 73 + 1);
-  const s2 = _seeded(s1);
-  const s3 = _seeded(s2);
-  const s4 = _seeded(s3);
-  const s5 = _seeded(s4);
-  return {
-    x:     (s1 / 0xffffffff),
-    y:     (s2 / 0xffffffff),
-    vx:    ((s3 / 0xffffffff) - 0.5) * 0.9,
-    vy:    ((s4 / 0xffffffff) - 0.5) * 0.6,
-    tick:  i * 19,
-    sz:    3 + (s1 % 5),            // 3–7 px square
-    color: _FLY_COLS[s5 % 5],
-    phOff: (s2 / 0xffffffff) * Math.PI * 2,  // blink phase offset
-  };
-});
+const flies = Array.from({ length: 36 }, (_, i) => ({
+  x:     Math.random(),
+  y:     Math.random(),
+  vx:    (Math.random() - 0.5) * 0.9,
+  vy:    (Math.random() - 0.5) * 0.9,
+  tick:  Math.random() * 200,
+  sz:    3 + (Math.random() * 5 | 0),            // 3–7 px square
+  color: _FLY_COLS[(Math.random() * 5) | 0],
+  phOff: Math.random() * Math.PI * 2,            // blink phase offset
+}));
 
 // ── Door sparks (between dialog rounds) ───────────────────────────────────
 const _doorSparks = [];
@@ -203,11 +194,34 @@ function _doFinal() {
   }, 1600);
 }
 
-// ── Door zone hit test ─────────────────────────────────────────────────────
+// ── Zone hit tests (door on statue, cat, monk) ────────────────────────────
 function _inDoor(cx, cy) {
-  return cx > s4W * 0.55 && cx < s4W * 0.72 &&
-         cy > s4H * 0.32 && cy < s4H * 0.68;
+  return cx > s4W * 0.40 && cx < s4W * 0.60 &&
+         cy > s4H * 0.15 && cy < s4H * 0.45;
 }
+function _inCat(cx, cy) {
+  return cx > s4W * 0.33 && cx < s4W * 0.47 &&
+         cy > s4H * 0.66 && cy < s4H * 0.82;
+}
+function _inMonk(cx, cy) {
+  return cx > s4W * 0.48 && cx < s4W * 0.62 &&
+         cy > s4H * 0.72 && cy < s4H * 0.90;
+}
+
+// ── Flavor messages (rotate through) ──────────────────────────────────────
+const _CAT_MSGS = [
+  'Кот внизу. Отсюда он идеально круглый.',
+  'Он смотрит вверх. Не на тебя — просто вверх.',
+  'Кот лежит. Ты лежишь. Разница — в высоте.',
+  'Всё, что нужно знать о коте, видно отсюда.',
+];
+const _MONK_MSGS = [
+  'Красное пятно. Это был ты. Или будешь.',
+  'Монах сидит. Ты видишь его макушку.',
+  'Он не поднимет голову. Зачем?',
+  'Отсюда слышно, как он дышит. Нет, не слышно. Но кажется.',
+];
+let _catMsgIdx = 0, _monkMsgIdx = 0;
 
 // ── Animation ──────────────────────────────────────────────────────────────
 let animId = null;
@@ -215,6 +229,10 @@ let animId = null;
 function animate() {
   if (state.activeScreen !== 'scene4') { animId = null; return; }
   ctx.clearRect(0, 0, s4W, s4H);
+
+  // Meditation-style overlay (same как на главной во время медитации)
+  ctx.fillStyle = 'rgba(20,10,40,0.35)';
+  ctx.fillRect(0, 0, s4W, s4H);
 
   // Fireflies — pixel-art coloured squares with glow
   for (const f of flies) {
@@ -288,6 +306,17 @@ function createEl() {
         if (state.activeScreen !== 'scene4') return;
         _startDialog();
       }, 3000);
+      return;
+    }
+    if (_inCat(cx, cy)) {
+      showMsg(_CAT_MSGS[Math.min(_catMsgIdx, _CAT_MSGS.length - 1)], 3200);
+      _catMsgIdx++;
+      return;
+    }
+    if (_inMonk(cx, cy)) {
+      showMsg(_MONK_MSGS[Math.min(_monkMsgIdx, _MONK_MSGS.length - 1)], 3200);
+      _monkMsgIdx++;
+      return;
     }
   }
 
@@ -305,8 +334,9 @@ function createEl() {
     if (state.activeScreen !== 'scene4') return;
     const r = canvas.getBoundingClientRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
-    canvas.style.cursor =
-      (!_doorClicked && _inDoor(cx, cy)) ? CURSOR_PTR : CURSOR_DEF;
+    const hot = (!_doorClicked && _inDoor(cx, cy)) ||
+                _inCat(cx, cy) || _inMonk(cx, cy);
+    canvas.style.cursor = hot ? CURSOR_PTR : CURSOR_DEF;
   });
   canvas.addEventListener('mouseleave', () => {
     canvas.style.cursor = CURSOR_DEF;
@@ -326,6 +356,8 @@ export async function openSceneScene4() {
   _doorClicked  = S.doorVisited;
   _vegStage     = S.doorVisited ? 3 : 0;
   _dialogActive = false;
+  _catMsgIdx    = 0;
+  _monkMsgIdx   = 0;
   if (S.doorVisited) _initVeg();
 
   S.scene4Unlocked = true;

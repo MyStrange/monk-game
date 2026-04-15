@@ -157,6 +157,7 @@ function hitZoneBG(cx, cy) {
   }
   for (const [name, z] of Object.entries(ZONES_BG)) {
     if (name === 'inscription' || name === 'dirt') continue;
+    if (name === 'bush' && S.stickPickedUp) continue;
     if (bx >= z.x && bx < z.x + z.w && by >= z.y && by < z.y + z.h) return name;
   }
   return null;
