@@ -344,12 +344,21 @@ function onDragStart(cx, cy) {
   if (state.activeScreen !== 'main') return;
   if (!hero.praying && meditationPhase <= 0) return;
   for (const s of pSyms) {
-    if (Math.hypot(cx - s.x, cy - s.y) < 36) {
+    if (Math.hypot(cx - s.x, cy - s.y) < 52) {
       s.dragging = true;
       draggedSym = s;
       return;
     }
   }
+}
+
+// Проверить, попадает ли точка по живому символу (для курсора)
+function _hitSym(cx, cy) {
+  if (!hero.praying && meditationPhase <= 0) return false;
+  for (const s of pSyms) {
+    if (Math.hypot(cx - s.x, cy - s.y) < 52) return true;
+  }
+  return false;
 }
 
 function onDragMove(cx, cy) {
@@ -686,8 +695,8 @@ export async function initMain() {
     const r  = canvas.getBoundingClientRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
     onDragMove(cx, cy);
-    // Pointer cursor over clickable zones
-    canvas.style.cursor = hitZoneBG(cx, cy) ? CURSOR_PTR : CURSOR_DEF;
+    // Pointer cursor over clickable zones OR meditation symbols
+    canvas.style.cursor = (hitZoneBG(cx, cy) || _hitSym(cx, cy)) ? CURSOR_PTR : CURSOR_DEF;
   });
   canvas.addEventListener('mouseup', () => {
     if (draggedSym) { _deliverSym(); draggedSym = null; }
