@@ -116,17 +116,15 @@ html,body{
 canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;}
 
 /* ══════════════════════════════════════════════════════
-   SCENE MESSAGES — stacking system
+   SCENE MESSAGES — replacement + story priority
    ══════════════════════════════════════════════════════ */
-/* Container: transparent flex column, items stack bottom-up */
 .scene-msg{
   position:absolute;bottom:90px;left:50%;
   transform:translateX(-50%);
-  display:flex;flex-direction:column-reverse;align-items:center;
+  display:flex;flex-direction:column;align-items:center;
   gap:6px;
   pointer-events:none;z-index:100;
 }
-/* Each individual message bubble */
 .scene-msg-item{
   background:var(--c-panel);
   border:var(--b-gold-hi);
@@ -139,9 +137,61 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   transition:opacity .25s,transform .25s;
 }
 .scene-msg-item.visible{opacity:1;transform:translateY(0);}
+/* Story — чуть плотнее/ярче, кликабельное */
+.scene-msg-item.story{
+  border-color:rgba(240,192,64,0.85);
+  box-shadow:0 0 18px rgba(240,192,64,0.18);
+  pointer-events:auto;cursor:pointer;
+}
+/* Bounce — на регулярный клик во время активного story */
+.scene-msg-item.bounce{animation:msg-bounce .35s ease-out;}
+@keyframes msg-bounce{
+  0%   { transform:translateY(0) scale(1); }
+  30%  { transform:translateY(-4px) scale(1.04); }
+  60%  { transform:translateY(2px)  scale(0.98); }
+  100% { transform:translateY(0) scale(1); }
+}
+
+/* ── Choice block (вопрос + кнопки в одном блоке) ── */
+.scene-choice{
+  background:var(--c-panel);
+  border:var(--b-gold-hi);
+  border-radius:var(--r);
+  padding:var(--pad-msg);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  max-width:76vw;pointer-events:auto;
+  opacity:0;transform:translateY(8px);
+  transition:opacity .25s,transform .25s;
+}
+.scene-choice.visible{opacity:1;transform:translateY(0);}
+.scene-choice-prompt{
+  color:var(--c-text);
+  font-family:var(--font);font-size:var(--sz-base);
+  text-align:center;line-height:1.5;letter-spacing:0.02em;
+}
+.scene-choice-btns{
+  display:flex;flex-direction:column;gap:6px;width:100%;align-items:stretch;
+}
+.scene-choice-btn{
+  background:rgba(0,0,0,0.82);
+  border:1px solid rgba(240,192,64,0.5);
+  color:rgba(240,220,160,0.92);
+  padding:9px 20px;
+  font-family:var(--font);font-size:var(--sz-sm);
+  letter-spacing:0.04em;cursor:pointer;
+  border-radius:var(--r);
+  transition:border-color .15s,background .15s;
+}
+.scene-choice-btn:hover{
+  border-color:rgba(240,192,64,0.9);
+  background:rgba(0,0,0,0.93);
+}
+
 @media (pointer:coarse){
   .scene-msg{bottom:72px;}
   .scene-msg-item{font-size:var(--sz-sm);padding:8px 14px;max-width:68vw;}
+  .scene-choice{max-width:68vw;}
+  .scene-choice-prompt{font-size:var(--sz-sm);}
 }
 
 /* ── Back button ── */

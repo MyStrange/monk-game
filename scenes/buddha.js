@@ -94,7 +94,7 @@ function _startWish(jar) {
     jar.description    = 'Светляковая жижка. Внутри мерцает тихий свет — след от десяти светлячков.';
     state.selectedSlot = -1;  // снять с руки после завершения желания
     renderHotbar();
-    showMsg(wishDoneMsg, 4000);
+    showMsg(wishDoneMsg, { story: true });
   }, (WISH_DURATION / 60) * 1000 + 200);
 }
 
@@ -325,7 +325,7 @@ function startFireflyDialog() {
         return;
       }
     }
-    showMsg(durianAfterDialog, 4500);
+    showMsg(durianAfterDialog, { story: true });
   };
   setTimeout(() => _dlgShowLine(_dlgLines[0]), 200);
 }
@@ -396,7 +396,7 @@ function onTap(cx, cy) {
 
         if (item.caught >= 10) {
           setTimeout(() => {
-            showMsg(catchMsg10, 4000);
+            showMsg(catchMsg10, { story: true });
             _startWish(item);
           }, 300);
         }

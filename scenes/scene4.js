@@ -1,7 +1,8 @@
 // scenes/scene4.js — вид сверху / дверь в дерево
 
 import { state }         from '../src/state.js';
-import { showMsgIn, showLoading, hideLoading, showError,
+import { showMsgIn, showChoiceIn, isStoryActive,
+         showLoading, hideLoading, showError,
          CURSOR_DEF, CURSOR_PTR } from '../src/utils.js';
 import { leaveMain, resumeMain, standUp } from './main.js';
 import { SaveManager }   from '../src/save.js';
@@ -86,52 +87,11 @@ function _drawVegetation(stage) {
   }
 }
 
-// ── Dialog / choice state ──────────────────────────────────────────────────
-let _dialogActive = false;
-let _doorClicked  = false;
-let _vegStage     = 0;
-let _choiceEl     = null;
+// ── Dialog state ──────────────────────────────────────────────────────────
+let _doorClicked = false;
+let _vegStage    = 0;
 
-function _showChoices(options, onPick) {
-  _removeChoices();
-  _dialogActive = true;
-  _choiceEl = document.createElement('div');
-  _choiceEl.id = 's4-choices';
-  _choiceEl.style.cssText =
-    'position:absolute;inset:0;display:flex;flex-direction:column;' +
-    'align-items:center;justify-content:flex-end;padding-bottom:18%;' +
-    'z-index:10;pointer-events:none;gap:6px;';
-
-  options.forEach(opt => {
-    const btn = document.createElement('button');
-    btn.textContent = opt.text;
-    btn.style.cssText =
-      'pointer-events:auto;background:rgba(0,0,0,0.82);' +
-      'border:1px solid rgba(240,192,64,0.5);color:rgba(240,220,160,0.92);' +
-      'padding:10px 24px;font-family:inherit;font-size:14px;' +
-      'letter-spacing:0.04em;cursor:pointer;min-width:220px;max-width:72%;' +
-      'transition:border-color 0.15s,background 0.15s;';
-    btn.onmouseover = () => {
-      btn.style.borderColor = 'rgba(240,192,64,0.9)';
-      btn.style.background  = 'rgba(0,0,0,0.93)';
-    };
-    btn.onmouseout = () => {
-      btn.style.borderColor = 'rgba(240,192,64,0.5)';
-      btn.style.background  = 'rgba(0,0,0,0.82)';
-    };
-    btn.onclick = () => onPick(opt);
-    _choiceEl.appendChild(btn);
-  });
-
-  el.appendChild(_choiceEl);
-}
-
-function _removeChoices() {
-  if (_choiceEl) { _choiceEl.remove(); _choiceEl = null; }
-  _dialogActive = false;
-}
-
-// ── Dialog flow ────────────────────────────────────────────────────────────
+// ── Dialog flow (story-priority + choice blocks) ──────────────────────────
 function _startDialog() {
   _doorClicked = true;
   _initVeg();
@@ -140,19 +100,13 @@ function _startDialog() {
 
 function _doRound(round) {
   const { prompt, options } = DOOR_ROUNDS[round - 1];
-  showMsg(prompt, 4500);
-  setTimeout(() => {
-    if (state.activeScreen !== 'scene4') return;
-    _showChoices(options, () => _onPick(round));
-  }, 1600);
+  showChoiceIn(msgEl, prompt, options, () => _onPick(round));
 }
 
 function _onPick(round) {
-  _removeChoices();
   _spawnDoorBurst();
   _vegStage = round;
-
-  const delay = 1700;
+  const delay = 1200;
   if (round < 3) {
     setTimeout(() => {
       if (state.activeScreen !== 'scene4') return;
@@ -167,31 +121,26 @@ function _onPick(round) {
 }
 
 function _doFinal() {
-  showMsg(DOOR_FINAL_QUESTION, 6000);
-  setTimeout(() => {
-    if (state.activeScreen !== 'scene4') return;
-    _showChoices(
-      [{ text: 'Да.' }, { text: 'Нет.' }],
-      opt => {
-        _removeChoices();
-        if (opt.text === 'Да.') {
-          S.doorVisited = true;
-          SaveManager.setScene('scene4', S);
-          showMsg(DOOR_FINAL_YES_MSG, 2200);
-          setTimeout(() => {
-            closeSceneScene4();
-            openSceneScene3();
-          }, 2000);
-        } else {
-          showMsg(DOOR_FINAL_NO_MSG, 4000);
-          setTimeout(() => {
-            closeSceneScene4();
-            standUp();
-          }, 3800);
-        }
+  showChoiceIn(msgEl, DOOR_FINAL_QUESTION,
+    [{ text: 'Да.' }, { text: 'Нет.' }],
+    value => {
+      if (value === 'Да.') {
+        S.doorVisited = true;
+        SaveManager.setScene('scene4', S);
+        showMsg(DOOR_FINAL_YES_MSG, { story: true, dur: 2200 });
+        setTimeout(() => {
+          closeSceneScene4();
+          openSceneScene3();
+        }, 2000);
+      } else {
+        showMsg(DOOR_FINAL_NO_MSG, { story: true, dur: 4000 });
+        setTimeout(() => {
+          closeSceneScene4();
+          standUp();
+        }, 3800);
       }
-    );
-  }, 1600);
+    }
+  );
 }
 
 // ── Zone hit tests (door on statue, cat, monk) ────────────────────────────
@@ -299,22 +248,25 @@ function createEl() {
   document.getElementById('wrap').appendChild(el);
 
   function _handleTap(cx, cy) {
-    if (_dialogActive || state.activeScreen !== 'scene4') return;
+    if (state.activeScreen !== 'scene4') return;
+    // Story активна — showMsgIn сам сбаунсит, просто выходим
+    if (isStoryActive(msgEl)) return;
     if (!_doorClicked && _inDoor(cx, cy)) {
-      showMsg(DOOR_CLICK_MSG, 3500);
-      setTimeout(() => {
-        if (state.activeScreen !== 'scene4') return;
-        _startDialog();
-      }, 3000);
+      showMsg(DOOR_CLICK_MSG, {
+        story: true,
+        onDismiss: () => {
+          if (state.activeScreen === 'scene4') _startDialog();
+        },
+      });
       return;
     }
     if (_inCat(cx, cy)) {
-      showMsg(_CAT_MSGS[Math.min(_catMsgIdx, _CAT_MSGS.length - 1)], 3200);
+      showMsg(_CAT_MSGS[Math.min(_catMsgIdx, _CAT_MSGS.length - 1)]);
       _catMsgIdx++;
       return;
     }
     if (_inMonk(cx, cy)) {
-      showMsg(_MONK_MSGS[Math.min(_monkMsgIdx, _MONK_MSGS.length - 1)], 3200);
+      showMsg(_MONK_MSGS[Math.min(_monkMsgIdx, _MONK_MSGS.length - 1)]);
       _monkMsgIdx++;
       return;
     }
@@ -355,7 +307,6 @@ export async function openSceneScene4() {
   // Restore state
   _doorClicked  = S.doorVisited;
   _vegStage     = S.doorVisited ? 3 : 0;
-  _dialogActive = false;
   _catMsgIdx    = 0;
   _monkMsgIdx   = 0;
   if (S.doorVisited) _initVeg();
@@ -375,14 +326,13 @@ export async function openSceneScene4() {
       s4H = canvas.height = Math.round(r.height);
       if (!animId) animate();
     });
-    showMsg(scene4OpenMsg, 4000);
+    showMsg(scene4OpenMsg, { story: true });
     trackZoneClick('scene4');
   };
   if (bgImg.complete && bgImg.naturalWidth) bgImg.onload();
 }
 
 export function closeSceneScene4() {
-  _removeChoices();
   state.activeScreen = 'main';
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
