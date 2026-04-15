@@ -698,8 +698,17 @@ export async function initMain() {
     // Pointer cursor over clickable zones OR meditation symbols
     canvas.style.cursor = (hitZoneBG(cx, cy) || _hitSym(cx, cy)) ? CURSOR_PTR : CURSOR_DEF;
   });
-  canvas.addEventListener('mouseup', () => {
-    if (draggedSym) { _deliverSym(); draggedSym = null; }
+  canvas.addEventListener('mouseup', e => {
+    if (!draggedSym) return;
+    // Доставка только если отпустили РЯДОМ с надписью — иначе просто бросаем.
+    const r  = canvas.getBoundingClientRect();
+    const cx = e.clientX - r.left, cy = e.clientY - r.top;
+    const iz = ZONES_BG.inscription;
+    const ip = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
+    if (Math.hypot(cx - ip.x, cy - ip.y) < 80 && (hero.praying || meditationPhase > 0)) {
+      _deliverSym();
+    }
+    if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
   });
   canvas.addEventListener('mouseleave', () => {
     canvas.style.cursor = CURSOR_DEF;
@@ -710,17 +719,6 @@ export async function initMain() {
     const t = e.touches[0];
     const r = canvas.getBoundingClientRect();
     const cx = t.clientX - r.left, cy = t.clientY - r.top;
-    // Tap on symbol — deliver immediately at touchstart (symbol moves each frame,
-    // waiting for touchend means coordinates drift and hit-test fails)
-    if (hero.praying || meditationPhase > 0) {
-      for (const s of pSyms) {
-        if (Math.hypot(cx - s.x, cy - s.y) < 52) {
-          draggedSym = s;
-          _deliverSym();
-          return; // skip drag mode
-        }
-      }
-    }
     onDragStart(cx, cy);
   }, { passive: true });
   canvas.addEventListener('touchmove', e => {
@@ -731,17 +729,21 @@ export async function initMain() {
   }, { passive: false });
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
+    const t = e.changedTouches[0];
+    const r = canvas.getBoundingClientRect();
+    const cx = t.clientX - r.left, cy = t.clientY - r.top;
     if (draggedSym) {
-      const t = e.changedTouches[0];
-      const r = canvas.getBoundingClientRect();
-      draggedSym.x = t.clientX - r.left;
-      draggedSym.y = t.clientY - r.top;
-      _deliverSym();
-      draggedSym = null;
+      // Доставка только если отпустили РЯДОМ с надписью — иначе просто бросаем.
+      draggedSym.x = cx;
+      draggedSym.y = cy;
+      const iz = ZONES_BG.inscription;
+      const ip = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
+      if (Math.hypot(cx - ip.x, cy - ip.y) < 80 && (hero.praying || meditationPhase > 0)) {
+        _deliverSym();
+      }
+      if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
     } else {
-      const t = e.changedTouches[0];
-      const r = canvas.getBoundingClientRect();
-      onTap(t.clientX - r.left, t.clientY - r.top);
+      onTap(cx, cy);
     }
   }, { passive: false });
 
