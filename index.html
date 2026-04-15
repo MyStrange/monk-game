@@ -15,21 +15,18 @@
 <meta name="theme-color" content="#0a0812">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="assets/icon.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'><rect width='16' height='16' fill='%230a0812'/><rect x='6' y='1' width='4' height='1' fill='%23f0c040'/><rect x='4' y='2' width='8' height='1' fill='%23f0c040'/><rect x='3' y='3' width='10' height='1' fill='%23f0c040'/><rect x='2' y='4' width='12' height='1' fill='%23f0c040'/><rect x='2' y='5' width='12' height='1' fill='%23f0c040'/><rect x='1' y='6' width='14' height='4' fill='%23f0c040'/><rect x='2' y='10' width='12' height='1' fill='%23f0c040'/><rect x='2' y='11' width='12' height='1' fill='%23f0c040'/><rect x='3' y='12' width='10' height='1' fill='%23f0c040'/><rect x='4' y='13' width='8' height='1' fill='%23f0c040'/><rect x='6' y='14' width='4' height='1' fill='%23f0c040'/><rect x='7' y='1' width='2' height='14' fill='%23c09030'/><rect x='1' y='7' width='14' height='2' fill='%23c09030'/><rect x='3' y='3' width='2' height='2' fill='%23c09030'/><rect x='11' y='3' width='2' height='2' fill='%23c09030'/><rect x='3' y='11' width='2' height='2' fill='%23c09030'/><rect x='11' y='11' width='2' height='2' fill='%23c09030'/><rect x='6' y='6' width='4' height='4' fill='%23fffce8'/><rect x='7' y='7' width='2' height='2' fill='%23a07828'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=2">
-<!-- Preload critical assets -->
+<!-- Preload only main scene assets — остальные сцены грузятся при открытии -->
 <link rel="preload" as="image" href="assets/bg/main.png">
 <link rel="preload" as="image" href="assets/sprites/hero_right.png">
 <link rel="preload" as="image" href="assets/sprites/hero_left.png">
 <link rel="preload" as="image" href="assets/sprites/hero_sit.png">
 <link rel="preload" as="image" href="assets/sprites/cat.png">
 <link rel="preload" as="image" href="assets/sprites/monk_red.png">
-<link rel="preload" as="image" href="assets/bg/tree.png">
-<link rel="preload" as="image" href="assets/bg/buddha.jpeg">
-<link rel="preload" as="image" href="assets/bg/flyroom.jpeg">
-<link rel="preload" as="image" href="assets/bg/above_main.jpeg">
 </head>
 <body>
 
@@ -150,6 +147,6 @@
 
 <!-- Сцены создаются динамически из своих JS-модулей -->
 
-<script type="module" src="game.js?v=8" defer></script>
+<script type="module" src="game.js?v=9" defer></script>
 </body>
 </html>

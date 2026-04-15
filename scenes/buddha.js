@@ -299,9 +299,18 @@ function _dlgClick() {
 
 function startFireflyDialog() {
   if (!flyroomEl) _buildFlyroom();
-  flyroomEl.style.display = 'block';
-  // Перезапустить анимацию если остановилась (после закрытия и повторного открытия)
-  if (flyroomAnimId === null && _frAnimateFn) _frAnimateFn();
+  const bgImg = flyroomEl.querySelector('img');
+  const _show = () => {
+    flyroomEl.style.display = 'block';
+    if (flyroomAnimId === null && _frAnimateFn) _frAnimateFn();
+  };
+  if (bgImg && !(bgImg.complete && bgImg.naturalWidth)) {
+    showLoading('светляки');
+    bgImg.addEventListener('load',  () => { hideLoading(); _show(); }, { once: true });
+    bgImg.addEventListener('error', () => { hideLoading(); showError('не удалось загрузить сцену'); }, { once: true });
+  } else {
+    _show();
+  }
   _dlgLines  = DIALOG;
   _dlgIdx    = 0;
   _dlgActive = true;
