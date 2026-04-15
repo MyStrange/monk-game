@@ -27,8 +27,24 @@ const BG_W = 1376, BG_H = 768;
 const bottleImg = new Image();
 bottleImg.src = 'assets/items/bottle.png';
 
-// Bottle position in BG coords
-const BOT_PX = 283, BOT_PY = 317, BOT_PW = 94, BOT_PH = 119;
+// Bottle position in BG coords — aligned в корнях слева
+// new sprite: 133×165 (aspect 0.806), вписан в корневой «карман»
+const BOT_PX = 268, BOT_PY = 300, BOT_PW = 124, BOT_PH = 154;
+
+// ── Rock sprites (glowing symbols, shown when activated) ──────────────────
+const rock1Img = new Image(); rock1Img.src = 'assets/items/rock1.png';
+const rock2Img = new Image(); rock2Img.src = 'assets/items/rock2.png';
+const rock3Img = new Image(); rock3Img.src = 'assets/items/rock3.png';
+
+// Отдельные рамки для отрисовки спрайтов (шире/ниже кликзон — под аспект картинок)
+// rock1: 369×265 (1.39) — плита у корней снизу-слева
+// rock2: 305×233 (1.31) — моховой камень мидл-райт
+// rock3: 272×345 (0.79) — портрет, трава с символом, справа
+const ROCK_DRAW = {
+  rock1: { fx: 0.09, fy: 0.76, fw: 0.30, fh: 0.22 },
+  rock2: { fx: 0.56, fy: 0.38, fw: 0.22, fh: 0.17 },
+  rock3: { fx: 0.78, fy: 0.52, fw: 0.17, fh: 0.34 },
+};
 
 // ── Zones ─────────────────────────────────────────────────────────────────
 const ZONES = {
@@ -176,14 +192,18 @@ function animate() {
     ctx.drawImage(bottleImg, bx, by, bw, bh);
   }
 
-  // Rock glow indicators
+  // Rock sprites (когда активированы) — светящиеся символы на плитах
+  const rockImgs = { rock1: rock1Img, rock2: rock2Img, rock3: rock3Img };
   for (const [rock, done] of Object.entries(S.rockStates)) {
     if (!done) continue;
-    const z = ZONES[rock];
+    const img = rockImgs[rock];
+    if (!(img.complete && img.naturalWidth)) continue;
+    const d = ROCK_DRAW[rock];
+    // мягкое мерцание золотого свечения
+    const pulse = 0.75 + 0.25 * Math.sin(Date.now() * 0.003 + rock.length);
     ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle   = '#a0e8ff';
-    ctx.fillRect(z.fx * W, z.fy * H, z.fw * W, z.fh * H);
+    ctx.globalAlpha = pulse;
+    ctx.drawImage(img, d.fx * W, d.fy * H, d.fw * W, d.fh * H);
     ctx.restore();
   }
 
@@ -252,7 +272,10 @@ export async function openSceneScene2() {
 
   const bgImg = el.querySelector('img');
   bgImg.onerror = () => showError('не удалось загрузить сцену');
-  await Promise.all([_waitImg(bgImg), _waitImg(bottleImg)]);
+  await Promise.all([
+    _waitImg(bgImg), _waitImg(bottleImg),
+    _waitImg(rock1Img), _waitImg(rock2Img), _waitImg(rock3Img),
+  ]);
   if (!bgImg.naturalWidth) return;
 
   hideLoading();
