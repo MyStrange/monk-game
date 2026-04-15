@@ -198,7 +198,8 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
 .s4-layer{
   position:absolute;top:50%;left:50%;
   transform:translate(-50%,-50%);
-  height:100%;width:auto;max-width:none;
+  /* Сжимаем до натуральной пропорции: 854/1154 ≈ 74% от высоты фона */
+  height:70%;width:auto;max-width:none;
   image-rendering:pixelated;
   cursor:pointer;
   user-select:none;-webkit-tap-highlight-color:transparent;
