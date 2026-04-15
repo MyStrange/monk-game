@@ -16,6 +16,8 @@ import { openSceneScene3 }      from './scene3.js';
 const S = SaveManager.getScene('scene4');
 S.scene4Unlocked = S.scene4Unlocked ?? false;
 S.doorVisited    = S.doorVisited    ?? false;
+S.catCovered     = S.catCovered     ?? false;
+S.monkCovered    = S.monkCovered    ?? false;
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, canvas, ctx, msgEl;
@@ -91,6 +93,54 @@ function _drawVegetation(stage) {
 let _doorClicked = false;
 let _vegStage    = 0;
 
+// Sprite-cover state (cat / monk get "поглощены" корнями после последнего клика)
+let _catCovered  = false;
+let _monkCovered = false;
+// Анимация наплыва корней (0..1)
+let _catCoverA   = 0;
+let _monkCoverA  = 0;
+
+// Детерминированные зелёные «пятна» корней поверх кота/монаха
+const _catPatch  = [];
+const _monkPatch = [];
+function _initPatches() {
+  if (_catPatch.length && _monkPatch.length) return;
+  const seeded = n => ((n * 1664525 + 1013904223) & 0xfffff) / 0xfffff;
+  const GREENS = ['#1a4a0a','#245c10','#1e6a0a','#0a3a08','#2e7a14','#0e2a06','#163a08'];
+  // Cat patch: x 0.60-0.72, y 0.44-0.58
+  for (let i = 0; i < 38; i++) {
+    const s = i * 131 + 3;
+    _catPatch.push({
+      px: 0.60 + seeded(s)       * 0.12,
+      py: 0.44 + seeded(s * 3)   * 0.14,
+      w:  2 + (seeded(s * 7)     * 6) | 0,
+      h:  2 + (seeded(s * 11)    * 7) | 0,
+      color: GREENS[i % 7],
+    });
+  }
+  // Monk patch: x 0.47-0.60, y 0.56-0.74
+  for (let i = 0; i < 52; i++) {
+    const s = i * 149 + 11;
+    _monkPatch.push({
+      px: 0.47 + seeded(s)       * 0.13,
+      py: 0.56 + seeded(s * 3)   * 0.18,
+      w:  2 + (seeded(s * 7)     * 7) | 0,
+      h:  2 + (seeded(s * 11)    * 8) | 0,
+      color: GREENS[i % 7],
+    });
+  }
+}
+
+function _drawCoverPatch(patch, alpha) {
+  if (alpha <= 0) return;
+  ctx.globalAlpha = alpha;
+  for (const r of patch) {
+    ctx.fillStyle = r.color;
+    ctx.fillRect(r.px * s4W | 0, r.py * s4H | 0, r.w, r.h);
+  }
+  ctx.globalAlpha = 1;
+}
+
 // ── Dialog flow (story-priority + choice blocks) ──────────────────────────
 function _startDialog() {
   _doorClicked = true;
@@ -144,17 +194,23 @@ function _doFinal() {
 }
 
 // ── Zone hit tests (door on statue, cat, monk) ────────────────────────────
+// Позиции под новый фон above.png:
+// — статуя в коробе центру-верху, пещера ещё выше
+// — кот справа от статуи, средняя высота
+// — монах в красном ниже статуи, центр-низ
 function _inDoor(cx, cy) {
   return cx > s4W * 0.40 && cx < s4W * 0.60 &&
-         cy > s4H * 0.15 && cy < s4H * 0.45;
+         cy > s4H * 0.08 && cy < s4H * 0.42;
 }
 function _inCat(cx, cy) {
-  return cx > s4W * 0.33 && cx < s4W * 0.47 &&
-         cy > s4H * 0.66 && cy < s4H * 0.82;
+  if (_catCovered) return false;
+  return cx > s4W * 0.60 && cx < s4W * 0.72 &&
+         cy > s4H * 0.44 && cy < s4H * 0.58;
 }
 function _inMonk(cx, cy) {
-  return cx > s4W * 0.48 && cx < s4W * 0.62 &&
-         cy > s4H * 0.72 && cy < s4H * 0.90;
+  if (_monkCovered) return false;
+  return cx > s4W * 0.47 && cx < s4W * 0.60 &&
+         cy > s4H * 0.56 && cy < s4H * 0.74;
 }
 
 // ── Flavor messages (rotate through) ──────────────────────────────────────
@@ -211,6 +267,12 @@ function animate() {
   // Vegetation overlay
   if (_vegStage > 0) _drawVegetation(_vegStage);
 
+  // Cover patches для кота/монаха — плавный наплыв корней
+  if (_catCovered  && _catCoverA  < 1) _catCoverA  = Math.min(1, _catCoverA  + 0.035);
+  if (_monkCovered && _monkCoverA < 1) _monkCoverA = Math.min(1, _monkCoverA + 0.035);
+  if (_catCoverA  > 0) _drawCoverPatch(_catPatch,  _catCoverA);
+  if (_monkCoverA > 0) _drawCoverPatch(_monkPatch, _monkCoverA);
+
   animId = requestAnimationFrame(animate);
 }
 
@@ -259,11 +321,21 @@ function createEl() {
     if (_inCat(cx, cy)) {
       showMsg(_CAT_MSGS[Math.min(_catMsgIdx, _CAT_MSGS.length - 1)]);
       _catMsgIdx++;
+      if (_catMsgIdx >= _CAT_MSGS.length) {
+        _catCovered   = true;
+        S.catCovered  = true;
+        SaveManager.setScene('scene4', S);
+      }
       return;
     }
     if (_inMonk(cx, cy)) {
       showMsg(_MONK_MSGS[Math.min(_monkMsgIdx, _MONK_MSGS.length - 1)]);
       _monkMsgIdx++;
+      if (_monkMsgIdx >= _MONK_MSGS.length) {
+        _monkCovered  = true;
+        S.monkCovered = true;
+        SaveManager.setScene('scene4', S);
+      }
       return;
     }
   }
@@ -303,8 +375,13 @@ export async function openSceneScene4() {
   // Restore state
   _doorClicked  = S.doorVisited;
   _vegStage     = S.doorVisited ? 3 : 0;
-  _catMsgIdx    = 0;
-  _monkMsgIdx   = 0;
+  _catMsgIdx    = S.catCovered  ? _CAT_MSGS.length  : 0;
+  _monkMsgIdx   = S.monkCovered ? _MONK_MSGS.length : 0;
+  _catCovered   = S.catCovered;
+  _monkCovered  = S.monkCovered;
+  _catCoverA    = S.catCovered  ? 1 : 0;
+  _monkCoverA   = S.monkCovered ? 1 : 0;
+  _initPatches();
   if (S.doorVisited) _initVeg();
 
   S.scene4Unlocked = true;
