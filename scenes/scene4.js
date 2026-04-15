@@ -122,9 +122,9 @@ function _onPick(round) {
 
 function _doFinal() {
   showChoiceIn(msgEl, DOOR_FINAL_QUESTION,
-    [{ text: 'Да.' }, { text: 'Нет.' }],
+    [{ text: 'Да' }, { text: 'Нет' }],
     value => {
-      if (value === 'Да.') {
+      if (value === 'Да') {
         S.doorVisited = true;
         SaveManager.setScene('scene4', S);
         showMsg(DOOR_FINAL_YES_MSG, { story: true, dur: 2200 });
@@ -178,10 +178,6 @@ let animId = null;
 function animate() {
   if (state.activeScreen !== 'scene4') { animId = null; return; }
   ctx.clearRect(0, 0, s4W, s4H);
-
-  // Meditation-style overlay (same как на главной во время медитации)
-  ctx.fillStyle = 'rgba(20,10,40,0.35)';
-  ctx.fillRect(0, 0, s4W, s4H);
 
   // Fireflies — pixel-art coloured squares with glow
   for (const f of flies) {

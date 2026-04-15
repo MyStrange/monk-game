@@ -157,15 +157,15 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   background:var(--c-panel);
   border:var(--b-gold-hi);
   border-radius:var(--r);
-  padding:var(--pad-msg);
-  display:flex;flex-direction:column;align-items:center;gap:10px;
-  max-width:76vw;pointer-events:auto;
+  padding:16px 18px;
+  display:flex;flex-direction:column;align-items:stretch;gap:20px;
+  max-width:52vw;min-width:240px;pointer-events:auto;
   opacity:0;transform:translateY(8px);
   transition:opacity .25s,transform .25s;
 }
 .scene-choice.visible{opacity:1;transform:translateY(0);}
 .scene-choice-prompt{
-  color:var(--c-text);
+  color:var(--c-gold);
   font-family:var(--font);font-size:var(--sz-base);
   text-align:center;line-height:1.5;letter-spacing:0.02em;
 }
@@ -175,7 +175,7 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
 .scene-choice-btn{
   background:rgba(0,0,0,0.82);
   border:1px solid rgba(240,192,64,0.5);
-  color:rgba(240,220,160,0.92);
+  color:var(--c-gold);
   padding:9px 20px;
   font-family:var(--font);font-size:var(--sz-sm);
   letter-spacing:0.04em;cursor:pointer;
@@ -190,7 +190,7 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
 @media (pointer:coarse){
   .scene-msg{bottom:72px;}
   .scene-msg-item{font-size:var(--sz-sm);padding:8px 14px;max-width:68vw;}
-  .scene-choice{max-width:68vw;}
+  .scene-choice{max-width:76vw;min-width:220px;}
   .scene-choice-prompt{font-size:var(--sz-sm);}
 }
 
