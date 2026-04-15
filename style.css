@@ -194,6 +194,18 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   .scene-choice-prompt{font-size:var(--sz-sm);}
 }
 
+/* ── Scene4 portrait overlay layers (above2, above3) ── */
+.s4-layer{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  height:100%;width:auto;max-width:none;
+  image-rendering:pixelated;
+  cursor:pointer;
+  user-select:none;-webkit-tap-highlight-color:transparent;
+  transition:opacity .55s ease-out;
+}
+.s4-layer.fade-out{opacity:0;pointer-events:none;}
+
 /* ── Back button ── */
 .back-btn{
   position:absolute;top:8px;left:8px;

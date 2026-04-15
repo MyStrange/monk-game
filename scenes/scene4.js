@@ -1,4 +1,7 @@
 // scenes/scene4.js — вид сверху / дверь в дерево
+// Трёхслойная структура: above.png (BG) + above2.png (поверх) + above3.png (топ с лианами).
+// Клик по верхнему слою снимает его. Когда оба оверлея сняты — дверь «обычная».
+// Клик по двери → диалог → сцена 3.
 
 import { state }         from '../src/state.js';
 import { showMsgIn, showChoiceIn, isStoryActive,
@@ -14,38 +17,38 @@ import { openSceneScene3 }      from './scene3.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('scene4');
-S.scene4Unlocked = S.scene4Unlocked ?? false;
-S.doorVisited    = S.doorVisited    ?? false;
-S.catCovered     = S.catCovered     ?? false;
-S.monkCovered    = S.monkCovered    ?? false;
+S.scene4Unlocked  = S.scene4Unlocked  ?? false;
+S.doorVisited     = S.doorVisited     ?? false;
+S.layer3Removed   = S.layer3Removed   ?? false;  // above3 (лианы)
+S.layer2Removed   = S.layer2Removed   ?? false;  // above2 (дверь без лиан)
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, canvas, ctx, msgEl;
+let layer2El, layer3El;
 let s4W = 0, s4H = 0;
 const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
 // ── Fireflies — pixel-art squares, random flight ──────────────────────────
-// 5 colours: warm yellow-green, cold blue-green, white, amber, pale cyan
 const _FLY_COLS = ['#c8ff60','#60ffc0','#f0ffb0','#ffe880','#80ffee'];
 
-const flies = Array.from({ length: 36 }, (_, i) => ({
+const flies = Array.from({ length: 36 }, () => ({
   x:     Math.random(),
   y:     Math.random(),
   vx:    (Math.random() - 0.5) * 0.9,
   vy:    (Math.random() - 0.5) * 0.9,
   tick:  Math.random() * 200,
-  sz:    3 + (Math.random() * 5 | 0),            // 3–7 px square
+  sz:    3 + (Math.random() * 5 | 0),
   color: _FLY_COLS[(Math.random() * 5) | 0],
-  phOff: Math.random() * Math.PI * 2,            // blink phase offset
+  phOff: Math.random() * Math.PI * 2,
 }));
 
-// ── Door sparks (between dialog rounds) ───────────────────────────────────
+// ── Door sparks (между раундами диалога) ──────────────────────────────────
 const _doorSparks = [];
 const _SPARK_COLORS = ['#ffffff','#f0e8ff','#c8aaff','#b888ff',
                        '#9966ee','#ddaaff','#ffe8ff'];
 
 function _spawnDoorBurst() {
-  const cx = s4W * 0.625, cy = s4H * 0.50;
+  const cx = s4W * 0.50, cy = s4H * 0.18;
   for (let i = 0; i < 28; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 0.8 + Math.random() * 2.4;
@@ -60,91 +63,12 @@ function _spawnDoorBurst() {
   }
 }
 
-// ── Vegetation (procedural pixel rects, 3 stages around door) ─────────────
-const _vegRects = [];
-function _initVeg() {
-  if (_vegRects.length) return;
-  // Deterministic rects around door zone (x≈0.55-0.72, y≈0.32-0.68)
-  const r = (n, min, max) =>
-    min + ((n * 1664525 + 1013904223) & 0xfffff) / 0xfffff * (max - min);
-  const GREENS = ['#1a4a0a','#245c10','#1e6a0a','#0a3a08','#2e7a14','#0e2a06'];
-  for (let i = 0; i < 120; i++) {
-    const seed = i * 137 + 7;
-    _vegRects.push({
-      px:    r(seed,      0.50, 0.76),
-      py:    r(seed * 3,  0.27, 0.70),
-      w:     r(seed * 7,  2,    8),
-      h:     r(seed * 11, 2,    12),
-      color: GREENS[i % 6],
-      stage: 1 + (i % 3),
-    });
-  }
-}
-
-function _drawVegetation(stage) {
-  for (const r of _vegRects) {
-    if (r.stage > stage) continue;
-    ctx.fillStyle = r.color;
-    ctx.fillRect(r.px * s4W | 0, r.py * s4H | 0, r.w | 0, r.h | 0);
-  }
-}
-
 // ── Dialog state ──────────────────────────────────────────────────────────
 let _doorClicked = false;
-let _vegStage    = 0;
 
-// Sprite-cover state (cat / monk get "поглощены" корнями после последнего клика)
-let _catCovered  = false;
-let _monkCovered = false;
-// Анимация наплыва корней (0..1)
-let _catCoverA   = 0;
-let _monkCoverA  = 0;
-
-// Детерминированные зелёные «пятна» корней поверх кота/монаха
-const _catPatch  = [];
-const _monkPatch = [];
-function _initPatches() {
-  if (_catPatch.length && _monkPatch.length) return;
-  const seeded = n => ((n * 1664525 + 1013904223) & 0xfffff) / 0xfffff;
-  const GREENS = ['#1a4a0a','#245c10','#1e6a0a','#0a3a08','#2e7a14','#0e2a06','#163a08'];
-  // Cat patch: x 0.60-0.72, y 0.44-0.58
-  for (let i = 0; i < 38; i++) {
-    const s = i * 131 + 3;
-    _catPatch.push({
-      px: 0.60 + seeded(s)       * 0.12,
-      py: 0.44 + seeded(s * 3)   * 0.14,
-      w:  2 + (seeded(s * 7)     * 6) | 0,
-      h:  2 + (seeded(s * 11)    * 7) | 0,
-      color: GREENS[i % 7],
-    });
-  }
-  // Monk patch: x 0.47-0.60, y 0.56-0.74
-  for (let i = 0; i < 52; i++) {
-    const s = i * 149 + 11;
-    _monkPatch.push({
-      px: 0.47 + seeded(s)       * 0.13,
-      py: 0.56 + seeded(s * 3)   * 0.18,
-      w:  2 + (seeded(s * 7)     * 7) | 0,
-      h:  2 + (seeded(s * 11)    * 8) | 0,
-      color: GREENS[i % 7],
-    });
-  }
-}
-
-function _drawCoverPatch(patch, alpha) {
-  if (alpha <= 0) return;
-  ctx.globalAlpha = alpha;
-  for (const r of patch) {
-    ctx.fillStyle = r.color;
-    ctx.fillRect(r.px * s4W | 0, r.py * s4H | 0, r.w, r.h);
-  }
-  ctx.globalAlpha = 1;
-}
-
-// ── Dialog flow (story-priority + choice blocks) ──────────────────────────
+// ── Dialog flow ───────────────────────────────────────────────────────────
 function _startDialog() {
   _doorClicked = true;
-  _initVeg();
   _doRound(1);
 }
 
@@ -155,7 +79,6 @@ function _doRound(round) {
 
 function _onPick(round) {
   _spawnDoorBurst();
-  _vegStage = round;
   const delay = 1200;
   if (round < 3) {
     setTimeout(() => {
@@ -193,27 +116,22 @@ function _doFinal() {
   );
 }
 
-// ── Zone hit tests (door on statue, cat, monk) ────────────────────────────
-// Позиции под новый фон above.png:
-// — статуя в коробе центру-верху, пещера ещё выше
-// — кот справа от статуи, средняя высота
-// — монах в красном ниже статуи, центр-низ
+// ── Zone hit tests ────────────────────────────────────────────────────────
+// Узкая зона двери — тёмный проём над статуёй в above.png
 function _inDoor(cx, cy) {
-  return cx > s4W * 0.40 && cx < s4W * 0.60 &&
-         cy > s4H * 0.08 && cy < s4H * 0.42;
+  return cx > s4W * 0.46 && cx < s4W * 0.55 &&
+         cy > s4H * 0.05 && cy < s4H * 0.18;
 }
 function _inCat(cx, cy) {
-  if (_catCovered) return false;
   return cx > s4W * 0.60 && cx < s4W * 0.72 &&
          cy > s4H * 0.44 && cy < s4H * 0.58;
 }
 function _inMonk(cx, cy) {
-  if (_monkCovered) return false;
   return cx > s4W * 0.47 && cx < s4W * 0.60 &&
          cy > s4H * 0.56 && cy < s4H * 0.74;
 }
 
-// ── Flavor messages (rotate through) ──────────────────────────────────────
+// ── Flavor messages (rotate) ──────────────────────────────────────────────
 const _CAT_MSGS = [
   'Кот внизу. Отсюда он идеально круглый.',
   'Он смотрит вверх. Не на тебя — просто вверх.',
@@ -235,18 +153,16 @@ function animate() {
   if (state.activeScreen !== 'scene4') { animId = null; return; }
   ctx.clearRect(0, 0, s4W, s4H);
 
-  // Fireflies — pixel-art coloured squares with glow
+  // Fireflies
   for (const f of flies) {
     f.tick++;
     f.x = (f.x + f.vx / s4W + 1) % 1;
     f.y = (f.y + f.vy / s4H + 1) % 1;
     const br = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(f.tick * 0.038 + f.phOff));
     const px = f.x * s4W | 0, py = f.y * s4H | 0;
-    // soft glow (larger rect, low alpha)
     ctx.globalAlpha = br * 0.18;
     ctx.fillStyle = f.color;
     ctx.fillRect(px - f.sz, py - f.sz, f.sz * 3, f.sz * 3);
-    // core pixel square
     ctx.globalAlpha = br;
     ctx.fillRect(px, py, f.sz, f.sz);
   }
@@ -264,16 +180,23 @@ function animate() {
   }
   ctx.globalAlpha = 1;
 
-  // Vegetation overlay
-  if (_vegStage > 0) _drawVegetation(_vegStage);
-
-  // Cover patches для кота/монаха — плавный наплыв корней
-  if (_catCovered  && _catCoverA  < 1) _catCoverA  = Math.min(1, _catCoverA  + 0.035);
-  if (_monkCovered && _monkCoverA < 1) _monkCoverA = Math.min(1, _monkCoverA + 0.035);
-  if (_catCoverA  > 0) _drawCoverPatch(_catPatch,  _catCoverA);
-  if (_monkCoverA > 0) _drawCoverPatch(_monkPatch, _monkCoverA);
-
   animId = requestAnimationFrame(animate);
+}
+
+// ── Layer peel logic ──────────────────────────────────────────────────────
+function _peelLayer(which) {
+  const node = which === 3 ? layer3El : layer2El;
+  if (!node) return;
+  _spawnDoorBurst();
+  node.classList.add('fade-out');
+  setTimeout(() => { node.style.display = 'none'; }, 600);
+  if (which === 3) { S.layer3Removed = true; }
+  else             { S.layer2Removed = true; }
+  SaveManager.setScene('scene4', S);
+}
+
+function _layersGone() {
+  return S.layer3Removed && S.layer2Removed;
 }
 
 // ── DOM creation ───────────────────────────────────────────────────────────
@@ -284,14 +207,30 @@ function createEl() {
   el.id = 'scene4';
   el.style.cssText = 'position:absolute;inset:0;display:none;z-index:55;overflow:hidden;';
 
+  // Base BG (above.png)
   const bg = document.createElement('img');
   bg.src = 'assets/bg/above_main.jpeg';
   bg.style.cssText =
     'display:block;width:100%;height:100%;object-fit:cover;object-position:top;';
 
+  // Canvas (fireflies + sparks)
   canvas = document.createElement('canvas');
   canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
   ctx = canvas.getContext('2d');
+
+  // Layer 2 — выше BG, ниже layer3: дверь без лиан
+  layer2El = document.createElement('img');
+  layer2El.src = 'assets/bg/above2.png';
+  layer2El.className = 's4-layer';
+  layer2El.dataset.layer = '2';
+  layer2El.style.zIndex = '60';
+
+  // Layer 3 — самый верх: лианы поверх двери
+  layer3El = document.createElement('img');
+  layer3El.src = 'assets/bg/above3.png';
+  layer3El.className = 's4-layer';
+  layer3El.dataset.layer = '3';
+  layer3El.style.zIndex = '61';
 
   const back = document.createElement('button');
   back.className = 'back-btn';
@@ -301,15 +240,44 @@ function createEl() {
   msgEl = document.createElement('div');
   msgEl.className = 'scene-msg';
 
-  el.appendChild(bg); el.appendChild(canvas);
-  el.appendChild(back); el.appendChild(msgEl);
+  el.appendChild(bg);
+  el.appendChild(canvas);
+  el.appendChild(layer2El);
+  el.appendChild(layer3El);
+  el.appendChild(back);
+  el.appendChild(msgEl);
   document.getElementById('wrap').appendChild(el);
+
+  // Слой 3 клик — снять верхнюю лиану
+  layer3El.addEventListener('click', e => {
+    e.stopPropagation();
+    if (isStoryActive(msgEl)) return;
+    _peelLayer(3);
+  });
+  layer3El.addEventListener('touchend', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (isStoryActive(msgEl)) return;
+    _peelLayer(3);
+  }, { passive: false });
+
+  // Слой 2 клик — снять средний слой
+  layer2El.addEventListener('click', e => {
+    e.stopPropagation();
+    if (isStoryActive(msgEl)) return;
+    _peelLayer(2);
+  });
+  layer2El.addEventListener('touchend', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (isStoryActive(msgEl)) return;
+    _peelLayer(2);
+  }, { passive: false });
 
   function _handleTap(cx, cy) {
     if (state.activeScreen !== 'scene4') return;
-    // Story активна — showMsgIn сам сбаунсит, просто выходим
     if (isStoryActive(msgEl)) return;
-    if (!_doorClicked && _inDoor(cx, cy)) {
+
+    // Дверь активна только когда оба оверлея сняты
+    if (_layersGone() && !_doorClicked && _inDoor(cx, cy)) {
       showMsg(DOOR_CLICK_MSG, {
         story: true,
         onDismiss: () => {
@@ -321,21 +289,11 @@ function createEl() {
     if (_inCat(cx, cy)) {
       showMsg(_CAT_MSGS[Math.min(_catMsgIdx, _CAT_MSGS.length - 1)]);
       _catMsgIdx++;
-      if (_catMsgIdx >= _CAT_MSGS.length) {
-        _catCovered   = true;
-        S.catCovered  = true;
-        SaveManager.setScene('scene4', S);
-      }
       return;
     }
     if (_inMonk(cx, cy)) {
       showMsg(_MONK_MSGS[Math.min(_monkMsgIdx, _MONK_MSGS.length - 1)]);
       _monkMsgIdx++;
-      if (_monkMsgIdx >= _MONK_MSGS.length) {
-        _monkCovered  = true;
-        S.monkCovered = true;
-        SaveManager.setScene('scene4', S);
-      }
       return;
     }
   }
@@ -354,7 +312,7 @@ function createEl() {
     if (state.activeScreen !== 'scene4') return;
     const r = canvas.getBoundingClientRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
-    const hot = (!_doorClicked && _inDoor(cx, cy)) ||
+    const hot = (_layersGone() && !_doorClicked && _inDoor(cx, cy)) ||
                 _inCat(cx, cy) || _inMonk(cx, cy);
     canvas.style.cursor = hot ? CURSOR_PTR : CURSOR_DEF;
   });
@@ -371,18 +329,19 @@ export async function openSceneScene4() {
   canvas = el.querySelector('canvas');
   ctx    = canvas.getContext('2d');
   msgEl  = el.querySelector('.scene-msg');
+  layer2El = el.querySelector('.s4-layer[data-layer="2"]');
+  layer3El = el.querySelector('.s4-layer[data-layer="3"]');
 
   // Restore state
-  _doorClicked  = S.doorVisited;
-  _vegStage     = S.doorVisited ? 3 : 0;
-  _catMsgIdx    = S.catCovered  ? _CAT_MSGS.length  : 0;
-  _monkMsgIdx   = S.monkCovered ? _MONK_MSGS.length : 0;
-  _catCovered   = S.catCovered;
-  _monkCovered  = S.monkCovered;
-  _catCoverA    = S.catCovered  ? 1 : 0;
-  _monkCoverA   = S.monkCovered ? 1 : 0;
-  _initPatches();
-  if (S.doorVisited) _initVeg();
+  _doorClicked  = false;   // диалог можно открыть заново при повторном заходе
+  _catMsgIdx    = 0;
+  _monkMsgIdx   = 0;
+
+  // Состояние слоёв: если убраны — скрываем сразу
+  if (S.layer3Removed && layer3El) layer3El.style.display = 'none';
+  else if (layer3El) { layer3El.style.display = ''; layer3El.classList.remove('fade-out'); }
+  if (S.layer2Removed && layer2El) layer2El.style.display = 'none';
+  else if (layer2El) { layer2El.style.display = ''; layer2El.classList.remove('fade-out'); }
 
   S.scene4Unlocked = true;
   showLoading('высота');
