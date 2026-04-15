@@ -318,11 +318,13 @@ function onTap(cx, cy) {
   trackSpotClick(cx, cy, 'main');
 
   if (draggedSym) {
+    // Доставка только при реальном перетаскивании на надпись.
     const iz = ZONES_BG.inscription;
     const ip = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
     const dist = Math.hypot(cx - ip.x, cy - ip.y);
-    if (dist < 60 && (hero.praying || meditationPhase > 0)) _deliverSym();
-    draggedSym = null;
+    if (_dragMoved && dist < 60 && (hero.praying || meditationPhase > 0)) _deliverSym();
+    if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
+    _dragMoved = false;
     return;
   }
 
@@ -340,6 +342,11 @@ function onTap(cx, cy) {
   trackEmptyClick();
 }
 
+// Отслеживаем, было ли реальное перетаскивание (мышь/палец двигались).
+// Без движения — это тап/клик и доставка НЕ происходит.
+let _dragStartX = 0, _dragStartY = 0, _dragMoved = false;
+const _DRAG_THRESHOLD = 10; // px — сколько надо сдвинуться, чтобы считать «перетаскиванием»
+
 function onDragStart(cx, cy) {
   if (state.activeScreen !== 'main') return;
   if (!hero.praying && meditationPhase <= 0) return;
@@ -347,6 +354,8 @@ function onDragStart(cx, cy) {
     if (Math.hypot(cx - s.x, cy - s.y) < 52) {
       s.dragging = true;
       draggedSym = s;
+      _dragStartX = cx; _dragStartY = cy;
+      _dragMoved = false;
       return;
     }
   }
@@ -362,7 +371,13 @@ function _hitSym(cx, cy) {
 }
 
 function onDragMove(cx, cy) {
-  if (draggedSym) { draggedSym.x = cx; draggedSym.y = cy; }
+  if (draggedSym) {
+    draggedSym.x = cx; draggedSym.y = cy;
+    if (!_dragMoved &&
+        Math.hypot(cx - _dragStartX, cy - _dragStartY) > _DRAG_THRESHOLD) {
+      _dragMoved = true;
+    }
+  }
 }
 
 function _deliverSym() {
@@ -700,15 +715,19 @@ export async function initMain() {
   });
   canvas.addEventListener('mouseup', e => {
     if (!draggedSym) return;
-    // Доставка только если отпустили РЯДОМ с надписью — иначе просто бросаем.
+    // Доставка ТОЛЬКО если было реальное перетаскивание И отпустили у надписи.
+    // Обычный клик по знаку → просто бросаем обратно в полёт.
     const r  = canvas.getBoundingClientRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
     const iz = ZONES_BG.inscription;
     const ip = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
-    if (Math.hypot(cx - ip.x, cy - ip.y) < 80 && (hero.praying || meditationPhase > 0)) {
+    if (_dragMoved &&
+        Math.hypot(cx - ip.x, cy - ip.y) < 80 &&
+        (hero.praying || meditationPhase > 0)) {
       _deliverSym();
     }
     if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
+    _dragMoved = false;
   });
   canvas.addEventListener('mouseleave', () => {
     canvas.style.cursor = CURSOR_DEF;
@@ -733,15 +752,18 @@ export async function initMain() {
     const r = canvas.getBoundingClientRect();
     const cx = t.clientX - r.left, cy = t.clientY - r.top;
     if (draggedSym) {
-      // Доставка только если отпустили РЯДОМ с надписью — иначе просто бросаем.
+      // Доставка ТОЛЬКО если было реальное перетаскивание И отпустили у надписи.
       draggedSym.x = cx;
       draggedSym.y = cy;
       const iz = ZONES_BG.inscription;
       const ip = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
-      if (Math.hypot(cx - ip.x, cy - ip.y) < 80 && (hero.praying || meditationPhase > 0)) {
+      if (_dragMoved &&
+          Math.hypot(cx - ip.x, cy - ip.y) < 80 &&
+          (hero.praying || meditationPhase > 0)) {
         _deliverSym();
       }
       if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
+      _dragMoved = false;
     } else {
       onTap(cx, cy);
     }
