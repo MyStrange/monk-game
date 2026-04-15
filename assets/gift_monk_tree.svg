@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" shape-rendering="crispEdges" style="image-rendering:pixelated;background:#0a0812">
+  <!-- ─────────── Монах медитирует под деревом ─────────── -->
+
+  <defs>
+    <radialGradient id="aura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#fff080" stop-opacity="0.45"/>
+      <stop offset="50%"  stop-color="#ffdc50" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffdc50" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- ── Звёзды ── -->
+  <rect x="6"  y="6"  width="1" height="1" fill="#fffce8"/>
+  <rect x="18" y="10" width="1" height="1" fill="#fff080" fill-opacity="0.7"/>
+  <rect x="82" y="8"  width="1" height="1" fill="#fffce8"/>
+  <rect x="90" y="14" width="1" height="1" fill="#fff080" fill-opacity="0.6"/>
+  <rect x="74" y="4"  width="1" height="1" fill="#fffce8" fill-opacity="0.8"/>
+
+  <!-- ── Земля ── -->
+  <rect x="0" y="78" width="96" height="2"  fill="#2a1f3a"/>
+  <rect x="0" y="80" width="96" height="16" fill="#1a1428"/>
+  <rect x="0" y="82" width="96" height="1"  fill="#3a2a55" fill-opacity="0.5"/>
+
+  <!-- ── Крона дерева (пышная, сакура-стайл, тёплые тона) ── -->
+  <!-- Основная масса листвы -->
+  <rect x="30" y="12" width="36" height="4"  fill="#4a2a40"/>
+  <rect x="24" y="16" width="48" height="4"  fill="#4a2a40"/>
+  <rect x="20" y="20" width="56" height="8"  fill="#4a2a40"/>
+  <rect x="18" y="28" width="60" height="8"  fill="#4a2a40"/>
+  <rect x="22" y="36" width="52" height="4"  fill="#4a2a40"/>
+  <rect x="28" y="40" width="40" height="2"  fill="#4a2a40"/>
+
+  <!-- Тёплые блики на листве (розово-оранжевые лепестки) -->
+  <rect x="32" y="14" width="4"  height="2" fill="#a04060"/>
+  <rect x="44" y="14" width="6"  height="2" fill="#a04060"/>
+  <rect x="56" y="14" width="4"  height="2" fill="#a04060"/>
+  <rect x="28" y="18" width="4"  height="2" fill="#c06080"/>
+  <rect x="38" y="18" width="6"  height="2" fill="#a04060"/>
+  <rect x="52" y="18" width="4"  height="2" fill="#c06080"/>
+  <rect x="62" y="18" width="6"  height="2" fill="#a04060"/>
+  <rect x="22" y="22" width="6"  height="2" fill="#a04060"/>
+  <rect x="34" y="22" width="4"  height="2" fill="#c06080"/>
+  <rect x="46" y="22" width="8"  height="2" fill="#a04060"/>
+  <rect x="60" y="22" width="4"  height="2" fill="#c06080"/>
+  <rect x="68" y="22" width="6"  height="2" fill="#a04060"/>
+  <rect x="20" y="26" width="4"  height="2" fill="#c06080"/>
+  <rect x="30" y="26" width="6"  height="2" fill="#a04060"/>
+  <rect x="42" y="26" width="4"  height="2" fill="#ff80a0"/>
+  <rect x="52" y="26" width="6"  height="2" fill="#a04060"/>
+  <rect x="66" y="26" width="8"  height="2" fill="#c06080"/>
+  <rect x="24" y="30" width="6"  height="2" fill="#a04060"/>
+  <rect x="36" y="30" width="4"  height="2" fill="#c06080"/>
+  <rect x="48" y="30" width="6"  height="2" fill="#a04060"/>
+  <rect x="60" y="30" width="4"  height="2" fill="#ff80a0"/>
+  <rect x="68" y="30" width="6"  height="2" fill="#a04060"/>
+  <rect x="28" y="34" width="4"  height="2" fill="#c06080"/>
+  <rect x="40" y="34" width="6"  height="2" fill="#a04060"/>
+  <rect x="54" y="34" width="4"  height="2" fill="#c06080"/>
+  <rect x="64" y="34" width="6"  height="2" fill="#a04060"/>
+
+  <!-- Самые светлые вспышки-лепестки -->
+  <rect x="40" y="16" width="2" height="2" fill="#ffc0d0"/>
+  <rect x="58" y="24" width="2" height="2" fill="#ffc0d0"/>
+  <rect x="32" y="28" width="2" height="2" fill="#ffc0d0"/>
+  <rect x="70" y="26" width="2" height="2" fill="#ffc0d0"/>
+
+  <!-- ── Ствол ── -->
+  <rect x="44" y="42" width="8" height="38" fill="#3a2818"/>
+  <rect x="46" y="42" width="4" height="38" fill="#4a3220"/>
+  <rect x="44" y="46" width="2" height="2"  fill="#2a1810"/>
+  <rect x="50" y="52" width="2" height="2"  fill="#2a1810"/>
+  <rect x="44" y="60" width="2" height="2"  fill="#2a1810"/>
+  <rect x="50" y="68" width="2" height="2"  fill="#2a1810"/>
+
+  <!-- Корни у основания -->
+  <rect x="40" y="78" width="4" height="2" fill="#3a2818"/>
+  <rect x="52" y="78" width="4" height="2" fill="#3a2818"/>
+  <rect x="38" y="80" width="4" height="1" fill="#2a1810"/>
+  <rect x="54" y="80" width="4" height="1" fill="#2a1810"/>
+
+  <!-- ── Аура медитации ── -->
+  <circle cx="48" cy="72" r="18" fill="url(#aura)"/>
+
+  <!-- ── Монах (медитирует, бритая голова, красная роба) ── -->
+  <!-- Голова -->
+  <rect x="44" y="60" width="8" height="6" fill="#d4a070"/>
+  <rect x="43" y="62" width="10" height="3" fill="#d4a070"/>
+  <!-- Тень на голове -->
+  <rect x="44" y="60" width="8" height="1" fill="#b47a50"/>
+  <!-- Глаза закрыты -->
+  <rect x="45" y="63" width="2" height="1" fill="#3a2818"/>
+  <rect x="49" y="63" width="2" height="1" fill="#3a2818"/>
+  <!-- Улыбка -->
+  <rect x="46" y="65" width="4" height="1" fill="#8a4030"/>
+
+  <!-- Шея -->
+  <rect x="46" y="66" width="4" height="2" fill="#b47a50"/>
+
+  <!-- Роба (широкие плечи, поза лотоса) -->
+  <rect x="38" y="68" width="20" height="4" fill="#8a2a20"/>
+  <rect x="36" y="70" width="24" height="4" fill="#8a2a20"/>
+  <rect x="34" y="72" width="28" height="6" fill="#8a2a20"/>
+
+  <!-- Светлая подкладка робы -->
+  <rect x="38" y="68" width="20" height="1" fill="#c04030"/>
+  <rect x="36" y="70" width="2"  height="4" fill="#6a1a10"/>
+  <rect x="58" y="70" width="2"  height="4" fill="#6a1a10"/>
+
+  <!-- Складки -->
+  <rect x="42" y="72" width="1" height="4" fill="#6a1a10"/>
+  <rect x="48" y="72" width="1" height="4" fill="#6a1a10"/>
+  <rect x="54" y="72" width="1" height="4" fill="#6a1a10"/>
+
+  <!-- Руки, сложенные на коленях -->
+  <rect x="42" y="74" width="12" height="2" fill="#d4a070"/>
+  <rect x="44" y="76" width="8"  height="1" fill="#b47a50"/>
+
+  <!-- Пальцы сложены (мудра) -->
+  <rect x="47" y="73" width="2" height="1" fill="#d4a070"/>
+
+  <!-- ── Падающие лепестки ── -->
+  <rect x="14" y="44" width="2" height="1" fill="#ff80a0"/>
+  <rect x="14" y="45" width="1" height="1" fill="#c06080"/>
+
+  <rect x="78" y="50" width="2" height="1" fill="#ffc0d0"/>
+  <rect x="78" y="51" width="1" height="1" fill="#a04060"/>
+
+  <rect x="24" y="58" width="2" height="1" fill="#ff80a0"/>
+  <rect x="24" y="59" width="1" height="1" fill="#c06080"/>
+
+  <rect x="72" y="62" width="2" height="1" fill="#ffc0d0"/>
+  <rect x="72" y="63" width="1" height="1" fill="#a04060"/>
+
+  <rect x="16" y="68" width="2" height="1" fill="#ff80a0"/>
+  <rect x="16" y="69" width="1" height="1" fill="#c06080"/>
+
+  <rect x="80" y="72" width="2" height="1" fill="#ffc0d0"/>
+
+  <rect x="28" y="74" width="2" height="1" fill="#ff80a0"/>
+
+  <!-- Лепестки на земле -->
+  <rect x="20" y="82" width="2" height="1" fill="#a04060"/>
+  <rect x="36" y="82" width="2" height="1" fill="#c06080"/>
+  <rect x="62" y="82" width="2" height="1" fill="#a04060"/>
+  <rect x="78" y="82" width="2" height="1" fill="#c06080"/>
+  <rect x="10" y="84" width="2" height="1" fill="#a04060"/>
+  <rect x="84" y="84" width="2" height="1" fill="#c06080"/>
+
+  <!-- ── Маленький светлячок наблюдает ── -->
+  <circle cx="68" cy="74" r="3" fill="#fff080" fill-opacity="0.4"/>
+  <rect x="68" y="74" width="1" height="1" fill="#fffce8"/>
+
+  <!-- ── Травинки ── -->
+  <rect x="6"  y="78" width="1" height="2" fill="#3a5028"/>
+  <rect x="14" y="78" width="1" height="2" fill="#4a6028"/>
+  <rect x="26" y="78" width="1" height="2" fill="#3a5028"/>
+  <rect x="70" y="78" width="1" height="2" fill="#4a6028"/>
+  <rect x="82" y="78" width="1" height="2" fill="#3a5028"/>
+  <rect x="90" y="78" width="1" height="2" fill="#4a6028"/>
+</svg>
