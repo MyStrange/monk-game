@@ -56,11 +56,33 @@ const ZONES = {
             fw: BOT_PW / BG_W, fh: BOT_PH / BG_H },
 };
 
+// ── object-fit: cover math ────────────────────────────────────────────────
+// BG-картинка в DOM отрисована с object-fit:cover → её фактический видимый
+// прямоугольник может быть МЕНЬШЕ canvas (часть обрезана по одной из осей).
+// Спрайты (bottle/rocks) и hit-зоны должны позиционироваться относительно
+// этого реального прямоугольника, а не размеров canvas, иначе при любом
+// экране с aspect ≠ BG_W/BG_H спрайты поедут от камней.
+function bgRect() {
+  const ar = BG_W / BG_H;          // 1376 / 768 ≈ 1.7917
+  const cAr = W / H;
+  if (cAr > ar) {
+    // контейнер шире bg: bg растянута по высоте, обрезана слева/справа
+    const bw = H * ar;
+    return { x: (W - bw) / 2, y: 0, w: bw, h: H };
+  } else {
+    // контейнер уже bg: bg растянута по ширине, обрезана сверху/снизу
+    const bh = W / ar;
+    return { x: 0, y: (H - bh) / 2, w: W, h: bh };
+  }
+}
+
 function hitZone(cx, cy) {
+  const R = bgRect();
   for (const [name, z] of Object.entries(ZONES)) {
     if (name === 'bottle' && S.jarPickedUp) continue;
-    if (cx >= z.fx * W && cx < (z.fx + z.fw) * W &&
-        cy >= z.fy * H && cy < (z.fy + z.fh) * H) return name;
+    const zx = R.x + z.fx * R.w, zy = R.y + z.fy * R.h;
+    const zw = z.fw * R.w,       zh = z.fh * R.h;
+    if (cx >= zx && cx < zx + zw && cy >= zy && cy < zy + zh) return name;
   }
   return null;
 }
@@ -221,12 +243,15 @@ function animate() {
   if (state.activeScreen !== 'scene2') { animId = null; return; }
   ctx.clearRect(0, 0, W, H);
 
+  // Фактический видимый прямоугольник bg (с учётом object-fit:cover)
+  const R = bgRect();
+
   // Bottle sprite
   if (!S.jarPickedUp && bottleImg.complete && bottleImg.naturalWidth) {
-    const bx = BOT_PX / BG_W * W;
-    const by = BOT_PY / BG_H * H;
-    const bw = BOT_PW / BG_W * W;
-    const bh = BOT_PH / BG_H * H;
+    const bx = R.x + (BOT_PX / BG_W) * R.w;
+    const by = R.y + (BOT_PY / BG_H) * R.h;
+    const bw = (BOT_PW / BG_W) * R.w;
+    const bh = (BOT_PH / BG_H) * R.h;
     ctx.drawImage(bottleImg, bx, by, bw, bh);
   }
 
@@ -238,7 +263,8 @@ function animate() {
     const img = rockImgs[rock];
     if (!(img.complete && img.naturalWidth)) continue;
     const d = ROCK_DRAW[rock];
-    const rx = d.fx * W, ry = d.fy * H, rw = d.fw * W, rh = d.fh * H;
+    const rx = R.x + d.fx * R.w, ry = R.y + d.fy * R.h;
+    const rw = d.fw * R.w,       rh = d.fh * R.h;
     const act = _activating[rock];
     let pulse;
     if (act) {
