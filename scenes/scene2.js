@@ -15,6 +15,11 @@ const S = SaveManager.getScene('scene2');
 S.jarPickedUp  = S.jarPickedUp  ?? false;
 S.rockStates   = S.rockStates   ?? { rock1: false, rock2: false, rock3: false };
 
+// Авто-сейв флагов сцены — вызывается после каждой мутации S, чтобы
+// прогресс не терялся при F5/reload/крэше внутри сцены (иначе состояние
+// записывается только в closeSceneScene2 и при перезагрузке откатывается).
+function _saveS() { SaveManager.setScene('scene2', S); }
+
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, canvas, ctx, msgEl;
 let W = 0, H = 0;
@@ -27,24 +32,24 @@ const BG_W = 1376, BG_H = 768;
 const bottleImg = new Image();
 bottleImg.src = 'assets/items/bottle.png';
 
-// Bottle position in BG coords — уменьшен до ~60% от нативных 133×165, аспект сохранён
-// native 133×165 (0.806) → draw 80×99 (тот же аспект), аккуратно вписан в корни
-const BOT_PX = 290, BOT_PY = 340, BOT_PW = 80, BOT_PH = 99;
+// Координаты всех спрайтов получены автоматическим pixel-diff между референсами:
+//   1ststatebottle.jpeg (initial)  — bg + bottle + неактивные камни
+//   nobottle.jpeg       (= tree.png) — bg без bottle, камни неактивны
+//   rocks_3states.jpeg  (activated) — bg + 3 светящихся рун
+// Спрайты вырезаны диффом и имеют прозрачные пиксели там, где они совпадают
+// с bg; значит рисуются бесшовно — ни одного пикселя сдвига.
+const BOT_PX = 287, BOT_PY = 320, BOT_PW = 102, BOT_PH = 119;
 
 // ── Rock sprites (glowing symbols, shown when activated) ──────────────────
 const rock1Img = new Image(); rock1Img.src = 'assets/items/rock1.png';
 const rock2Img = new Image(); rock2Img.src = 'assets/items/rock2.png';
 const rock3Img = new Image(); rock3Img.src = 'assets/items/rock3.png';
 
-// Пиксельно-точное позиционирование по реальным каменным плитам в tree.png (1376×768).
-// Координаты выверены наложением sprite × bg; aspect-ratio спрайтов сохранён:
-//   rock1 (369×265, 1.39)  → BL камень  : bg (278, 575, 225, 161)
-//   rock2 (305×233, 1.31)  → MR камень  : bg (838, 365, 170, 130)
-//   rock3 (272×345, 0.79)  → BR цветы+камень: bg (1205, 440, 145, 184)
+// Pixel-perfect bbox каждого спрайта в bg (1376×768) — точка к точке:
 const ROCK_DRAW = {
-  rock1: { fx:  278/BG_W, fy: 575/BG_H, fw: 225/BG_W, fh: 161/BG_H },
-  rock2: { fx:  838/BG_W, fy: 365/BG_H, fw: 170/BG_W, fh: 130/BG_H },
-  rock3: { fx: 1205/BG_W, fy: 440/BG_H, fw: 145/BG_W, fh: 184/BG_H },
+  rock1: { fx:  204/BG_W, fy: 558/BG_H, fw: 299/BG_W, fh: 179/BG_H },
+  rock2: { fx:  814/BG_W, fy: 330/BG_H, fw: 192/BG_W, fh: 143/BG_H },
+  rock3: { fx: 1185/BG_W, fy: 444/BG_H, fw: 191/BG_W, fh: 223/BG_H },
 };
 
 // ── Zones (click-areas совпадают с DRAW, чтобы тапать точно по камню) ────
@@ -120,6 +125,7 @@ function _spawnActivationParticles() {
 function _activateRock(zone, msg) {
   if (S.rockStates[zone]) return;
   S.rockStates[zone] = true;
+  _saveS();
   _activating[zone] = {
     t0:        performance.now(),
     particles: _spawnActivationParticles(),
@@ -136,6 +142,7 @@ function pickUpJar() {
   if (S.jarPickedUp) return;
   if (state.selectedSlot >= 0) { showMsg('Руки заняты.'); return; }
   S.jarPickedUp = true;
+  _saveS();
   addItem(makeItem('jar'));
   AudioSystem.playPickup();
   renderHotbar();
