@@ -1,41 +1,56 @@
 // scenes/scene4.js — вид сверху / полёт
 // ─────────────────────────────────────────────────────────────────────────────
-// МИНИМАЛЬНАЯ ВЕРСИЯ (полный редизайн в процессе):
-// • 3 слоя-картинки стопкой: above_main.jpeg (BG с дверью) + above2.png
-//   (средний оверлей) + above3.png (верхний — лианы)
-// • клик по верхнему слою → он плавно исчезает (CSS transition) →
-//   открывается следующий
-// • когда оба оверлея сняты — в BG видна дверь (пока без взаимодействия,
-//   логику навесим позже)
-// • навигация: открыть из main, закрыть back-кнопкой → resumeMain()
-// • сохраняется состояние снятых слоёв (S.layer2Removed / S.layer3Removed)
-//   и факт разблокировки сцены (S.scene4Unlocked)
+// СТРУКТУРА:
+//   • BG: above_main.jpeg (на ней — кот, монах и дерево с дверью)
+//   • Layer3 (above3.png): верхний слой — лианы поверх двери
+//   • Layer2 (above2.png): средний слой — дверь без лиан, но ещё под покровом
+//   • Снятие слоёв: клик по двери → философская реплика →
+//                   слой уходит (fade-out) → открывается следующий
 //
-// ЧТО УДАЛЕНО в этой версии (будет восстановлено/переписано позже):
-//   — светлячки, искры, canvas с анимацией
-//   — диалог с дверью (философы) и переход в scene3
-//   — flavor-сообщения по клику на кота/монаха
+// ПОТОК КЛИКОВ ПО ДВЕРИ:
+//   1-й клик (на layer3, лианы):
+//       показывается SCENE4_OPEN_MSG1 на 5с — НЕЛЬЗЯ пропустить (story + dur).
+//       по окончании → layer3 уходит.
+//   2-й клик (на layer2):
+//       SCENE4_OPEN_MSG2 (тоже не пропустить) → layer2 уходит →
+//       чуть позже показывается SCENE4_OPEN_MSG3 (дверь уже видна).
+//
+// КОТ И МОНАХ:
+//   Кликабельны в любой момент (если сейчас не идёт story-сообщение).
+//   Реплики берутся из S4_CAT_MSGS / S4_MONK_MSGS, идут циклически.
+//   Счётчики (S.catMsgIdx / S.monkMsgIdx) сохраняются в SaveManager.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { state }                         from '../src/state.js';
-import { showLoading, hideLoading, showError } from '../src/utils.js';
+import { showLoading, hideLoading, showError,
+         showMsgIn, isStoryActive,
+         CURSOR_DEF, CURSOR_PTR }        from '../src/utils.js';
 import { leaveMain, resumeMain }         from './main.js';
 import { SaveManager }                   from '../src/save.js';
 import { trackZoneClick }                from '../src/achievements.js';
+import { S4_CAT_MSGS, S4_MONK_MSGS,
+         SCENE4_OPEN_MSG1, SCENE4_OPEN_MSG2, SCENE4_OPEN_MSG3 } from '../src/dialogue.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('scene4');
 S.scene4Unlocked = S.scene4Unlocked ?? false;
 S.layer2Removed  = S.layer2Removed  ?? false;   // above2 снят
 S.layer3Removed  = S.layer3Removed  ?? false;   // above3 (лианы) снят
+S.catMsgIdx      = S.catMsgIdx      ?? 0;
+S.monkMsgIdx     = S.monkMsgIdx     ?? 0;
 
 // ── DOM ────────────────────────────────────────────────────────────────────
-let el, layer2El, layer3El;
+let el, bgEl, layer2El, layer3El, msgEl;
 
-// ── BG natural dims (для выравнивания спрайтов-оверлеев) ──────────────────
+// ── BG natural dims (для выравнивания спрайтов-оверлеев и hit-зон) ────────
 const BG_W = 2051, BG_H = 1154;
 // Positional crop оверлейных спрайтов above2/above3 внутри BG (template match)
 const SP_X = 784, SP_Y = 0, SP_W = 509, SP_H = 854;
+
+// Hit-зоны кота и монаха (нормированные 0..1 относительно BG natural).
+// Кот — правее центра, в ряду трав; монах — центр-ниже, красное пятно.
+const CAT_ZONE  = { x0: 0.60, y0: 0.44, x1: 0.72, y1: 0.58 };
+const MONK_ZONE = { x0: 0.47, y0: 0.56, x1: 0.60, y1: 0.74 };
 
 // ── Displayed-BG math (object-fit:cover + object-position:top) ────────────
 function _dispBG(vw, vh) {
@@ -49,6 +64,15 @@ function _dispBG(vw, vh) {
     const dH = vh, dW = vh * bgA;
     return { x: (vw - dW) / 2, y: 0, w: dW, h: dH, scale: dH / BG_H };
   }
+}
+
+function _inZone(cx, cy, z) {
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  const d = _dispBG(r.width, r.height);
+  const nx = (cx - d.x) / (d.scale * BG_W);
+  const ny = (cy - d.y) / (d.scale * BG_H);
+  return nx >= z.x0 && nx <= z.x1 && ny >= z.y0 && ny <= z.y1;
 }
 
 // Позиционировать оверлеи строго поверх их natural pixel-crop в BG
@@ -84,6 +108,73 @@ function _peelLayer(which) {
   SaveManager.setScene('scene4', S);
 }
 
+// ── Door click flow (philosophical messages) ───────────────────────────────
+function _onDoorClick(which) {
+  if (isStoryActive(msgEl)) return;           // во время story — игнор
+  if (which === 3) {
+    if (S.layer3Removed) return;
+    // MSG1 — медитация, слои. 5с, нельзя пропустить. По завершении — peel.
+    showMsgIn(msgEl, SCENE4_OPEN_MSG1, {
+      story: true, dur: 5000,
+      onDismiss: () => {
+        if (state.activeScreen !== 'scene4') return;
+        _peelLayer(3);
+      },
+    });
+  } else if (which === 2) {
+    if (!S.layer3Removed || S.layer2Removed) return;
+    // MSG2 — страшно, но дверь. 4.5с. По завершении — peel + следом MSG3.
+    showMsgIn(msgEl, SCENE4_OPEN_MSG2, {
+      story: true, dur: 4500,
+      onDismiss: () => {
+        if (state.activeScreen !== 'scene4') return;
+        _peelLayer(2);
+        // Ждём, пока слой начнёт уходить (600мс fade) — тогда показываем MSG3
+        setTimeout(() => {
+          if (state.activeScreen !== 'scene4') return;
+          showMsgIn(msgEl, SCENE4_OPEN_MSG3, { story: true, dur: 5500 });
+        }, 800);
+      },
+    });
+  }
+}
+
+// ── BG click — кот/монах ──────────────────────────────────────────────────
+function _onBgClick(e) {
+  if (isStoryActive(msgEl)) return;
+  const r = el.getBoundingClientRect();
+  const pt = e.changedTouches?.[0] || e.touches?.[0] || e;
+  const cx = pt.clientX - r.left;
+  const cy = pt.clientY - r.top;
+
+  if (_inZone(cx, cy, CAT_ZONE)) {
+    const msg = S4_CAT_MSGS[S.catMsgIdx % S4_CAT_MSGS.length];
+    S.catMsgIdx++;
+    SaveManager.setScene('scene4', S);
+    showMsgIn(msgEl, msg);
+    trackZoneClick('scene4_cat');
+    return;
+  }
+  if (_inZone(cx, cy, MONK_ZONE)) {
+    const msg = S4_MONK_MSGS[S.monkMsgIdx % S4_MONK_MSGS.length];
+    S.monkMsgIdx++;
+    SaveManager.setScene('scene4', S);
+    showMsgIn(msgEl, msg);
+    trackZoneClick('scene4_monk');
+    return;
+  }
+}
+
+// ── Cursor hint (desktop) ──────────────────────────────────────────────────
+function _onBgMove(e) {
+  if (state.activeScreen !== 'scene4') return;
+  const r = el.getBoundingClientRect();
+  const cx = e.clientX - r.left;
+  const cy = e.clientY - r.top;
+  const hot = _inZone(cx, cy, CAT_ZONE) || _inZone(cx, cy, MONK_ZONE);
+  bgEl.style.cursor = hot ? CURSOR_PTR : CURSOR_DEF;
+}
+
 // ── DOM creation ───────────────────────────────────────────────────────────
 function createEl() {
   if (document.getElementById('scene4')) return;
@@ -93,10 +184,11 @@ function createEl() {
   el.style.cssText = 'position:absolute;inset:0;display:none;z-index:55;overflow:hidden;';
 
   // Base BG — картинка с дверью, object-fit:cover для кадрирования
-  const bg = document.createElement('img');
-  bg.src = 'assets/bg/above_main.jpeg';
-  bg.style.cssText =
-    'display:block;width:100%;height:100%;object-fit:cover;object-position:top;';
+  bgEl = document.createElement('img');
+  bgEl.src = 'assets/bg/above_main.jpeg';
+  bgEl.className = 's4-bg';
+  bgEl.style.cssText =
+    'display:block;width:100%;height:100%;object-fit:cover;object-position:top;cursor:default;';
 
   // Layer 2 — средний оверлей (дверь без лиан)
   layer2El = document.createElement('img');
@@ -120,10 +212,14 @@ function createEl() {
     e.stopPropagation(); e.preventDefault(); closeSceneScene4();
   }, { passive: false });
 
-  el.appendChild(bg);
+  msgEl = document.createElement('div');
+  msgEl.className = 'scene-msg';
+
+  el.appendChild(bgEl);
   el.appendChild(layer2El);
   el.appendChild(layer3El);
   el.appendChild(back);
+  el.appendChild(msgEl);
   document.getElementById('wrap').appendChild(el);
 
   // Resize — пересчитать позицию оверлеев
@@ -131,15 +227,26 @@ function createEl() {
     if (state.activeScreen === 'scene4') _layoutLayers();
   });
 
-  // Клик по верхнему слою — снять его
-  const _tap3 = e => { e.stopPropagation(); e.preventDefault?.(); _peelLayer(3); };
+  // Клик по верхнему слою — дверной флоу (layer3 → MSG1 → peel)
+  const _tap3 = e => { e.stopPropagation(); e.preventDefault?.(); _onDoorClick(3); };
   layer3El.addEventListener('click', _tap3);
   layer3El.addEventListener('touchend', _tap3, { passive: false });
 
-  // Клик по среднему слою — снять его (только когда верхний уже снят)
-  const _tap2 = e => { e.stopPropagation(); e.preventDefault?.(); _peelLayer(2); };
+  // Клик по среднему слою — дверной флоу (layer2 → MSG2 → peel → MSG3)
+  const _tap2 = e => { e.stopPropagation(); e.preventDefault?.(); _onDoorClick(2); };
   layer2El.addEventListener('click', _tap2);
   layer2El.addEventListener('touchend', _tap2, { passive: false });
+
+  // Клик по BG (через слои не пройдёт — они stopPropagation) — кот/монах
+  bgEl.addEventListener('click', _onBgClick);
+  bgEl.addEventListener('touchend', e => {
+    e.preventDefault();
+    _onBgClick(e);
+  }, { passive: false });
+
+  // Cursor hint для desktop
+  bgEl.addEventListener('mousemove', _onBgMove);
+  bgEl.addEventListener('mouseleave', () => { bgEl.style.cursor = CURSOR_DEF; });
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -147,8 +254,10 @@ export async function openSceneScene4() {
   leaveMain();
   createEl();
   el = document.getElementById('scene4');
+  bgEl     = el.querySelector('.s4-bg');
   layer2El = el.querySelector('.s4-layer[data-layer="2"]');
   layer3El = el.querySelector('.s4-layer[data-layer="3"]');
+  msgEl    = el.querySelector('.scene-msg');
 
   // Восстановить состояние слоёв
   if (S.layer3Removed) { layer3El.style.display = 'none'; }
@@ -161,7 +270,6 @@ export async function openSceneScene4() {
 
   showLoading('высота');
 
-  const bgImg = el.querySelector('img');
   const _onReady = () => {
     hideLoading();
     state.activeScreen = 'scene4';
@@ -173,10 +281,10 @@ export async function openSceneScene4() {
     hideLoading();
     showError('не удалось загрузить сцену');
   };
-  bgImg.onerror = _onFail;
-  bgImg.onload  = _onReady;
-  if (bgImg.complete) {
-    if (bgImg.naturalWidth) _onReady();
+  bgEl.onerror = _onFail;
+  bgEl.onload  = _onReady;
+  if (bgEl.complete) {
+    if (bgEl.naturalWidth) _onReady();
     else _onFail();
   }
 }
