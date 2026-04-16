@@ -196,12 +196,9 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
 
 /* ── Scene4 portrait overlay layers (above2, above3) ── */
 .s4-layer{
-  /* Алтарь в above_main.jpeg (2051×1154):
-     x ∈ [790, 1280] (width 490 ≈ 24%), y ∈ [70, 800] (height 730 ≈ 63%)
-     → центр 50% × 38%, размер 24% × 63% от фона */
-  position:absolute;top:38%;left:50%;
-  transform:translate(-50%,-50%);
-  height:63%;width:auto;max-width:none;
+  /* Позиция и размер выставляются в JS (_layoutLayers в scene4.js)
+     на основе natural crop: sprite TL=(784,0), size=(509,854) в BG 2051×1154 */
+  position:absolute;
   image-rendering:pixelated;
   cursor:pointer;
   user-select:none;-webkit-tap-highlight-color:transparent;

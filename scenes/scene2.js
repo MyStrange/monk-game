@@ -27,30 +27,35 @@ const BG_W = 1376, BG_H = 768;
 const bottleImg = new Image();
 bottleImg.src = 'assets/items/bottle.png';
 
-// Bottle position in BG coords — aligned в корнях слева
-// new sprite: 133×165 (aspect 0.806), вписан в корневой «карман»
-const BOT_PX = 268, BOT_PY = 300, BOT_PW = 124, BOT_PH = 154;
+// Bottle position in BG coords — уменьшен до ~60% от нативных 133×165, аспект сохранён
+// native 133×165 (0.806) → draw 80×99 (тот же аспект), аккуратно вписан в корни
+const BOT_PX = 290, BOT_PY = 340, BOT_PW = 80, BOT_PH = 99;
 
 // ── Rock sprites (glowing symbols, shown when activated) ──────────────────
 const rock1Img = new Image(); rock1Img.src = 'assets/items/rock1.png';
 const rock2Img = new Image(); rock2Img.src = 'assets/items/rock2.png';
 const rock3Img = new Image(); rock3Img.src = 'assets/items/rock3.png';
 
-// Отдельные рамки для отрисовки спрайтов (шире/ниже кликзон — под аспект картинок)
-// rock1: 369×265 (1.39) — плита у корней снизу-слева
-// rock2: 305×233 (1.31) — моховой камень мидл-райт
-// rock3: 272×345 (0.79) — портрет, трава с символом, справа
+// Пиксельно-точное позиционирование по реальным каменным плитам в tree.png:
+//   Stone 1 (BL)  — TL=(281,619) 238×144 ratio 1.65  → rock1 (sprite 1.39)
+//   Stone 3 (MR)  — TL=(855,378) 174×97  ratio 1.79  → rock2 (sprite 1.31)
+//   Stone 2 (BR)  — TL=(1233,499) 138×160 ratio 0.86 → rock3 (sprite 0.79)
+// Спрайты вписываем по ширине камня, сохраняя нативный аспект:
+//   rock1: 369×265 → w=238, h=238/1.39 ≈ 171   (fw 0.173, fh 0.223)
+//   rock2: 305×233 → w=174, h=174/1.31 ≈ 133   (fw 0.126, fh 0.173)
+//   rock3: 272×345 → w=138, h=138/0.79 ≈ 175   (fw 0.100, fh 0.228)
+// Центруем на центре каменной плиты.
 const ROCK_DRAW = {
-  rock1: { fx: 0.09, fy: 0.76, fw: 0.30, fh: 0.22 },
-  rock2: { fx: 0.56, fy: 0.38, fw: 0.22, fh: 0.17 },
-  rock3: { fx: 0.78, fy: 0.52, fw: 0.17, fh: 0.34 },
+  rock1: { fx: 281/BG_W,        fy: (619 + 144/2 - 171/2)/BG_H, fw: 238/BG_W, fh: 171/BG_H },
+  rock2: { fx: 855/BG_W,        fy: (378 +  97/2 - 133/2)/BG_H, fw: 174/BG_W, fh: 133/BG_H },
+  rock3: { fx: (1233 + 138/2 - 138/2)/BG_W, fy: (499 + 160/2 - 175/2)/BG_H, fw: 138/BG_W, fh: 175/BG_H },
 };
 
-// ── Zones ─────────────────────────────────────────────────────────────────
+// ── Zones (click-areas совпадают с DRAW, чтобы тапать точно по камню) ────
 const ZONES = {
-  rock1:  { fx: 0.13, fy: 0.78, fw: 0.22, fh: 0.22 },
-  rock2:  { fx: 0.60, fy: 0.42, fw: 0.18, fh: 0.20 },
-  rock3:  { fx: 0.80, fy: 0.62, fw: 0.20, fh: 0.22 },
+  rock1:  ROCK_DRAW.rock1,
+  rock2:  ROCK_DRAW.rock2,
+  rock3:  ROCK_DRAW.rock3,
   bottle: { fx: BOT_PX / BG_W, fy: BOT_PY / BG_H,
             fw: BOT_PW / BG_W, fh: BOT_PH / BG_H },
 };

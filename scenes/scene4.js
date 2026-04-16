@@ -28,6 +28,45 @@ let layer2El, layer3El;
 let s4W = 0, s4H = 0;
 const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
+// ── BG natural dims (for pixel-perfect sprite alignment) ──────────────────
+const BG_W = 2051, BG_H = 1154;
+// Natural sprite position within BG (from template matching)
+// sprite TL = (784, 0), size = (509, 854)
+const SP_X = 784, SP_Y = 0, SP_W = 509, SP_H = 854;
+
+// Compute displayed BG rect taking into account object-fit:cover + object-position:top
+function _dispBG(vw, vh) {
+  const bgA = BG_W / BG_H, vA = vw / vh;
+  if (vA > bgA) {
+    // viewport wider → BG scaled to viewport width; top-aligned, bottom cropped
+    const dW = vw, dH = vw / bgA;
+    return { x: 0, y: 0, w: dW, h: dH, scale: dW / BG_W };
+  } else {
+    // viewport narrower → BG scaled to viewport height; sides cropped equally
+    const dH = vh, dW = vh * bgA;
+    return { x: (vw - dW) / 2, y: 0, w: dW, h: dH, scale: dH / BG_H };
+  }
+}
+
+// Place above2/above3 sprites to match their natural pixel position in BG
+function _layoutLayers() {
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const d = _dispBG(r.width, r.height);
+  const sx = d.x + SP_X * d.scale;
+  const sy = d.y + SP_Y * d.scale;
+  const sw = SP_W * d.scale;
+  const sh = SP_H * d.scale;
+  for (const node of [layer2El, layer3El]) {
+    if (!node) continue;
+    node.style.left   = sx + 'px';
+    node.style.top    = sy + 'px';
+    node.style.width  = sw + 'px';
+    node.style.height = sh + 'px';
+    node.style.transform = 'none';
+  }
+}
+
 // ── Fireflies — pixel-art squares, random flight ──────────────────────────
 const _FLY_COLS = ['#c8ff60','#60ffc0','#f0ffb0','#ffe880','#80ffee'];
 
@@ -248,6 +287,11 @@ function createEl() {
   el.appendChild(msgEl);
   document.getElementById('wrap').appendChild(el);
 
+  // Resize → пересчитать позицию спрайтов
+  window.addEventListener('resize', () => {
+    if (state.activeScreen === 'scene4') _layoutLayers();
+  });
+
   // Слой 3 клик — снять верхнюю лиану
   layer3El.addEventListener('click', e => {
     e.stopPropagation();
@@ -356,6 +400,7 @@ export async function openSceneScene4() {
       const r = el.getBoundingClientRect();
       s4W = canvas.width  = Math.round(r.width);
       s4H = canvas.height = Math.round(r.height);
+      _layoutLayers();
       if (!animId) animate();
     });
     showMsg(scene4OpenMsg, { story: true });
