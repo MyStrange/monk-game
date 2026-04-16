@@ -52,7 +52,12 @@ export function renderHotbar() {
 
     // Клик
     div.addEventListener('click',       () => _onSlotClick(i));
-    div.addEventListener('contextmenu', e  => { e.preventDefault(); _openContext(item, e.clientX, e.clientY); });
+    // Правый клик: если предмет в руке — снять выбор, иначе открыть контекст-меню
+    div.addEventListener('contextmenu', e  => {
+      e.preventDefault();
+      if (state.selectedSlot >= 0) { deselectItem(); return; }
+      _openContext(item, e.clientX, e.clientY);
+    });
 
     // Long press (mobile)
     let lpTimer = null;
@@ -69,6 +74,31 @@ export function renderHotbar() {
 
   updateItemCursor();
 }
+
+// ── Deselect helper — единая точка отмены выбора предмета ────────────────
+// Вызывать из любого источника: клик по выбранному слоту, Esc, ПКМ.
+export function deselectItem() {
+  if (state.selectedSlot < 0) return false;
+  state.selectedSlot = -1;
+  renderHotbar();
+  return true;
+}
+
+// ── Global listeners: Esc и правый клик снимают выбор ───────────────────
+// ВЕРХНЕУРОВНЕВОЕ ПРАВИЛО: предмет в руке можно вернуть в инвентарь любым
+// из способов:
+//   1) клик по нему же в хотбаре (переключение off)
+//   2) правый клик мыши (в любом месте экрана)
+//   3) клавиша Escape
+//   4) + штатное поведение комбо / применения на зоне
+(function _initGlobalDeselect() {
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') deselectItem();
+  });
+  document.addEventListener('contextmenu', e => {
+    if (state.selectedSlot >= 0) { e.preventDefault(); deselectItem(); }
+  });
+})();
 
 // ── Slot click logic ───────────────────────────────────────────────────────
 function _onSlotClick(idx) {

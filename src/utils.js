@@ -60,10 +60,11 @@ function _getMsgState(el) {
             _msgState.set(el, s); }
   return s;
 }
+// Мгновенное удаление — без fade-out, чтобы не было наложения двух сообщений
+// и последующего дёрганья при смене подсказки.
 function _removeItem(item) {
   if (!item) return;
-  item.classList.remove('visible');
-  setTimeout(() => item.remove(), 250);
+  item.remove();
 }
 function _bounce(item) {
   if (!item) return;
