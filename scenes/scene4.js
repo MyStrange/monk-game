@@ -48,9 +48,14 @@ const BG_W = 2051, BG_H = 1154;
 const SP_X = 784, SP_Y = 0, SP_W = 509, SP_H = 854;
 
 // Hit-зоны кота и монаха (нормированные 0..1 относительно BG natural).
-// Кот — правее центра, в ряду трав; монах — центр-ниже, красное пятно.
-const CAT_ZONE  = { x0: 0.60, y0: 0.44, x1: 0.72, y1: 0.58 };
-const MONK_ZONE = { x0: 0.47, y0: 0.56, x1: 0.60, y1: 0.74 };
+// Координаты сверены по самой картинке above_main.jpeg:
+//   • кот (маленький рыжий) — чуть правее центра, около двух третей высоты
+//   • монах (красное пятно) — ниже центра, левее кота
+// Зоны пересекаются с прямоугольниками слоёв above2/above3 (X=0.38..0.63,
+// Y=0..0.74), поэтому обработчик вешается в capture-фазе на el — срабатывает
+// до layer-хендлеров и не даёт их stopPropagation заблокировать кот/монаха.
+const CAT_ZONE  = { x0: 0.60, y0: 0.52, x1: 0.72, y1: 0.70 };
+const MONK_ZONE = { x0: 0.48, y0: 0.68, x1: 0.63, y1: 0.85 };
 
 // ── Displayed-BG math (object-fit:cover + object-position:top) ────────────
 function _dispBG(vw, vh) {
@@ -139,15 +144,24 @@ function _onDoorClick(which) {
   }
 }
 
-// ── BG click — кот/монах ──────────────────────────────────────────────────
-function _onBgClick(e) {
+// ── Capture-phase click — кот/монах (приоритет перед слоями) ──────────────
+// Вешается на el через addEventListener('click', _, true). Срабатывает ДО
+// хендлеров на layer2/layer3, поэтому их stopPropagation нас не блокирует.
+// Back-btn остаётся работоспособной: её зона наверху слева, мимо cat/monk.
+function _onElCapture(e) {
+  if (state.activeScreen !== 'scene4') return;
   if (isStoryActive(msgEl)) return;
+  // back-btn не трогаем — пусть обработает себя сам
+  if (e.target && e.target.closest && e.target.closest('.back-btn')) return;
+
   const r = el.getBoundingClientRect();
   const pt = e.changedTouches?.[0] || e.touches?.[0] || e;
   const cx = pt.clientX - r.left;
   const cy = pt.clientY - r.top;
 
   if (_inZone(cx, cy, CAT_ZONE)) {
+    e.stopPropagation();
+    e.preventDefault?.();
     const msg = S4_CAT_MSGS[S.catMsgIdx % S4_CAT_MSGS.length];
     S.catMsgIdx++;
     SaveManager.setScene('scene4', S);
@@ -156,6 +170,8 @@ function _onBgClick(e) {
     return;
   }
   if (_inZone(cx, cy, MONK_ZONE)) {
+    e.stopPropagation();
+    e.preventDefault?.();
     const msg = S4_MONK_MSGS[S.monkMsgIdx % S4_MONK_MSGS.length];
     S.monkMsgIdx++;
     SaveManager.setScene('scene4', S);
@@ -163,16 +179,23 @@ function _onBgClick(e) {
     trackZoneClick('scene4_monk');
     return;
   }
+  // Иначе — событие идёт дальше (layer3 / layer2 / bg)
 }
 
 // ── Cursor hint (desktop) ──────────────────────────────────────────────────
-function _onBgMove(e) {
+// Слушаем mousemove на el, чтобы hover работал и поверх слоёв — тогда
+// визуально понятно, что кот/монах кликабельны даже через layer.
+function _onElMove(e) {
   if (state.activeScreen !== 'scene4') return;
   const r = el.getBoundingClientRect();
   const cx = e.clientX - r.left;
   const cy = e.clientY - r.top;
   const hot = _inZone(cx, cy, CAT_ZONE) || _inZone(cx, cy, MONK_ZONE);
-  bgEl.style.cursor = hot ? CURSOR_PTR : CURSOR_DEF;
+  const cur = hot ? CURSOR_PTR : '';
+  // Ставим курсор на все img — под указателем может быть любой слой
+  bgEl.style.cursor     = cur || 'default';
+  if (layer2El) layer2El.style.cursor = cur; // '' вернёт CSS-умолчание (pointer)
+  if (layer3El) layer3El.style.cursor = cur;
 }
 
 // ── DOM creation ───────────────────────────────────────────────────────────
@@ -237,16 +260,18 @@ function createEl() {
   layer2El.addEventListener('click', _tap2);
   layer2El.addEventListener('touchend', _tap2, { passive: false });
 
-  // Клик по BG (через слои не пройдёт — они stopPropagation) — кот/монах
-  bgEl.addEventListener('click', _onBgClick);
-  bgEl.addEventListener('touchend', e => {
-    e.preventDefault();
-    _onBgClick(e);
-  }, { passive: false });
+  // Кот/монах — capture-фаза на el. Перехватывает клик ДО layer-хендлеров,
+  // значит их stopPropagation нас не глушит, даже если зона под слоем.
+  el.addEventListener('click',    _onElCapture, true);
+  el.addEventListener('touchend', _onElCapture, true);
 
-  // Cursor hint для desktop
-  bgEl.addEventListener('mousemove', _onBgMove);
-  bgEl.addEventListener('mouseleave', () => { bgEl.style.cursor = CURSOR_DEF; });
+  // Cursor hint для desktop — смотрим на всю сцену
+  el.addEventListener('mousemove', _onElMove);
+  el.addEventListener('mouseleave', () => {
+    bgEl.style.cursor = CURSOR_DEF;
+    if (layer2El) layer2El.style.cursor = '';
+    if (layer3El) layer3El.style.cursor = '';
+  });
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
