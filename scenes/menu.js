@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { state }                              from '../src/state.js';
-import { leaveMain }                          from './main.js';
+import { leaveMain, resumeMain }              from './main.js';
 import { openScene }                          from '../src/nav.js';
 import { SaveManager }                        from '../src/save.js';
 import { openAchievements }                   from '../src/achievements.js';
@@ -143,5 +143,6 @@ export function closeSceneMenu() {
   state.activeScreen = 'main';
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
+  resumeMain();   // иначе main-анимация не перезапустится после меню
 }
 window.closeSceneMenu = closeSceneMenu;

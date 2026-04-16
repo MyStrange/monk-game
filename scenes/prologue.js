@@ -11,7 +11,7 @@
 
 import { state }                              from '../src/state.js';
 import { showMsgIn }                          from '../src/utils.js';
-import { leaveMain }                          from './main.js';
+import { leaveMain, resumeMain }              from './main.js';
 import { Sequence }                           from '../src/sequence.js';
 import { openScene }                          from '../src/nav.js';
 import { SaveManager }                        from '../src/save.js';
@@ -121,5 +121,6 @@ export function closeScenePrologue() {
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   SaveManager.setScene('prologue', S);
+  resumeMain();   // иначе после пролога main не перезапустит animate()
 }
 window.closeScenePrologue = closeScenePrologue;

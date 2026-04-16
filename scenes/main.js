@@ -183,7 +183,11 @@ function startBury() {
   catBurying   = true;
   catBuryTimer = 0;
   showMsg(catBuryMsg1);
-  setTimeout(() => showMsg(catBuryMsg2), 2200);
+  setTimeout(() => {
+    // Guard: не кидаем сообщение в main если игрок успел уйти в другую сцену
+    if (state.activeScreen !== 'main') return;
+    showMsg(catBuryMsg2);
+  }, 2200);
 }
 
 // ── Meditation ─────────────────────────────────────────────────────────────
@@ -439,7 +443,8 @@ function animate() {
   tick++;
 
   // Background
-  if (bgImg.complete) ctx.drawImage(bgImg, 0, 0, W, H);
+  // naturalWidth==0 на некоторых браузерах при ошибке загрузки даже если complete=true
+  if (bgImg.complete && bgImg.naturalWidth) ctx.drawImage(bgImg, 0, 0, W, H);
 
   const sx = W / BG_W, sy = H / BG_H;
 

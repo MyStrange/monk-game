@@ -126,15 +126,28 @@ function _activateRock(zone, msg) {
   if (S.rockStates[zone]) return;
   S.rockStates[zone] = true;
   _saveS();
-  _activating[zone] = {
+  const entry = {
     t0:        performance.now(),
     particles: _spawnActivationParticles(),
     msg,
+    timer:     null,
   };
-  setTimeout(() => {
+  entry.timer = setTimeout(() => {
+    entry.timer = null;
     delete _activating[zone];
     if (state.activeScreen === 'scene2') showMsg(msg);
   }, ACTIVATION_DUR);
+  _activating[zone] = entry;
+}
+
+// Сбросить все pending-таймеры и анимации активации при закрытии сцены —
+// иначе при выходе в main и возврате пользователь увидит мигание осколков
+// старой анимации (камень-то уже сохранился как активный).
+function _cancelActivations() {
+  for (const zone of Object.keys(_activating)) {
+    if (_activating[zone].timer) clearTimeout(_activating[zone].timer);
+    delete _activating[zone];
+  }
 }
 
 // ── Jar pickup ─────────────────────────────────────────────────────────────
@@ -401,6 +414,7 @@ export function closeSceneScene2() {
   state.activeScreen = 'main';
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
+  _cancelActivations();
   SaveManager.setScene('scene2', S);
   resumeMain();
 }

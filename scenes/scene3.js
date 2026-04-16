@@ -176,6 +176,7 @@ function onTap(cx, cy) {
   if (!S.fireFlowerPicked &&
       Math.abs(cx - s3W * 0.5) < 40 && Math.abs(cy - s3H * 0.58) < 40) {
     S.fireFlowerPicked = true;
+    SaveManager.setScene('scene3', S);   // авто-сейв: иначе F5 после pickup вернёт цветок
     const ff = { id: 'fireflower', name: 'огненный цветок', label: 'огнецвет',
       description: 'Цветок, который светится изнутри. Тёплый на ощупь. Не горит.' };
     addItem(ff);
@@ -240,6 +241,7 @@ export function openSceneScene3() {
   createEl();
   el = document.getElementById('scene3');
   S.scene3Unlocked  = true;
+  SaveManager.setScene('scene3', S);   // фиксируем факт открытия сразу (иначе F5 сбросит)
   state.activeScreen = 'scene3';
   el.style.display   = 'block';
 

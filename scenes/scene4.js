@@ -87,7 +87,10 @@ const _SPARK_COLORS = ['#ffffff','#f0e8ff','#c8aaff','#b888ff',
                        '#9966ee','#ddaaff','#ffe8ff'];
 
 function _spawnDoorBurst() {
-  const cx = s4W * 0.50, cy = s4H * 0.18;
+  // Центр двери — в координатах displayed BG, не canvas (иначе вспышка
+  // уедет от двери на экранах с нестандартным aspect).
+  const d = _dispBG(s4W, s4H);
+  const cx = d.x + d.w * 0.50, cy = d.y + d.h * 0.18;
   for (let i = 0; i < 28; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 0.8 + Math.random() * 2.4;
@@ -156,19 +159,18 @@ function _doFinal() {
 }
 
 // ── Zone hit tests ────────────────────────────────────────────────────────
+// Все зоны описаны во фракциях от РЕАЛЬНОГО displayed-прямоугольника BG
+// (учитывая object-fit:cover). Если считать от s4W/s4H напрямую — на
+// узких/широких экранах зоны уедут в сторону от нарисованных объектов.
+function _inZone(cx, cy, fx0, fy0, fx1, fy1) {
+  const d = _dispBG(s4W, s4H);
+  return cx > d.x + fx0 * d.w && cx < d.x + fx1 * d.w &&
+         cy > d.y + fy0 * d.h && cy < d.y + fy1 * d.h;
+}
 // Узкая зона двери — тёмный проём над статуёй в above.png
-function _inDoor(cx, cy) {
-  return cx > s4W * 0.46 && cx < s4W * 0.55 &&
-         cy > s4H * 0.05 && cy < s4H * 0.18;
-}
-function _inCat(cx, cy) {
-  return cx > s4W * 0.60 && cx < s4W * 0.72 &&
-         cy > s4H * 0.44 && cy < s4H * 0.58;
-}
-function _inMonk(cx, cy) {
-  return cx > s4W * 0.47 && cx < s4W * 0.60 &&
-         cy > s4H * 0.56 && cy < s4H * 0.74;
-}
+function _inDoor(cx, cy) { return _inZone(cx, cy, 0.46, 0.05, 0.55, 0.18); }
+function _inCat (cx, cy) { return _inZone(cx, cy, 0.60, 0.44, 0.72, 0.58); }
+function _inMonk(cx, cy) { return _inZone(cx, cy, 0.47, 0.56, 0.60, 0.74); }
 
 // ── Flavor messages (rotate) ──────────────────────────────────────────────
 const _CAT_MSGS = [
@@ -388,6 +390,7 @@ export async function openSceneScene4() {
   else if (layer2El) { layer2El.style.display = ''; layer2El.classList.remove('fade-out'); }
 
   S.scene4Unlocked = true;
+  SaveManager.setScene('scene4', S);   // фиксируем сразу, иначе F5 внутри сцены сбросит флаг
   showLoading('высота');
 
   const bgImg = el.querySelector('img');

@@ -24,6 +24,31 @@ let el, bCanvas, wishCanvas, bCtx, wCtx, bMsgEl;
 let bW = 0, bH = 0;
 const showMsg = (t, d) => showMsgIn(bMsgEl, t, d);
 
+// ── object-fit: cover math для клик-зон по фиксированным точкам bg ────────
+// buddha.jpeg (1376×768) отрисована с object-fit:cover → видимый
+// прямоугольник может быть меньше canvas по одной из осей. Ухо Будды
+// привязано к конкретному пикселю bg, значит hit-зона должна считаться
+// относительно видимого rect, а не canvas (иначе на экранах с aspect
+// ≠ 1376/768 зона уплывает от нарисованного уха).
+const BBG_AR = 1376 / 768;
+function _bgRect() {
+  const cAr = bW / bH;
+  if (cAr > BBG_AR) {
+    const w = bH * BBG_AR;
+    return { x: (bW - w) / 2, y: 0, w, h: bH };
+  }
+  const h = bW / BBG_AR;
+  return { x: 0, y: (bH - h) / 2, w: bW, h };
+}
+// Ear zone in bg-fractions (left, top, right, bottom) — конкретный пиксель уха
+const EAR_FX0 = 0.60, EAR_FY0 = 0.44, EAR_FX1 = 0.73, EAR_FY1 = 0.60;
+function _inEar(cx, cy) {
+  if (S.earUsed) return false;
+  const R = _bgRect();
+  return cx > R.x + EAR_FX0 * R.w && cx < R.x + EAR_FX1 * R.w
+      && cy > R.y + EAR_FY0 * R.h && cy < R.y + EAR_FY1 * R.h;
+}
+
 // ── Fireflies ──────────────────────────────────────────────────────────────
 let bFlies = [];
 let bDust  = [];  // фоновые некликабельные частицы
@@ -86,6 +111,8 @@ function _startWish(jar) {
   });
 
   setTimeout(() => {
+    // Guard: колбэк не должен дёргать UI если игрок ушёл из buddha
+    if (state.activeScreen !== 'buddha') { S.wishPlaying = false; return; }
     S.wishPlaying      = false;
     jar.glowing        = true;
     jar.released       = true;
@@ -335,17 +362,22 @@ function interactItem(itemId, zone) {
   // Glowstick on ear
   if (itemId === 'glowstick' && zone === 'ear' && !S.earUsed) {
     S.earUsed = true;
+    SaveManager.setScene('buddha', S);   // флаг сразу — не теряется при F5 за 2.8с
     removeItem(getItemSlot('glowstick'));  // removeItem sets selectedSlot=-1
     renderHotbar();
     showMsg(earMsg, 3500);
-    setTimeout(startFireflyDialog, 2800);
+    setTimeout(() => {
+      // Guard: не открываем диалог если игрок ушёл из buddha
+      if (state.activeScreen !== 'buddha') return;
+      startFireflyDialog();
+    }, 2800);
   }
   // All other item×zone: no actions here (zone msgs handled via zone-msgs.js)
 }
 
 // ── Hit test (for cursor) ─────────────────────────────────────────────────
 function _hitBuddha(cx, cy) {
-  if (!S.earUsed && cx > bW*0.60 && cx < bW*0.73 && cy > bH*0.44 && cy < bH*0.60) return true;
+  if (_inEar(cx, cy)) return true;
   for (const f of bFlies) {
     if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < f.sz * 1.2 + 10) return true;
   }
@@ -361,7 +393,7 @@ function onTap(cx, cy) {
   trackSpotClick(cx, cy, 'buddha');
 
   // Ear hit zone
-  if (!S.earUsed && cx > bW*0.60 && cx < bW*0.73 && cy > bH*0.44 && cy < bH*0.60) {
+  if (_inEar(cx, cy)) {
     if (item) { interactItem(item.id, 'ear'); return; }
   }
 
@@ -398,7 +430,10 @@ function onTap(cx, cy) {
           // Сразу запускаем wish-анимацию. Единое story-сообщение
           // (wishDoneMsg) появится в самом конце — никакого мигания
           // между двумя сообщениями.
-          setTimeout(() => _startWish(item), 300);
+          setTimeout(() => {
+            if (state.activeScreen !== 'buddha') return;  // guard
+            _startWish(item);
+          }, 300);
         }
         return;
       }
@@ -601,7 +636,7 @@ function createEl() {
     bCanvas.style.cursor = _hitBuddha(cx, cy) ? CURSOR_PTR : CURSOR_DEF;
     // Подсказка: стик над зоной уха
     const item = getSelectedItem();
-    const inEar = !S.earUsed && cx > bW*0.60 && cx < bW*0.73 && cy > bH*0.44 && cy < bH*0.60;
+    const inEar = _inEar(cx, cy);
     if (item?.id === 'stick' && inEar && !_stickHintZone) {
       _stickHintZone = true;
       showMsg('Что-то мешает внутри. Может, посветить?');
