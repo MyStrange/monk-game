@@ -36,15 +36,15 @@ const rock1Img = new Image(); rock1Img.src = 'assets/items/rock1.png';
 const rock2Img = new Image(); rock2Img.src = 'assets/items/rock2.png';
 const rock3Img = new Image(); rock3Img.src = 'assets/items/rock3.png';
 
-// Пиксельно-точное позиционирование по реальным каменным плитам в tree.png (1376×768):
-//   Stone BL (камень + мох) — в bg TL=(280,638) 185×110 → rock1 накладываем точно
-//   Stone MR (камень со спиралью) — в bg TL=(840,385) 175×108 → rock2 точно
-//   Rock3 — руна на цветочной поляне (bg тут нет камня, sprite — руна в цветах)
-//           Размещение в BL flowers patch: TL=(25,590) 130×165
+// Пиксельно-точное позиционирование по реальным каменным плитам в tree.png (1376×768).
+// Координаты выверены наложением sprite × bg; aspect-ratio спрайтов сохранён:
+//   rock1 (369×265, 1.39)  → BL камень  : bg (278, 575, 225, 161)
+//   rock2 (305×233, 1.31)  → MR камень  : bg (838, 365, 170, 130)
+//   rock3 (272×345, 0.79)  → BR цветы+камень: bg (1205, 440, 145, 184)
 const ROCK_DRAW = {
-  rock1: { fx: 280/BG_W, fy: 638/BG_H, fw: 185/BG_W, fh: 110/BG_H },
-  rock2: { fx: 840/BG_W, fy: 385/BG_H, fw: 175/BG_W, fh: 108/BG_H },
-  rock3: { fx:  25/BG_W, fy: 590/BG_H, fw: 130/BG_W, fh: 165/BG_H },
+  rock1: { fx:  278/BG_W, fy: 575/BG_H, fw: 225/BG_W, fh: 161/BG_H },
+  rock2: { fx:  838/BG_W, fy: 365/BG_H, fw: 170/BG_W, fh: 130/BG_H },
+  rock3: { fx: 1205/BG_W, fy: 440/BG_H, fw: 145/BG_W, fh: 184/BG_H },
 };
 
 // ── Zones (click-areas совпадают с DRAW, чтобы тапать точно по камню) ────
