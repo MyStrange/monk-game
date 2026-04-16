@@ -98,26 +98,41 @@ const BARE_ROCK_MSGS = ['Холодный камень.', 'Тяжёлый.', 'Н
 
 // ── Rock activation animation ─────────────────────────────────────────────
 // При активации (любым предметом) запускается 4-секундная анимация:
-//   • спрайт камня появляется сразу, мерцает
-//   • вокруг разлетаются искрящиеся пиксельные частицы
+//   • спрайт камня плавно появляется (БЕЗ мерцания — чистый fade-in)
+//   • вокруг разлетаются 80+ светящихся частиц: разные оттенки жёлтого
+//     и белого, разный размер, плавно уносятся в стороны с лёгкой
+//     гравитацией, каждая с 3-слойным glow-рендером
 //   • через 4 секунды показывается финальное сообщение
 const ACTIVATION_DUR = 4000;      // ms
 const _activating = {};           // { rockName: { t0, particles, msg } }
+
+// Палитра — жёлто-белые тёплые оттенки. Каждая частица берёт случайный.
+const _PARTICLE_COLORS = [
+  '#ffffff', '#fffde0', '#fff8c0', '#fff4a0',
+  '#ffee88', '#ffe066', '#ffd750', '#ffcc40',
+  '#ffb830', '#fff0c8',
+];
+
 function _spawnActivationParticles() {
   const arr = [];
-  for (let i = 0; i < 60; i++) {
+  // 80 штук — плотное но прозрачное облако
+  for (let i = 0; i < 80; i++) {
     const ang = Math.random() * Math.PI * 2;
-    const speed = 0.6 + Math.random() * 2.2;
+    // Скорости от очень медленных до быстрых — разброс по траекториям
+    const speed = 0.3 + Math.random() * 2.6;
     arr.push({
       // локальные координаты внутри прямоугольника камня (0..1)
-      x:  0.5 + (Math.random() - 0.5) * 0.25,
-      y:  0.5 + (Math.random() - 0.5) * 0.25,
+      x:  0.5 + (Math.random() - 0.5) * 0.20,
+      y:  0.5 + (Math.random() - 0.5) * 0.20,
       vx: Math.cos(ang) * speed,
-      vy: Math.sin(ang) * speed - 0.4,   // чуть вверх в среднем
+      vy: Math.sin(ang) * speed - 0.5,   // чуть вверх в среднем
       life: 0,
-      ttl: 55 + Math.random() * 55,       // frames
-      sz:  Math.random() < 0.3 ? 3 : 2,
-      col: Math.random() < 0.5 ? '#ffe066' : (Math.random() < 0.6 ? '#fff4a0' : '#ffb020'),
+      ttl: 70 + Math.random() * 120,     // разный срок жизни (70..190 frames)
+      sz:  1 + Math.floor(Math.random() * 4),   // 1..4 пикселя — разные
+      col: _PARTICLE_COLORS[Math.floor(Math.random() * _PARTICLE_COLORS.length)],
+      // легкий индивидуальный шум в направлении — мягче разлёт
+      dx: (Math.random() - 0.5) * 0.02,
+      dy: (Math.random() - 0.5) * 0.02,
     });
   }
   return arr;
@@ -288,41 +303,58 @@ function animate() {
     const act = _activating[rock];
     let pulse;
     if (act) {
-      // во время активации: быстрое мерцание + fade-in первые 500мс
+      // Во время активации — ТОЛЬКО плавное появление, без мерцания.
+      // Спрайт проявляется за ~900мс и остаётся полным до конца активации.
       const age = now - act.t0;
-      const fadeIn = Math.min(1, age / 500);
-      pulse = fadeIn * (0.75 + 0.25 * Math.sin(age * 0.02));
+      pulse = Math.min(1, age / 900);
     } else {
-      pulse = 0.75 + 0.25 * Math.sin(now * 0.003 + rock.length);
+      // Ambient breathing для уже активированных камней (не мерцание — дыхание)
+      pulse = 0.78 + 0.22 * Math.sin(now * 0.003 + rock.length);
     }
     ctx.save();
     ctx.globalAlpha = pulse;
     ctx.drawImage(img, rx, ry, rw, rh);
     ctx.restore();
 
-    // Искрящиеся частицы во время активации
+    // Светящиеся частицы во время активации — 3-слойный glow рендер:
+    //   1) внешний halo (большой, прозрачный)
+    //   2) средний mid (чуть плотнее)
+    //   3) яркое core-ядро (полный цвет частицы)
+    // Вместе дают эффект мягкого свечения без shadowBlur (оно тяжёлое на 80+).
     if (act) {
       const age = now - act.t0;
-      // Когда запускали — 60 частиц. В конце — плавное затухание.
+      // Плавное глобальное затухание на последних 800мс
       const globalFade = age < 3200 ? 1 : Math.max(0, 1 - (age - 3200) / 800);
       for (const p of act.particles) {
         p.life++;
         if (p.life > p.ttl) continue;
+        // Движение: скорость + лёгкий индивидуальный дрейф
+        p.vx += p.dx;
+        p.vy += p.dy + 0.015;    // мягкая гравитация
+        p.vx *= 0.988;           // плавное торможение (было 0.985)
+        p.vy *= 0.988;
         p.x += p.vx / rw;
         p.y += p.vy / rh;
-        p.vy += 0.025;         // гравитация
-        p.vx *= 0.985;
-        p.vy *= 0.985;
         const lifeFrac = p.life / p.ttl;
-        const a = (1 - lifeFrac) * globalFade;
+        // Плавная alpha-кривая: быстрый appear, долгий fade-out
+        const lifeAlpha = lifeFrac < 0.15
+          ? lifeFrac / 0.15
+          : 1 - (lifeFrac - 0.15) / 0.85;
+        const a = lifeAlpha * globalFade;
         if (a <= 0) continue;
         const px = Math.round(rx + p.x * rw);
         const py = Math.round(ry + p.y * rh);
-        ctx.globalAlpha = a * 0.28;
+        const s  = p.sz;
         ctx.fillStyle = p.col;
-        ctx.fillRect(px - p.sz, py - p.sz, p.sz * 3, p.sz * 3);
+        // 1) halo — широкое мягкое свечение
+        ctx.globalAlpha = a * 0.18;
+        ctx.fillRect(px - s * 2, py - s * 2, s * 5, s * 5);
+        // 2) mid — средний ореол
+        ctx.globalAlpha = a * 0.45;
+        ctx.fillRect(px - s, py - s, s * 3, s * 3);
+        // 3) core — яркий пиксель
         ctx.globalAlpha = a;
-        ctx.fillRect(px, py, p.sz, p.sz);
+        ctx.fillRect(px, py, s, s);
       }
       ctx.globalAlpha = 1;
     }
