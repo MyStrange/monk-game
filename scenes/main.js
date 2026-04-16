@@ -673,6 +673,9 @@ export function resumeMain() {
 export function leaveMain() {
   standUp();
   draggedSym = null;
+  // Прерываем анимацию закопки землёй: иначе при возврате в main тик-счётчик
+  // дотянется до 180 и выстрелит stale сообщение/подарок земли.
+  if (catBurying) { catBurying = false; catBuryTimer = 0; }
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -689,31 +692,33 @@ export async function initMain() {
   // Pray button — только на мобильном (скрыт на десктопе через CSS)
   document.getElementById('pray-btn')?.addEventListener('click', sitDown);
 
-  // Resize
+  // Resize. Кэшируем canvas rect — его читают все event handlers и при 60fps
+  // mousemove это форсит layout на каждый кадр. Обновляем только на resize
+  // и scroll (ios toolbar skims viewport).
+  let _cRect = { left: 0, top: 0 };
   function resize() {
     const wrap = document.getElementById('wrap');
     W = canvas.width  = wrap.offsetWidth;
     H = canvas.height = wrap.offsetHeight;
+    _cRect = canvas.getBoundingClientRect();
   }
   resize();
   window.addEventListener('resize', resize);
+  window.addEventListener('scroll', () => { _cRect = canvas.getBoundingClientRect(); }, { passive: true });
 
   // Blur — сбросить залипший drag при переключении вкладки
   window.addEventListener('blur', () => { draggedSym = null; });
 
-  // Mouse events
+  // Mouse events — используют кэшированный _cRect, не вызывая getBoundingClientRect
   canvas.addEventListener('click', e => {
-    const r = canvas.getBoundingClientRect();
-    onTap(e.clientX - r.left, e.clientY - r.top);
+    onTap(e.clientX - _cRect.left, e.clientY - _cRect.top);
   });
   canvas.addEventListener('mousedown', e => {
-    const r = canvas.getBoundingClientRect();
-    onDragStart(e.clientX - r.left, e.clientY - r.top);
+    onDragStart(e.clientX - _cRect.left, e.clientY - _cRect.top);
   });
   canvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== 'main') return;
-    const r  = canvas.getBoundingClientRect();
-    const cx = e.clientX - r.left, cy = e.clientY - r.top;
+    const cx = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
     onDragMove(cx, cy);
     // Pointer cursor over clickable zones OR meditation symbols
     canvas.style.cursor = (hitZoneBG(cx, cy) || _hitSym(cx, cy)) ? CURSOR_PTR : CURSOR_DEF;
@@ -722,8 +727,7 @@ export async function initMain() {
     if (!draggedSym) return;
     // Доставка ТОЛЬКО если было реальное перетаскивание И отпустили у надписи.
     // Обычный клик по знаку → просто бросаем обратно в полёт.
-    const r  = canvas.getBoundingClientRect();
-    const cx = e.clientX - r.left, cy = e.clientY - r.top;
+    const cx = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
     const iz = ZONES_BG.inscription;
     const ip = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
     if (_dragMoved &&
@@ -741,21 +745,18 @@ export async function initMain() {
   // Touch events
   canvas.addEventListener('touchstart', e => {
     const t = e.touches[0];
-    const r = canvas.getBoundingClientRect();
-    const cx = t.clientX - r.left, cy = t.clientY - r.top;
+    const cx = t.clientX - _cRect.left, cy = t.clientY - _cRect.top;
     onDragStart(cx, cy);
   }, { passive: true });
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     const t = e.touches[0];
-    const r = canvas.getBoundingClientRect();
-    onDragMove(t.clientX - r.left, t.clientY - r.top);
+    onDragMove(t.clientX - _cRect.left, t.clientY - _cRect.top);
   }, { passive: false });
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    const r = canvas.getBoundingClientRect();
-    const cx = t.clientX - r.left, cy = t.clientY - r.top;
+    const cx = t.clientX - _cRect.left, cy = t.clientY - _cRect.top;
     if (draggedSym) {
       // Доставка ТОЛЬКО если было реальное перетаскивание И отпустили у надписи.
       draggedSym.x = cx;

@@ -27,7 +27,17 @@ export const SaveManager = {
   },
 
   save() {
-    localStorage.setItem(KEY, JSON.stringify(this._data));
+    // Safari Private mode / полный диск / политики = QuotaExceededError.
+    // Молчим и не крашим игру — прогресс в памяти останется до перезагрузки.
+    try {
+      localStorage.setItem(KEY, JSON.stringify(this._data));
+    } catch (e) {
+      // Один раз выведем предупреждение — дальше тишина.
+      if (!this._warned) {
+        console.warn('SaveManager: не удалось сохранить прогресс —', e?.message || e);
+        this._warned = true;
+      }
+    }
   },
 
   getScene(id) {

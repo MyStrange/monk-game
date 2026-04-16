@@ -12,7 +12,8 @@ import { SaveManager }   from '../src/save.js';
 import { trackZoneClick } from '../src/achievements.js';
 import { scene4OpenMsg, DOOR_CLICK_MSG, DOOR_ROUNDS,
          DOOR_FINAL_QUESTION, DOOR_FINAL_YES_MSG,
-         DOOR_FINAL_NO_MSG }    from '../src/dialogue.js';
+         DOOR_FINAL_NO_MSG,
+         S4_CAT_MSGS, S4_MONK_MSGS }  from '../src/dialogue.js';
 import { openSceneScene3 }      from './scene3.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
@@ -172,19 +173,7 @@ function _inDoor(cx, cy) { return _inZone(cx, cy, 0.46, 0.05, 0.55, 0.18); }
 function _inCat (cx, cy) { return _inZone(cx, cy, 0.60, 0.44, 0.72, 0.58); }
 function _inMonk(cx, cy) { return _inZone(cx, cy, 0.47, 0.56, 0.60, 0.74); }
 
-// ── Flavor messages (rotate) ──────────────────────────────────────────────
-const _CAT_MSGS = [
-  'Кот внизу. Отсюда он идеально круглый.',
-  'Он смотрит вверх. Не на тебя — просто вверх.',
-  'Кот лежит. Ты лежишь. Разница — в высоте.',
-  'Всё, что нужно знать о коте, видно отсюда.',
-];
-const _MONK_MSGS = [
-  'Красное пятно. Это был ты. Или будешь.',
-  'Монах сидит. Ты видишь его макушку.',
-  'Он не поднимет голову. Зачем?',
-  'Отсюда слышно, как он дышит. Нет, не слышно. Но кажется.',
-];
+// ── Flavor messages (индекс-счётчики; сами массивы — в dialogue.js) ──────
 let _catMsgIdx = 0, _monkMsgIdx = 0;
 
 // ── Animation ──────────────────────────────────────────────────────────────
@@ -333,12 +322,12 @@ function createEl() {
       return;
     }
     if (_inCat(cx, cy)) {
-      showMsg(_CAT_MSGS[Math.min(_catMsgIdx, _CAT_MSGS.length - 1)]);
+      showMsg(S4_CAT_MSGS[Math.min(_catMsgIdx, S4_CAT_MSGS.length - 1)]);
       _catMsgIdx++;
       return;
     }
     if (_inMonk(cx, cy)) {
-      showMsg(_MONK_MSGS[Math.min(_monkMsgIdx, _MONK_MSGS.length - 1)]);
+      showMsg(S4_MONK_MSGS[Math.min(_monkMsgIdx, S4_MONK_MSGS.length - 1)]);
       _monkMsgIdx++;
       return;
     }

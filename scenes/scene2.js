@@ -9,6 +9,7 @@ import { renderHotbar }  from '../src/hotbar.js';
 import { SaveManager }   from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
 import { trackZoneClick, trackEmptyClick, trackSpotClick } from '../src/achievements.js';
+import { BARE_ROCK_MSGS, JAR_ON_ROCK_MSGS } from '../src/dialogue.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('scene2');
@@ -94,7 +95,6 @@ function hitZone(cx, cy) {
 
 // ── Rock click counters ────────────────────────────────────────────────────
 const rockClicks = { rock1: 0, rock2: 0, rock3: 0 };
-const BARE_ROCK_MSGS = ['Холодный камень.', 'Тяжёлый.', 'Не двигается.'];
 
 // ── Rock activation animation ─────────────────────────────────────────────
 // При активации (любым предметом) запускается 4-секундная анимация:
@@ -184,8 +184,8 @@ function interactItem(itemId, zone) {
 
   // jar (empty) on rock
   if (itemId === 'jar' && isRock && !item.glowing && !item.released && !item.hasWater && item.caught === 0) {
-    const msgs = ['Банка ещё пригодится. Не надо её разбивать.', 'Точно не сюда.', 'Пустая банка камню не поможет.'];
-    showMsg(msgs[rockClicks[zone] % 3]); rockClicks[zone]++;
+    showMsg(JAR_ON_ROCK_MSGS[rockClicks[zone] % JAR_ON_ROCK_MSGS.length]);
+    rockClicks[zone]++;
     return;
   }
 
@@ -248,7 +248,7 @@ function zoneClick(zone) {
 
   if (zone === 'rock1' || zone === 'rock2' || zone === 'rock3') {
     rockClicks[zone] = (rockClicks[zone] ?? 0) + 1;
-    showMsg(BARE_ROCK_MSGS[rockClicks[zone] % 3]);
+    showMsg(BARE_ROCK_MSGS[rockClicks[zone] % BARE_ROCK_MSGS.length]);
     return;
   }
 }
@@ -424,12 +424,16 @@ export async function openSceneScene2() {
   showLoading('дерево');
 
   const bgImg = el.querySelector('img');
-  bgImg.onerror = () => showError('не удалось загрузить сцену');
   await Promise.all([
     _waitImg(bgImg), _waitImg(bottleImg),
     _waitImg(rock1Img), _waitImg(rock2Img), _waitImg(rock3Img),
   ]);
-  if (!bgImg.naturalWidth) return;
+  if (!bgImg.naturalWidth) {
+    // Без этого игрок застревал в бесконечном loading-оверлее.
+    hideLoading();
+    showError('не удалось загрузить сцену');
+    return;
+  }
 
   hideLoading();
   state.activeScreen = 'scene2';

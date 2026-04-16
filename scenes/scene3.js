@@ -38,16 +38,29 @@ const flowers = [
 let animId = null;
 let tick   = 0;
 
+// Градиенты не меняются между кадрами — кэшируем и пересоздаём только
+// при ресайзе (когда s3W/s3H изменились). Иначе createLinearGradient
+// дёргается 60 раз/сек × 2 градиента × 3 colorStops — лишняя нагрузка.
+let _skyGrad = null, _groundGrad = null, _gradW = 0, _gradH = 0;
+function _ensureGradients() {
+  if (_gradW === s3W && _gradH === s3H && _skyGrad) return;
+  _gradW = s3W; _gradH = s3H;
+  _skyGrad = ctx.createLinearGradient(0, 0, 0, s3H);
+  _skyGrad.addColorStop(0,    '#0a0420');
+  _skyGrad.addColorStop(0.45, '#1a0840');
+  _skyGrad.addColorStop(0.7,  '#3d1060');
+  _skyGrad.addColorStop(1,    '#1a2010');
+  _groundGrad = ctx.createLinearGradient(0, s3H * 0.72, 0, s3H);
+  _groundGrad.addColorStop(0, '#0d1a08');
+  _groundGrad.addColorStop(1, '#1a2808');
+}
+
 function draw() {
   ctx.clearRect(0, 0, s3W, s3H);
+  _ensureGradients();
 
   // Sky gradient — night/dusk
-  const sky = ctx.createLinearGradient(0, 0, 0, s3H);
-  sky.addColorStop(0,    '#0a0420');
-  sky.addColorStop(0.45, '#1a0840');
-  sky.addColorStop(0.7,  '#3d1060');
-  sky.addColorStop(1,    '#1a2010');
-  ctx.fillStyle = sky;
+  ctx.fillStyle = _skyGrad;
   ctx.fillRect(0, 0, s3W, s3H);
 
   // Stars
@@ -63,10 +76,7 @@ function draw() {
   ctx.globalAlpha = 1;
 
   // Ground
-  const ground = ctx.createLinearGradient(0, s3H * 0.72, 0, s3H);
-  ground.addColorStop(0, '#0d1a08');
-  ground.addColorStop(1, '#1a2808');
-  ctx.fillStyle = ground;
+  ctx.fillStyle = _groundGrad;
   ctx.fillRect(0, s3H * 0.72, s3W, s3H * 0.28);
 
   // Palm silhouettes

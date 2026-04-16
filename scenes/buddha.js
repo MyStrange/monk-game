@@ -1,7 +1,7 @@
 // scenes/buddha.js — Будда: светлячки, желание, ухо, диалог философов
 
 import { state }         from '../src/state.js';
-import { showMsgIn, showLoading, hideLoading, showError, CURSOR_DEF, CURSOR_PTR } from '../src/utils.js';
+import { showMsgIn, showChoiceIn, showLoading, hideLoading, showError, CURSOR_DEF, CURSOR_PTR } from '../src/utils.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
 import { renderHotbar }  from '../src/hotbar.js';
@@ -652,11 +652,20 @@ export async function openSceneBuddha() {
   leaveMain();
   createEl();
   el = document.getElementById('buddha');
+
+  // Защита от мягкого deadlock'а: если игрок закрыл вкладку в окно 2.8с
+  // wish-анимации, флаг S.wishPlaying остался бы true навсегда и
+  // closeSceneBuddha бесконечно показывал «Подожди...». При открытии
+  // сцены заново анимация не идёт — значит флаг можно сбросить.
+  if (S.wishPlaying) {
+    S.wishPlaying = false;
+    SaveManager.setScene('buddha', S);
+  }
+
   showLoading('будда');
 
   const bgImg = el.querySelector('img');
-  bgImg.onerror = () => showError('не удалось загрузить сцену');
-  bgImg.onload  = () => {
+  const _onReady = () => {
     hideLoading();
     state.activeScreen = 'buddha';
     el.style.display   = 'block';
@@ -668,16 +677,63 @@ export async function openSceneBuddha() {
       if (!animId) animate();
     });
   };
-  if (bgImg.complete && bgImg.naturalWidth) bgImg.onload();
+  const _onFail = () => {
+    hideLoading();
+    showError('не удалось загрузить сцену');
+  };
+  bgImg.onerror = _onFail;
+  bgImg.onload  = _onReady;
+  if (bgImg.complete) {
+    // complete=true может означать ошибку загрузки → naturalWidth===0
+    if (bgImg.naturalWidth) _onReady();
+    else _onFail();
+  }
 }
 
 export function closeSceneBuddha() {
   if (S.wishPlaying) { showMsg('Подожди...'); return; }
   const jar = state.inventory.find(i => i?.id === 'jar' || i?.id === 'jar_open');
   if (jar && jar.caught > 0) {
-    showMsg('В банке ещё светлячки. Выпусти их сначала.');
+    // Раньше это было тупиком: если игрок поймал 1-9 светлячков и закрыл
+    // вкладку → jar.caught остался в инвентаре → сцена навсегда заперта.
+    // Теперь даём выбор: или выпустить и выйти, или остаться.
+    showChoiceIn(bMsgEl, 'В банке ещё светлячки. Выпустить их?',
+      [{ text: 'Выпустить' }, { text: 'Остаться' }],
+      v => {
+        if (v !== 'Выпустить') return;
+        jar.caught = 0;
+        renderHotbar();
+        // Визуально: светлячки возвращаются в сцену (доливаем до 30)
+        if (state.activeScreen === 'buddha') {
+          const need = Math.max(0, 30 - bFlies.filter(f => f.alive).length);
+          if (need > 0) {
+            const extra = Array.from({ length: need }, () => ({
+              x:  Math.random() * bW,
+              y:  Math.random() * bH,
+              vx: (Math.random() - 0.5) * 1.2,
+              vy: (Math.random() - 0.5) * 0.8,
+              sz: 14 + Math.random() * 14,
+              br: Math.random(),
+              bv: (Math.random() - 0.5) * 0.025,
+              alive: true,
+              trail: [],
+            }));
+            bFlies = bFlies.filter(f => f.alive).concat(extra);
+          }
+          showMsg('Светлячки разлетаются.');
+        }
+        // Закрываем сцену после короткой паузы (чтобы игрок увидел разлёт)
+        setTimeout(() => {
+          if (state.activeScreen !== 'buddha') return;
+          _closeNow();
+        }, 900);
+      });
     return;
   }
+  _closeNow();
+}
+
+function _closeNow() {
   state.activeScreen = 'main';
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
