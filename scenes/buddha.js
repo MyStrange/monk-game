@@ -9,7 +9,7 @@ import { SaveManager }   from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
 import { trackZoneClick, trackSpotClick } from '../src/achievements.js';
 import {
-  catchMsg10, wishDoneMsg,
+  wishDoneMsg,
   earMsg, durianAfterDialog, DIALOG,
 } from '../src/dialogue.js';
 
@@ -395,10 +395,10 @@ function onTap(cx, cy) {
         renderHotbar();
 
         if (item.caught >= 10) {
-          setTimeout(() => {
-            showMsg(catchMsg10, { story: true });
-            _startWish(item);
-          }, 300);
+          // Сразу запускаем wish-анимацию. Единое story-сообщение
+          // (wishDoneMsg) появится в самом конце — никакого мигания
+          // между двумя сообщениями.
+          setTimeout(() => _startWish(item), 300);
         }
         return;
       }

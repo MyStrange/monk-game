@@ -36,19 +36,15 @@ const rock1Img = new Image(); rock1Img.src = 'assets/items/rock1.png';
 const rock2Img = new Image(); rock2Img.src = 'assets/items/rock2.png';
 const rock3Img = new Image(); rock3Img.src = 'assets/items/rock3.png';
 
-// Пиксельно-точное позиционирование по реальным каменным плитам в tree.png:
-//   Stone 1 (BL)  — TL=(281,619) 238×144 ratio 1.65  → rock1 (sprite 1.39)
-//   Stone 3 (MR)  — TL=(855,378) 174×97  ratio 1.79  → rock2 (sprite 1.31)
-//   Stone 2 (BR)  — TL=(1233,499) 138×160 ratio 0.86 → rock3 (sprite 0.79)
-// Спрайты вписываем по ширине камня, сохраняя нативный аспект:
-//   rock1: 369×265 → w=238, h=238/1.39 ≈ 171   (fw 0.173, fh 0.223)
-//   rock2: 305×233 → w=174, h=174/1.31 ≈ 133   (fw 0.126, fh 0.173)
-//   rock3: 272×345 → w=138, h=138/0.79 ≈ 175   (fw 0.100, fh 0.228)
-// Центруем на центре каменной плиты.
+// Пиксельно-точное позиционирование по реальным каменным плитам в tree.png (1376×768):
+//   Stone BL (камень + мох) — в bg TL=(280,638) 185×110 → rock1 накладываем точно
+//   Stone MR (камень со спиралью) — в bg TL=(840,385) 175×108 → rock2 точно
+//   Rock3 — руна на цветочной поляне (bg тут нет камня, sprite — руна в цветах)
+//           Размещение в BL flowers patch: TL=(25,590) 130×165
 const ROCK_DRAW = {
-  rock1: { fx: 281/BG_W,        fy: (619 + 144/2 - 171/2)/BG_H, fw: 238/BG_W, fh: 171/BG_H },
-  rock2: { fx: 855/BG_W,        fy: (378 +  97/2 - 133/2)/BG_H, fw: 174/BG_W, fh: 133/BG_H },
-  rock3: { fx: (1233 + 138/2 - 138/2)/BG_W, fy: (499 + 160/2 - 175/2)/BG_H, fw: 138/BG_W, fh: 175/BG_H },
+  rock1: { fx: 280/BG_W, fy: 638/BG_H, fw: 185/BG_W, fh: 110/BG_H },
+  rock2: { fx: 840/BG_W, fy: 385/BG_H, fw: 175/BG_W, fh: 108/BG_H },
+  rock3: { fx:  25/BG_W, fy: 590/BG_H, fw: 130/BG_W, fh: 165/BG_H },
 };
 
 // ── Zones (click-areas совпадают с DRAW, чтобы тапать точно по камню) ────
@@ -72,6 +68,46 @@ function hitZone(cx, cy) {
 // ── Rock click counters ────────────────────────────────────────────────────
 const rockClicks = { rock1: 0, rock2: 0, rock3: 0 };
 const BARE_ROCK_MSGS = ['Холодный камень.', 'Тяжёлый.', 'Не двигается.'];
+
+// ── Rock activation animation ─────────────────────────────────────────────
+// При активации (любым предметом) запускается 4-секундная анимация:
+//   • спрайт камня появляется сразу, мерцает
+//   • вокруг разлетаются искрящиеся пиксельные частицы
+//   • через 4 секунды показывается финальное сообщение
+const ACTIVATION_DUR = 4000;      // ms
+const _activating = {};           // { rockName: { t0, particles, msg } }
+function _spawnActivationParticles() {
+  const arr = [];
+  for (let i = 0; i < 60; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const speed = 0.6 + Math.random() * 2.2;
+    arr.push({
+      // локальные координаты внутри прямоугольника камня (0..1)
+      x:  0.5 + (Math.random() - 0.5) * 0.25,
+      y:  0.5 + (Math.random() - 0.5) * 0.25,
+      vx: Math.cos(ang) * speed,
+      vy: Math.sin(ang) * speed - 0.4,   // чуть вверх в среднем
+      life: 0,
+      ttl: 55 + Math.random() * 55,       // frames
+      sz:  Math.random() < 0.3 ? 3 : 2,
+      col: Math.random() < 0.5 ? '#ffe066' : (Math.random() < 0.6 ? '#fff4a0' : '#ffb020'),
+    });
+  }
+  return arr;
+}
+function _activateRock(zone, msg) {
+  if (S.rockStates[zone]) return;
+  S.rockStates[zone] = true;
+  _activating[zone] = {
+    t0:        performance.now(),
+    particles: _spawnActivationParticles(),
+    msg,
+  };
+  setTimeout(() => {
+    delete _activating[zone];
+    if (state.activeScreen === 'scene2') showMsg(msg);
+  }, ACTIVATION_DUR);
+}
 
 // ── Jar pickup ─────────────────────────────────────────────────────────────
 function pickUpJar() {
@@ -98,33 +134,30 @@ function interactItem(itemId, zone) {
 
   // jar_open or jar with hasWater → rock
   if ((itemId === 'jar_open' || (itemId === 'jar' && item.hasWater)) && isRock) {
-    S.rockStates[zone] = true;
     const slot = state.inventory.findIndex(i => i?.id === itemId && i === item);
     removeItem(slot >= 0 ? slot : getItemSlot(itemId));
     renderHotbar();
-    showMsg('Вода впитывается в камень. Банка трескается от холода — и рассыпается.');
+    _activateRock(zone, 'Вода впитывается в камень. Банка трескается от холода — и рассыпается.');
     return;
   }
 
   // dirt on rock
   if (itemId === 'dirt' && isRock) {
-    S.rockStates[zone] = true;
     removeItem(getItemSlot('dirt'));
     renderHotbar();
-    showMsg('Земля ложится на камень. Что-то меняется.');
+    _activateRock(zone, 'Земля ложится на камень. Что-то меняется.');
     return;
   }
 
   // glowstick on rock
   if (itemId === 'glowstick' && isRock) {
     if (S.rockStates[zone]) { showMsg('Этот камень уже впитал свет.'); return; }
-    S.rockStates[zone] = true;
     // Свет уходит в камень — палка становится обычной
     const gsSlot = state.inventory.findIndex(i => i === item);
     state.inventory[gsSlot >= 0 ? gsSlot : getItemSlot('glowstick')] = makeItem('stick');
     state.selectedSlot = -1;
     renderHotbar();
-    showMsg('Свет из палки переходит в камень. Камень начинает тихо светиться.');
+    _activateRock(zone, 'Свет из палки переходит в камень. Камень начинает тихо светиться.');
     return;
   }
 
@@ -199,17 +232,54 @@ function animate() {
 
   // Rock sprites (когда активированы) — светящиеся символы на плитах
   const rockImgs = { rock1: rock1Img, rock2: rock2Img, rock3: rock3Img };
+  const now = performance.now();
   for (const [rock, done] of Object.entries(S.rockStates)) {
     if (!done) continue;
     const img = rockImgs[rock];
     if (!(img.complete && img.naturalWidth)) continue;
     const d = ROCK_DRAW[rock];
-    // мягкое мерцание золотого свечения
-    const pulse = 0.75 + 0.25 * Math.sin(Date.now() * 0.003 + rock.length);
+    const rx = d.fx * W, ry = d.fy * H, rw = d.fw * W, rh = d.fh * H;
+    const act = _activating[rock];
+    let pulse;
+    if (act) {
+      // во время активации: быстрое мерцание + fade-in первые 500мс
+      const age = now - act.t0;
+      const fadeIn = Math.min(1, age / 500);
+      pulse = fadeIn * (0.75 + 0.25 * Math.sin(age * 0.02));
+    } else {
+      pulse = 0.75 + 0.25 * Math.sin(now * 0.003 + rock.length);
+    }
     ctx.save();
     ctx.globalAlpha = pulse;
-    ctx.drawImage(img, d.fx * W, d.fy * H, d.fw * W, d.fh * H);
+    ctx.drawImage(img, rx, ry, rw, rh);
     ctx.restore();
+
+    // Искрящиеся частицы во время активации
+    if (act) {
+      const age = now - act.t0;
+      // Когда запускали — 60 частиц. В конце — плавное затухание.
+      const globalFade = age < 3200 ? 1 : Math.max(0, 1 - (age - 3200) / 800);
+      for (const p of act.particles) {
+        p.life++;
+        if (p.life > p.ttl) continue;
+        p.x += p.vx / rw;
+        p.y += p.vy / rh;
+        p.vy += 0.025;         // гравитация
+        p.vx *= 0.985;
+        p.vy *= 0.985;
+        const lifeFrac = p.life / p.ttl;
+        const a = (1 - lifeFrac) * globalFade;
+        if (a <= 0) continue;
+        const px = Math.round(rx + p.x * rw);
+        const py = Math.round(ry + p.y * rh);
+        ctx.globalAlpha = a * 0.28;
+        ctx.fillStyle = p.col;
+        ctx.fillRect(px - p.sz, py - p.sz, p.sz * 3, p.sz * 3);
+        ctx.globalAlpha = a;
+        ctx.fillRect(px, py, p.sz, p.sz);
+      }
+      ctx.globalAlpha = 1;
+    }
   }
 
   animId = requestAnimationFrame(animate);
