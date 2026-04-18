@@ -1,6 +1,7 @@
 // scenes/buddha.js — Будда: светлячки, желание, ухо, диалог философов
 
 import { state }         from '../src/state.js';
+import { SCREENS }       from '../src/constants.js';
 import { showMsgIn, showChoiceIn, showLoading, hideLoading, showError, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
@@ -112,7 +113,7 @@ function _startWish(jar) {
 
   setTimeout(() => {
     // Guard: колбэк не должен дёргать UI если игрок ушёл из buddha
-    if (state.activeScreen !== 'buddha') { S.wishPlaying = false; return; }
+    if (state.activeScreen !== SCREENS.BUDDHA) { S.wishPlaying = false; return; }
     S.wishPlaying      = false;
     jar.glowing        = true;
     jar.released       = true;
@@ -413,7 +414,7 @@ function interactItem(itemId, zone) {
     showMsg(earMsg, 3500);
     setTimeout(() => {
       // Guard: не открываем диалог если игрок ушёл из buddha
-      if (state.activeScreen !== 'buddha') return;
+      if (state.activeScreen !== SCREENS.BUDDHA) return;
       startFireflyDialog();
     }, 2800);
   }
@@ -431,7 +432,7 @@ function _hitBuddha(cx, cy) {
 
 // ── onTap ──────────────────────────────────────────────────────────────────
 function onTap(cx, cy) {
-  if (state.activeScreen !== 'buddha') return;
+  if (state.activeScreen !== SCREENS.BUDDHA) return;
   if (S.wishPlaying) return;  // блокируем все взаимодействия во время анимации желания
 
   const item = getSelectedItem();
@@ -478,7 +479,7 @@ function onTap(cx, cy) {
           // (wishDoneMsg) появится в самом конце — никакого мигания
           // между двумя сообщениями.
           setTimeout(() => {
-            if (state.activeScreen !== 'buddha') return;  // guard
+            if (state.activeScreen !== SCREENS.BUDDHA) return;  // guard
             _startWish(item);
           }, 300);
         }
@@ -493,7 +494,7 @@ let animId = null;
 let bTick  = 0;
 
 function animate() {
-  if (state.activeScreen !== 'buddha') { animId = null; return; }
+  if (state.activeScreen !== SCREENS.BUDDHA) { animId = null; return; }
   bCtx.clearRect(0, 0, bW, bH);
   bTick++;
 
@@ -688,7 +689,7 @@ function createEl() {
   }, { passive: false });
   let _stickHintZone = false;
   bCanvas.addEventListener('mousemove', e => {
-    if (state.activeScreen !== 'buddha') return;
+    if (state.activeScreen !== SCREENS.BUDDHA) return;
     const r  = bCanvas.getBoundingClientRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
     setCursor(_hitBuddha(cx, cy));
@@ -725,7 +726,7 @@ export async function openSceneBuddha() {
   const bgImg = el.querySelector('img');
   const _onReady = () => {
     hideLoading();
-    state.activeScreen = 'buddha';
+    state.activeScreen = SCREENS.BUDDHA;
     el.style.display   = 'block';
     requestAnimationFrame(() => {
       const r = el.getBoundingClientRect();
@@ -762,7 +763,7 @@ export function closeSceneBuddha() {
         jar.caught = 0;
         renderHotbar();
         // Визуально: светлячки возвращаются в сцену (доливаем до 30)
-        if (state.activeScreen === 'buddha') {
+        if (state.activeScreen === SCREENS.BUDDHA) {
           const need = Math.max(0, 30 - bFlies.filter(f => f.alive).length);
           if (need > 0) {
             const extra = Array.from({ length: need }, () => ({
@@ -785,7 +786,7 @@ export function closeSceneBuddha() {
         }
         // Закрываем сцену после короткой паузы (чтобы игрок увидел разлёт)
         setTimeout(() => {
-          if (state.activeScreen !== 'buddha') return;
+          if (state.activeScreen !== SCREENS.BUDDHA) return;
           _closeNow();
         }, 900);
       });
@@ -795,7 +796,7 @@ export function closeSceneBuddha() {
 }
 
 function _closeNow() {
-  state.activeScreen = 'main';
+  state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   SaveManager.setScene('buddha', S);

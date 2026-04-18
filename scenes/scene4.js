@@ -20,6 +20,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { state }                          from '../src/state.js';
+import { SCREENS }                        from '../src/constants.js';
 import { showLoading, hideLoading, showError,
          showMsgIn, showChoiceIn, isStoryActive,
          setCursor }                      from '../src/utils.js';
@@ -127,7 +128,7 @@ function _onTrunkClick() {
         showMsgIn(msgEl, resp, {
           story: true, dur: 2800,
           onDismiss: () => {
-            if (state.activeScreen !== 'scene4') return;
+            if (state.activeScreen !== SCREENS.SCENE4) return;
             _peelLayer(3);
           },
         });
@@ -143,10 +144,10 @@ function _onTrunkClick() {
         showMsgIn(msgEl, resp, {
           story: true, dur: 2800,
           onDismiss: () => {
-            if (state.activeScreen !== 'scene4') return;
+            if (state.activeScreen !== SCREENS.SCENE4) return;
             _peelLayer(2);
             setTimeout(() => {
-              if (state.activeScreen !== 'scene4') return;
+              if (state.activeScreen !== SCREENS.SCENE4) return;
               showMsgIn(msgEl, SCENE4_OPEN_MSG3, { story: true, dur: 5500 });
             }, 800);
           },
@@ -164,7 +165,7 @@ function _onTrunkClick() {
 // ── Capture-phase handler — все зоны ─────────────────────────────────────
 // Срабатывает ДО layer2/layer3 handlers → работает даже через прозрачные img.
 function _onElCapture(e) {
-  if (state.activeScreen !== 'scene4') return;
+  if (state.activeScreen !== SCREENS.SCENE4) return;
   if (e.target && e.target.closest && e.target.closest('.back-btn')) return;
 
   const r = el.getBoundingClientRect();
@@ -238,7 +239,7 @@ function _onElCapture(e) {
 
 // ── Cursor hint (desktop) ──────────────────────────────────────────────────
 function _onElMove(e) {
-  if (state.activeScreen !== 'scene4') return;
+  if (state.activeScreen !== SCREENS.SCENE4) return;
   const r = el.getBoundingClientRect();
   const cx = e.clientX - r.left;
   const cy = e.clientY - r.top;
@@ -297,7 +298,7 @@ function createEl() {
 
   // Сохраняем ссылку, чтобы снять listener в closeSceneScene4 —
   // без этого он висел навсегда и тикал при каждом resize всю сессию.
-  _onResize = () => { if (state.activeScreen === 'scene4') _layoutLayers(); };
+  _onResize = () => { if (state.activeScreen === SCREENS.SCENE4) _layoutLayers(); };
   window.addEventListener('resize', _onResize);
 
   // Все зоны — capture-фаза на el (срабатывает ДО layer-хендлеров)
@@ -342,7 +343,7 @@ export async function openSceneScene4() {
   }
 
   hideLoading();
-  state.activeScreen = 'scene4';
+  state.activeScreen = SCREENS.SCENE4;
   el.style.display   = 'block';
   setCursor(false);
   requestAnimationFrame(_layoutLayers);
@@ -350,7 +351,7 @@ export async function openSceneScene4() {
 }
 
 export function closeSceneScene4() {
-  state.activeScreen = 'main';
+  state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   setCursor(false);
   if (_onResize) { window.removeEventListener('resize', _onResize); _onResize = null; }

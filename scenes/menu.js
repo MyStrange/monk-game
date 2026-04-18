@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { state }                              from '../src/state.js';
+import { SCREENS }                            from '../src/constants.js';
 import { leaveMain, resumeMain }              from './main.js';
 import { openScene }                          from '../src/nav.js';
 import { SaveManager }                        from '../src/save.js';
@@ -51,7 +52,7 @@ function hitButton(cx, cy) {
 
 // ── Render ─────────────────────────────────────────────────────────────────
 function animate() {
-  if (state.activeScreen !== 'menu') { animId = null; return; }
+  if (state.activeScreen !== SCREENS.MENU) { animId = null; return; }
   ctx.clearRect(0, 0, W, H);
 
   // фон
@@ -106,7 +107,7 @@ function createEl() {
   document.getElementById('wrap').appendChild(el);
 
   const onTap = (cx, cy) => {
-    if (state.activeScreen !== 'menu') return;
+    if (state.activeScreen !== SCREENS.MENU) return;
     hitButton(cx, cy)?.action();
   };
 
@@ -128,7 +129,7 @@ export async function openSceneMenu() {
   createEl();
   el = document.getElementById('menu-scene');
 
-  state.activeScreen = 'menu';
+  state.activeScreen = SCREENS.MENU;
   el.style.display   = 'block';
 
   requestAnimationFrame(() => {
@@ -140,7 +141,7 @@ export async function openSceneMenu() {
 }
 
 export function closeSceneMenu() {
-  state.activeScreen = 'main';
+  state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   resumeMain();   // иначе main-анимация не перезапустится после меню

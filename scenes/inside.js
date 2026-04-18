@@ -10,6 +10,7 @@
 // Пульс сердца: мягкий прямоугольный ореол вокруг кристалла.
 
 import { state }          from '../src/state.js';
+import { SCREENS }        from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showError, setCursor } from '../src/utils.js';
 import { resumeMain }     from './main.js';
 import { SaveManager }    from '../src/save.js';
@@ -115,7 +116,7 @@ const HEART_CX = 0.50, HEART_CY = 0.65;
 let _tick = 0;
 
 function animate() {
-  if (state.activeScreen !== 'inside') { animId = null; return; }
+  if (state.activeScreen !== SCREENS.INSIDE) { animId = null; return; }
   ctx.clearRect(0, 0, W, H);
   _tick++;
 
@@ -185,7 +186,7 @@ function _applyFlower() {
 
 // ── onTap ──────────────────────────────────────────────────────────────────
 function onTap(cx, cy) {
-  if (state.activeScreen !== 'inside') return;
+  if (state.activeScreen !== SCREENS.INSIDE) return;
   const zone = _hitZone(cx, cy);
   if (!zone) return;
   trackZoneClick(`inside_${zone}`);
@@ -250,7 +251,7 @@ function createEl() {
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
   canvas.addEventListener('mousemove', e => {
-    if (state.activeScreen !== 'inside') return;
+    if (state.activeScreen !== SCREENS.INSIDE) return;
     const r = canvas.getBoundingClientRect();
     setCursor(!!_hitZone(e.clientX - r.left, e.clientY - r.top));
   });
@@ -274,7 +275,7 @@ export async function openSceneInside() {
 
   const _onReady = () => {
     hideLoading();
-    state.activeScreen = 'inside';
+    state.activeScreen = SCREENS.INSIDE;
     el.style.display   = 'block';
     setCursor(false);
     if (AudioSystem.setMode) AudioSystem.setMode('sitting');
@@ -286,7 +287,7 @@ export async function openSceneInside() {
       if (!animId) animate();
     });
     setTimeout(() => {
-      if (state.activeScreen !== 'inside') return;
+      if (state.activeScreen !== SCREENS.INSIDE) return;
       showMsgIn(msgEl, 'Ты внутри. Тихо. Пахнет деревом и чем-то давно забытым.', { story: true });
     }, 500);
   };
@@ -309,7 +310,7 @@ export async function openSceneInside() {
 }
 
 export function closeSceneInside() {
-  state.activeScreen = 'main';
+  state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   setCursor(false);

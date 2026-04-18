@@ -1,6 +1,7 @@
 // scenes/scene2.js — корни / дерево
 
 import { state }         from '../src/state.js';
+import { SCREENS }       from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showError, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
@@ -159,7 +160,7 @@ function _activateRock(zone, msg) {
   entry.timer = setTimeout(() => {
     entry.timer = null;
     delete _activating[zone];
-    if (state.activeScreen === 'scene2') showMsg(msg);
+    if (state.activeScreen === SCREENS.SCENE2) showMsg(msg);
   }, ACTIVATION_DUR);
   _activating[zone] = entry;
 }
@@ -267,7 +268,7 @@ function zoneClick(zone) {
 
 // ── onTap ──────────────────────────────────────────────────────────────────
 function onTap(cx, cy) {
-  if (state.activeScreen !== 'scene2') return;
+  if (state.activeScreen !== SCREENS.SCENE2) return;
   trackSpotClick(cx, cy, 'scene2');
   const item = getSelectedItem();
   const zone = hitZone(cx, cy);
@@ -279,7 +280,7 @@ function onTap(cx, cy) {
 
 // ── Keyboard ───────────────────────────────────────────────────────────────
 function _onKey(e) {
-  if (state.activeScreen !== 'scene2') return;
+  if (state.activeScreen !== SCREENS.SCENE2) return;
   if (e.key === 'e' || e.key === 'E' || e.key === 'у' || e.key === 'У') pickUpJar();
 }
 
@@ -287,7 +288,7 @@ function _onKey(e) {
 let animId = null;
 
 function animate() {
-  if (state.activeScreen !== 'scene2') { animId = null; return; }
+  if (state.activeScreen !== SCREENS.SCENE2) { animId = null; return; }
   ctx.clearRect(0, 0, W, H);
 
   // Фактический видимый прямоугольник bg (с учётом object-fit:cover)
@@ -453,7 +454,7 @@ function createEl() {
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
   canvas.addEventListener('mousemove', e => {
-    if (state.activeScreen !== 'scene2') return;
+    if (state.activeScreen !== SCREENS.SCENE2) return;
     const r = canvas.getBoundingClientRect();
     setCursor(!!hitZone(e.clientX - r.left, e.clientY - r.top));
   });
@@ -489,7 +490,7 @@ export async function openSceneScene2() {
   }
 
   hideLoading();
-  state.activeScreen = 'scene2';
+  state.activeScreen = SCREENS.SCENE2;
   el.style.display   = 'block';
   _bindKeydown();
   requestAnimationFrame(() => {
@@ -501,7 +502,7 @@ export async function openSceneScene2() {
 }
 
 export function closeSceneScene2() {
-  state.activeScreen = 'main';
+  state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   _cancelActivations();

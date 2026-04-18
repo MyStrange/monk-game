@@ -9,6 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { state }                                  from '../src/state.js';
+import { SCREENS }                                from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading,
          showError }                              from '../src/utils.js';
 import { leaveMain }                              from './main.js';
@@ -144,7 +145,7 @@ export async function openSceneSCENEID() {
 }
 
 export function closeSceneSCENEID() {
-  state.activeScreen = 'main';
+  state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   SaveManager.setScene('SCENEID', S);

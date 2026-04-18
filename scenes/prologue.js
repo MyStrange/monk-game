@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { state }                              from '../src/state.js';
+import { SCREENS }                            from '../src/constants.js';
 import { showMsgIn }                          from '../src/utils.js';
 import { leaveMain, resumeMain }              from './main.js';
 import { Sequence }                           from '../src/sequence.js';
@@ -44,7 +45,7 @@ function _onEnd() {
 
 // ── Render ─────────────────────────────────────────────────────────────────
 function animate(t) {
-  if (state.activeScreen !== 'prologue') { animId = null; return; }
+  if (state.activeScreen !== SCREENS.PROLOGUE) { animId = null; return; }
   ctx.clearRect(0, 0, W, H);
 
   // фон — чёрный
@@ -92,7 +93,7 @@ function createEl() {
   el.appendChild(canvas);
   document.getElementById('wrap').appendChild(el);
 
-  const advance = () => { if (state.activeScreen === 'prologue') seq.next(); };
+  const advance = () => { if (state.activeScreen === SCREENS.PROLOGUE) seq.next(); };
   canvas.addEventListener('click',    advance);
   canvas.addEventListener('touchend', e => { e.preventDefault(); advance(); }, { passive: false });
 }
@@ -103,7 +104,7 @@ export async function openScenePrologue() {
   createEl();
   el = document.getElementById('prologue-scene');
 
-  state.activeScreen  = 'prologue';
+  state.activeScreen  = SCREENS.PROLOGUE;
   el.style.display    = 'block';
 
   requestAnimationFrame(() => {
@@ -117,7 +118,7 @@ export async function openScenePrologue() {
 
 export function closeScenePrologue() {
   seq.cancel();
-  state.activeScreen = 'main';
+  state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   SaveManager.setScene('prologue', S);

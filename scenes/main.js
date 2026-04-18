@@ -1,6 +1,7 @@
 // scenes/main.js — главная сцена: герой, зоны, медитация, символы
 
 import { state }           from '../src/state.js';
+import { SCREENS }         from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showChoiceIn, isStoryActive,
          CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
@@ -191,7 +192,7 @@ function startBury() {
   showMsg(catBuryMsg1);
   setTimeout(() => {
     // Guard: не кидаем сообщение в main если игрок успел уйти в другую сцену
-    if (state.activeScreen !== 'main') return;
+    if (state.activeScreen !== SCREENS.MAIN) return;
     showMsg(catBuryMsg2);
   }, 2200);
 }
@@ -272,7 +273,7 @@ function _startMonkDialog() {
       showMsgIn(msgEl, r1, {
         story: true, dur: 3800,
         onDismiss: () => {
-          if (state.activeScreen !== 'main') return;
+          if (state.activeScreen !== SCREENS.MAIN) return;
           showChoiceIn(msgEl,
             'Он кивает — медленно, будто слышал это много раз.\n— А что остаётся, когда отпускаешь поиск?',
             [{ text: 'Страшно' }, { text: 'Тишина' }, { text: 'Ничего' }],
@@ -281,7 +282,7 @@ function _startMonkDialog() {
               showMsgIn(msgEl, r2, {
                 story: true, dur: 3800,
                 onDismiss: () => {
-                  if (state.activeScreen !== 'main') return;
+                  if (state.activeScreen !== SCREENS.MAIN) return;
                   showChoiceIn(msgEl,
                     'Голос монаха тише ветра в ветвях.\n— Последний вопрос. Где покой перестаёт прятаться от тебя?',
                     [{ text: 'Внутри' }, { text: 'Не там' }, { text: 'Везде' }],
@@ -290,11 +291,11 @@ function _startMonkDialog() {
                       showMsgIn(msgEl, r3, {
                         story: true, dur: 3400,
                         onDismiss: () => {
-                          if (state.activeScreen !== 'main') return;
+                          if (state.activeScreen !== SCREENS.MAIN) return;
                           showMsgIn(msgEl, MONK_FINAL_MSG, {
                             story: true, dur: 6000,
                             onDismiss: () => {
-                              if (state.activeScreen !== 'main') return;
+                              if (state.activeScreen !== SCREENS.MAIN) return;
                               S.monkDialogDone = true;
                               saveMain();
                               if (!addItem(makeItem('flower'))) {
@@ -408,7 +409,7 @@ function interactItem(itemId, zone) {
 // ── onTap ──────────────────────────────────────────────────────────────────
 function onTap(cx, cy) {
   if (_justDelivered) { _justDelivered = false; return; }
-  if (state.activeScreen !== 'main') return;
+  if (state.activeScreen !== SCREENS.MAIN) return;
   trackSpotClick(cx, cy, 'main');
 
   if (draggedSym) {
@@ -442,7 +443,7 @@ let _dragStartX = 0, _dragStartY = 0, _dragMoved = false;
 const _DRAG_THRESHOLD = 10; // px — сколько надо сдвинуться, чтобы считать «перетаскиванием»
 
 function onDragStart(cx, cy) {
-  if (state.activeScreen !== 'main') return;
+  if (state.activeScreen !== SCREENS.MAIN) return;
   if (!hero.praying && meditationPhase <= 0) return;
   for (const s of pSyms) {
     if (Math.hypot(cx - s.x, cy - s.y) < 52) {
@@ -533,7 +534,7 @@ function _onSymDropStatue() {
     {
       story: true, dur: 3800,
       onDismiss: () => {
-        if (state.activeScreen !== 'main' || S.wantMoreSounds) return;
+        if (state.activeScreen !== SCREENS.MAIN || S.wantMoreSounds) return;
         showChoiceIn(msgEl, 'Хочешь слышать больше?',
           [{ text: 'Да' }, { text: 'Нет' }],
           v => {
@@ -553,7 +554,7 @@ let animId = null;
 let tick   = 0;
 
 function animate() {
-  if (state.activeScreen !== 'main') { animId = null; return; }
+  if (state.activeScreen !== SCREENS.MAIN) { animId = null; return; }
   ctx.clearRect(0, 0, W, H);
   tick++;
 
@@ -773,7 +774,7 @@ function animate() {
 
 // ── Keyboard ───────────────────────────────────────────────────────────────
 function _onKey(e) {
-  if (state.activeScreen !== 'main') return;
+  if (state.activeScreen !== SCREENS.MAIN) return;
   const k = e.key.toLowerCase();
   if (k === 'arrowdown' || k === 's' || k === 'ы') sitDown();
   if (k === 'arrowup'   || k === 'w' || k === 'щ') standUp();
@@ -784,7 +785,7 @@ export function resumeMain() {
   // Фиксируем возврат на main: F5 теперь не будет бросать назад в закрытую сцену.
   SaveManager.global.lastScene = 'main';
   SaveManager.save();
-  if (state.activeScreen === 'main' && !animId) animate();
+  if (state.activeScreen === SCREENS.MAIN && !animId) animate();
 }
 
 // ── leaveMain ─────────────────────────────────────────────────────────────
@@ -835,7 +836,7 @@ export async function initMain() {
     onDragStart(e.clientX - _cRect.left, e.clientY - _cRect.top);
   });
   canvas.addEventListener('mousemove', e => {
-    if (state.activeScreen !== 'main') return;
+    if (state.activeScreen !== SCREENS.MAIN) return;
     const cx = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
     onDragMove(cx, cy);
     // Pointer cursor over clickable zones OR meditation symbols
@@ -908,7 +909,7 @@ export async function initMain() {
 
   // Перезапуск анимации после скрытия вкладки
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && state.activeScreen === 'main' && !animId) animate();
+    if (!document.hidden && state.activeScreen === SCREENS.MAIN && !animId) animate();
   });
 
   // Ждём загрузки всех спрайтов — чтобы сцена появилась без рывков

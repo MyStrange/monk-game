@@ -1,6 +1,7 @@
 // scenes/scene3.js — поле огненных цветов (процедурная графика)
 
 import { state }        from '../src/state.js';
+import { SCREENS }      from '../src/constants.js';
 import { showMsgIn, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
@@ -172,7 +173,7 @@ function _drawFireFlower(ctx, x, y, r) {
 }
 
 function animate() {
-  if (state.activeScreen !== 'scene3') { animId = null; return; }
+  if (state.activeScreen !== SCREENS.SCENE3) { animId = null; return; }
   tick++;
   draw();
   animId = requestAnimationFrame(animate);
@@ -180,7 +181,7 @@ function animate() {
 
 // ── onTap ──────────────────────────────────────────────────────────────────
 function onTap(cx, cy) {
-  if (state.activeScreen !== 'scene3') return;
+  if (state.activeScreen !== SCREENS.SCENE3) return;
 
   // Fire flower hit area
   if (!S.fireFlowerPicked &&
@@ -236,7 +237,7 @@ function createEl() {
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
   canvas.addEventListener('mousemove', e => {
-    if (state.activeScreen !== 'scene3') return;
+    if (state.activeScreen !== SCREENS.SCENE3) return;
     const r = canvas.getBoundingClientRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
     setCursor(!S.fireFlowerPicked &&
@@ -252,7 +253,7 @@ export function openSceneScene3() {
   el = document.getElementById('scene3');
   S.scene3Unlocked  = true;
   SaveManager.setScene('scene3', S);   // фиксируем факт открытия сразу (иначе F5 сбросит)
-  state.activeScreen = 'scene3';
+  state.activeScreen = SCREENS.SCENE3;
   el.style.display   = 'block';
 
   requestAnimationFrame(() => {
@@ -264,7 +265,7 @@ export function openSceneScene3() {
 }
 
 export function closeSceneScene3() {
-  state.activeScreen = 'main';
+  state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   SaveManager.setScene('scene3', S);
