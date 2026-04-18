@@ -88,6 +88,10 @@ const WISH_DURATION = 160; // frames @ ~60fps = ~2.7s
 function _startWish(jar) {
   S.wishPlaying = true;
   wishTick  = 0;
+  // Перелив колокольчиков звучит ВО ВРЕМЯ анимации, а не после —
+  // светлячки разлетаются под музыку. 7 нот по 0.11с ≈ 0.77с,
+  // анимация ~2.7с → звук занимает первую треть.
+  AudioSystem.playReleaseChimes?.();
 
   // Старт — примерно позиция хотбара внизу экрана
   const startX = bW * 0.5;
@@ -122,7 +126,6 @@ function _startWish(jar) {
     jar.description    = 'Светляковая жижка. Внутри мерцает тихий свет — след от десяти светлячков.';
     state.selectedSlot = -1;  // снять с руки после завершения желания
     renderHotbar();
-    AudioSystem.playReleaseChimes?.();      // перелив колокольчиков
     showMsg(wishDoneMsg, { story: true });
   }, (WISH_DURATION / 60) * 1000 + 200);
 }
@@ -447,7 +450,8 @@ function onTap(cx, cy) {
     if (item) { interactItem(item.id, 'ear'); return; }
   }
 
-  // No jar: click on fly → it escapes with buzz + trail
+  // No jar: click on fly → escape + колокольчик (раньше было playFlyFlutter
+  // — жужжание, пользователь хочет бубенчик как при поимке).
   if (!item || (item.id !== 'jar' && item.id !== 'jar_open')) {
     for (const f of bFlies) {
       if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < Math.max(22, f.sz * 3)) {
@@ -456,7 +460,7 @@ function onTap(cx, cy) {
         f.escapeVx  = Math.cos(angle) * (5 + Math.random() * 4);
         f.escapeVy  = Math.sin(angle) * (5 + Math.random() * 4);
         f.escapeA   = 1.0;
-        AudioSystem.playFlyFlutter?.();
+        AudioSystem.playFlyCatch?.();      // bell (тот же звук что при поимке)
         return;
       }
     }

@@ -382,6 +382,42 @@ export const AudioSystem = {
     });
   },
 
+  // Мягкий короткий щебет/чик-чик кота — для обычного клика (НЕ активация
+  // дурианом). Не громкий яростный мяв, а тихий «мур-мяу»-чириканье.
+  playCatChirp() {
+    if (!this.ctx) return;
+    const ac  = this.ctx;
+    const out = this.sfxGain;
+    const now = ac.currentTime;
+    const DUR = 0.25;
+    // Слой 1: короткий восходящий sine («прр?»)
+    {
+      const osc = ac.createOscillator();
+      const g   = ac.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(720, now);
+      osc.frequency.linearRampToValueAtTime(1020, now + 0.08);
+      osc.frequency.linearRampToValueAtTime(880,  now + 0.20);
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.12, now + 0.025);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + DUR);
+      osc.connect(g); g.connect(out);
+      osc.start(now); osc.stop(now + DUR + 0.02);
+    }
+    // Слой 2: тихий triangle-«мр» снизу — тело звука, как нос
+    {
+      const osc = ac.createOscillator();
+      const g   = ac.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.linearRampToValueAtTime(320, now + 0.12);
+      g.gain.setValueAtTime(0.06, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + DUR);
+      osc.connect(g); g.connect(out);
+      osc.start(now); osc.stop(now + DUR + 0.02);
+    }
+  },
+
   playCatMeow() {
     if (!this.ctx) return;
     const ac  = this.ctx;
@@ -474,41 +510,57 @@ export const AudioSystem = {
     if (!this.ctx) return;
     const ac  = this.ctx;
     const now = ac.currentTime;
-    // Капля в воду: короткий «plop» — pitched sine опускается + мягкий
-    // low-passed shimmer-tail (круги на воде).
-    // Тон 1 — основная «капля»: быстро падающая частота
-    const osc = ac.createOscillator();
-    const g   = ac.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(900, now);
-    osc.frequency.exponentialRampToValueAtTime(220, now + 0.14);
-    g.gain.setValueAtTime(0.18, now);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
-    osc.connect(g); g.connect(this.sfxGain);
-    osc.start(now); osc.stop(now + 0.30);
-    // Тон 2 — верхняя «капля» (отражение на поверхности)
-    const osc2 = ac.createOscillator();
-    const g2   = ac.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(1700, now + 0.01);
-    osc2.frequency.exponentialRampToValueAtTime(600, now + 0.12);
-    g2.gain.setValueAtTime(0.06, now + 0.01);
-    g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-    osc2.connect(g2); g2.connect(this.sfxGain);
-    osc2.start(now + 0.01); osc2.stop(now + 0.20);
-    // Шелест волны — короткий low-passed noise
-    const bufLen = Math.floor(ac.sampleRate * 0.35);
-    const buf  = ac.createBuffer(1, bufLen, ac.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
-    const src = ac.createBufferSource(); src.buffer = buf;
-    const lp  = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
-    const ng  = ac.createGain();
-    ng.gain.setValueAtTime(0, now);
-    ng.gain.linearRampToValueAtTime(0.04, now + 0.08);
-    ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-    src.connect(lp); lp.connect(ng); ng.connect(this.sfxGain);
-    src.start(now); src.stop(now + 0.35);
+    // Плавное «вш-ш-ш» воды: два слоя шума через band-pass фильтры
+    // с LFO-модуляцией cutoff — имитирует журчание с ласковым переливом.
+    // Дополнительно — тихий pitched тон 180Hz snaking по синусу даёт
+    // подводную волновую нотку. Никаких резких plop'ов — чистый ток воды.
+    const DUR = 1.20;
+
+    // Слой 1: средний bandpass, модулируется медленным LFO
+    const bufLen = Math.floor(ac.sampleRate * DUR);
+    const buf1 = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const d1 = buf1.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) d1[i] = (Math.random() * 2 - 1) * 0.7;
+    const s1 = ac.createBufferSource(); s1.buffer = buf1;
+    const bp1 = ac.createBiquadFilter();
+    bp1.type = 'bandpass'; bp1.Q.value = 1.1;
+    // LFO на cutoff — журчание
+    const lfo1 = ac.createOscillator();
+    const lg1  = ac.createGain();
+    lfo1.frequency.value = 2.3;
+    bp1.frequency.value = 850;
+    lg1.gain.value = 380;
+    lfo1.connect(lg1); lg1.connect(bp1.frequency);
+    const g1 = ac.createGain();
+    g1.gain.setValueAtTime(0, now);
+    g1.gain.linearRampToValueAtTime(0.12, now + 0.15);
+    g1.gain.linearRampToValueAtTime(0.12, now + DUR - 0.30);
+    g1.gain.linearRampToValueAtTime(0,    now + DUR);
+    s1.connect(bp1); bp1.connect(g1); g1.connect(this.sfxGain);
+    lfo1.start(now); lfo1.stop(now + DUR);
+    s1.start(now);   s1.stop(now + DUR);
+
+    // Слой 2: высокий bandpass — мелкая рябь, тише, модулируется быстрее
+    const buf2 = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const d2 = buf2.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) d2[i] = (Math.random() * 2 - 1) * 0.5;
+    const s2 = ac.createBufferSource(); s2.buffer = buf2;
+    const bp2 = ac.createBiquadFilter();
+    bp2.type = 'bandpass'; bp2.Q.value = 1.6;
+    bp2.frequency.value = 2200;
+    const lfo2 = ac.createOscillator();
+    const lg2  = ac.createGain();
+    lfo2.frequency.value = 5.8;
+    lg2.gain.value = 600;
+    lfo2.connect(lg2); lg2.connect(bp2.frequency);
+    const g2 = ac.createGain();
+    g2.gain.setValueAtTime(0, now);
+    g2.gain.linearRampToValueAtTime(0.05, now + 0.20);
+    g2.gain.linearRampToValueAtTime(0.05, now + DUR - 0.30);
+    g2.gain.linearRampToValueAtTime(0,    now + DUR);
+    s2.connect(bp2); bp2.connect(g2); g2.connect(this.sfxGain);
+    lfo2.start(now); lfo2.stop(now + DUR);
+    s2.start(now);   s2.stop(now + DUR);
   },
 
   playRock() {

@@ -377,6 +377,8 @@ function zoneClick(zone) {
 
     const k = `meditate:${zone}`;
     interactCounts[k] = (interactCounts[k] ?? 0) + 1;
+    // Клик по коту — тот же мягкий чик-чик и в медитации тоже.
+    if (zone === 'cat') AudioSystem.playCatChirp?.();
     const arr = MEDITATE_MSGS[zone];
     if (arr) { showMsg(arr[interactCounts[k] % arr.length]); return; }
     if (zone === 'inscription') {
@@ -391,7 +393,9 @@ function zoneClick(zone) {
   if (zone === 'tree')   { openScene('scene2'); return; }
 
   if (zone === 'cat') {
-    AudioSystem.playCatMeow();
+    // Обычный клик по коту — мягкий чик-чик. Громкий мяв (playCatMeow)
+    // теперь только для активации дурианом (см. interactItem ниже).
+    AudioSystem.playCatChirp?.();
     showMsg(catMsgs[catMsgIdx % catMsgs.length]);
     catMsgIdx++;
     return;
@@ -956,8 +960,15 @@ export async function initMain() {
     const iz  = ZONES_BG.inscription;
     const ip  = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
     if (_dragMoved && Math.hypot(cx - ip.x, cy - ip.y) < INPUT.INSCRIPTION_HIT_R && (hero.praying || meditationPhase > 0)) {
-      _deliverSym();
-      _justDelivered = true;
+      if (S.inscriptionReady) {
+        // Надпись уже активирована — дальнейшие дропы на неё идут
+        // в счётчик «слышать больше», а не в бессмысленные доставки.
+        _onSymDropStatue();
+        _justDelivered = true;
+      } else {
+        _deliverSym();
+        _justDelivered = true;
+      }
     } else if (_dragMoved) {
       // Перетащили не к надписи — проверяем статую
       const bx = cx * BG_W / W, by = cy * BG_H / H;
@@ -997,7 +1008,9 @@ export async function initMain() {
       const iz  = ZONES_BG.inscription;
       const ip  = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
       if (_dragMoved && Math.hypot(cx - ip.x, cy - ip.y) < INPUT.INSCRIPTION_HIT_R && (hero.praying || meditationPhase > 0)) {
-        _deliverSym();
+        // После активации надписи дропы на неё идут в счётчик «слышать больше».
+        if (S.inscriptionReady) _onSymDropStatue();
+        else                    _deliverSym();
       } else if (_dragMoved) {
         const bx = cx * BG_W / W, by = cy * BG_H / H;
         const sz = ZONES_BG.statue;
