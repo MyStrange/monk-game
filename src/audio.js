@@ -469,6 +469,118 @@ export const AudioSystem = {
       osc.start(now); osc.stop(now + dec);
     });
   },
+
+  playWater() {
+    if (!this.ctx) return;
+    const ac  = this.ctx;
+    const now = ac.currentTime;
+    // White noise filtered through bandpass sweep → rushing water
+    const bufLen = Math.floor(ac.sampleRate * 0.65);
+    const buf  = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+    const src  = ac.createBufferSource();
+    src.buffer = buf;
+    const f1 = ac.createBiquadFilter();
+    f1.type = 'bandpass'; f1.Q.value = 1.4;
+    f1.frequency.setValueAtTime(700, now);
+    f1.frequency.linearRampToValueAtTime(1600, now + 0.30);
+    f1.frequency.linearRampToValueAtTime(900,  now + 0.55);
+    const f2 = ac.createBiquadFilter();
+    f2.type = 'highpass'; f2.frequency.value = 400;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.16, now + 0.07);
+    g.gain.linearRampToValueAtTime(0.12, now + 0.40);
+    g.gain.linearRampToValueAtTime(0,    now + 0.60);
+    src.connect(f1); f1.connect(f2); f2.connect(g); g.connect(this.sfxGain);
+    src.start(now); src.stop(now + 0.65);
+  },
+
+  playRock() {
+    if (!this.ctx) return;
+    const ac  = this.ctx;
+    const now = ac.currentTime;
+    // Low-freq thud — sine pitch envelope + brief noise click
+    const osc = ac.createOscillator();
+    const g   = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.exponentialRampToValueAtTime(38, now + 0.28);
+    g.gain.setValueAtTime(0.32, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+    osc.connect(g); g.connect(this.sfxGain);
+    osc.start(now); osc.stop(now + 0.35);
+    // Transient noise click
+    const cLen = Math.floor(ac.sampleRate * 0.04);
+    const cBuf = ac.createBuffer(1, cLen, ac.sampleRate);
+    const cd   = cBuf.getChannelData(0);
+    for (let i = 0; i < cLen; i++) cd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / cLen, 3);
+    const cs = ac.createBufferSource(); cs.buffer = cBuf;
+    const cg = ac.createGain(); cg.gain.value = 0.18;
+    cs.connect(cg); cg.connect(this.sfxGain);
+    cs.start(now);
+  },
+
+  playFlyCatch() {
+    if (!this.ctx) return;
+    const ac  = this.ctx;
+    const now = ac.currentTime;
+    // Short FM buzz (insect) + high shimmer
+    const osc = ac.createOscillator();
+    const g   = ac.createGain();
+    const lfo = ac.createOscillator();
+    const lg  = ac.createGain();
+    osc.type = 'sine'; osc.frequency.value = 240;
+    lfo.frequency.value = 72; lg.gain.value = 110;
+    lfo.connect(lg); lg.connect(osc.frequency);
+    g.gain.setValueAtTime(0.08, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+    osc.connect(g); g.connect(this.sfxGain);
+    osc.start(now); osc.stop(now + 0.18);
+    lfo.start(now); lfo.stop(now + 0.18);
+    // High shimmer
+    const osc2 = ac.createOscillator();
+    const g2   = ac.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1400, now);
+    osc2.frequency.exponentialRampToValueAtTime(2800, now + 0.14);
+    g2.gain.setValueAtTime(0.055, now);
+    g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    osc2.connect(g2); g2.connect(this.sfxGain);
+    osc2.start(now); osc2.stop(now + 0.20);
+  },
+
+  playItemInteract() {
+    if (!this.ctx) return;
+    const ac  = this.ctx;
+    const now = ac.currentTime;
+    const osc = ac.createOscillator();
+    const g   = ac.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(520, now);
+    osc.frequency.linearRampToValueAtTime(780, now + 0.09);
+    g.gain.setValueAtTime(0.10, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+    osc.connect(g); g.connect(this.sfxGain);
+    osc.start(now); osc.stop(now + 0.36);
+  },
+
+  playTypewriterChirp() {
+    if (!this.ctx) return;
+    const ac  = this.ctx;
+    const now = ac.currentTime;
+    const osc = ac.createOscillator();
+    const g   = ac.createGain();
+    osc.type = 'sine';
+    const f = 1500 + Math.random() * 900;
+    osc.frequency.setValueAtTime(f, now);
+    osc.frequency.linearRampToValueAtTime(f * 1.08, now + 0.028);
+    g.gain.setValueAtTime(0.022, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.038);
+    osc.connect(g); g.connect(this.sfxGain);
+    osc.start(now); osc.stop(now + 0.045);
+  },
 };
 
 export function toggleMusic() { return AudioSystem.toggleMusic(); }

@@ -274,6 +274,7 @@ function zoneClick(zone) {
   if (zone === 'tree')   { openScene('scene2'); return; }
 
   if (zone === 'cat') {
+    AudioSystem.playCatMeow();
     showMsg(catMsgs[catMsgIdx % catMsgs.length]);
     catMsgIdx++;
     return;
@@ -281,6 +282,19 @@ function zoneClick(zone) {
   if (zone === 'monk') {
     showMsg(monkMsgs[monkMsgIdx % monkMsgs.length]);
     monkMsgIdx++;
+    return;
+  }
+
+  if (zone === 'water') {
+    AudioSystem.playWater();
+    const WATER_MSGS = [
+      'Вода отражает всё что есть. И кое-что чего нет.',
+      'Тихая. Холодная. Никуда не спешит.',
+      'Под поверхностью ничего не видно. Это успокаивает.',
+      'Если смотреть долго, начинаешь видеть что-то. Лучше не смотреть долго.',
+    ];
+    interactCounts.water = (interactCounts.water ?? 0) + 1;
+    showMsg(WATER_MSGS[interactCounts.water % WATER_MSGS.length]);
     return;
   }
 }
@@ -309,6 +323,7 @@ function interactItem(itemId, zone) {
     item.description = 'Открытая банка с водой. Холодная. Не расплещи.';
     state.selectedSlot = -1;
     renderHotbar();
+    AudioSystem.playWater();
     showMsg('Ты зачерпнул воды. Банка стала тяжелее.');
     return;
   }

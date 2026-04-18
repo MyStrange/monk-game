@@ -131,12 +131,19 @@ let flyroomAnimId = null;
 let _frAnimateFn  = null;  // ref to canvas animate fn, для перезапуска
 
 // Dialog state
-let _dlgLines   = [];
-let _dlgIdx     = 0;
-let _dlgActive  = false;
-let _dlgOnEnd   = null;
-let _pauseTimer = null;
+let _dlgLines    = [];
+let _dlgIdx      = 0;
+let _dlgActive   = false;
+let _dlgOnEnd    = null;
+let _pauseTimer  = null;
 let _pauseClicks = 0;
+
+// Typewriter state
+let _twTimer  = null;   // setTimeout handle for next char
+let _twBub    = null;   // bubble element being typed into
+let _twText   = '';     // full text being typed
+let _twIdx    = 0;      // chars revealed so far
+let _twChirpN = 0;      // char counter for sound rate-limiting
 
 // Bubble DOM refs
 let _bubA = null, _bubB = null, _bubNarr = null, _pauseDots = null;
@@ -279,12 +286,42 @@ function _buildFlyroom() {
   if (bg.complete && bg.naturalWidth) bg.onload();
 }
 
+function _stopTypewriter(showFull) {
+  if (_twTimer) { clearTimeout(_twTimer); _twTimer = null; }
+  if (showFull && _twBub && _twText) _twBub.textContent = _twText;
+  _twBub  = null;
+  _twText = '';
+  _twIdx  = 0;
+}
+
+function _startTypewriter(bub, text) {
+  _stopTypewriter(false);
+  _twBub    = bub;
+  _twText   = text;
+  _twIdx    = 0;
+  _twChirpN = 0;
+  bub.textContent  = '';
+  bub.style.display = 'block';
+  const CHAR_MS    = 32;   // ms per character
+  const CHIRP_EVERY = 4;   // play sound every N chars
+  function _tick() {
+    if (_twIdx >= _twText.length) { _twTimer = null; return; }
+    _twIdx++;
+    bub.textContent = _twText.slice(0, _twIdx);
+    _twChirpN++;
+    if (_twChirpN % CHIRP_EVERY === 1) AudioSystem.playTypewriterChirp?.();
+    _twTimer = setTimeout(_tick, CHAR_MS);
+  }
+  _twTimer = setTimeout(_tick, CHAR_MS);
+}
+
 function _dlgHideAll() {
   _bubA.style.display = _bubB.style.display = _bubNarr.style.display = 'none';
   _pauseDots.style.display = 'none';
 }
 
 function _dlgShowLine(line) {
+  _stopTypewriter(false);
   _dlgHideAll();
   if (line.type === 'pause') {
     _pauseClicks = 0;
@@ -293,11 +330,10 @@ function _dlgShowLine(line) {
     return;
   }
   let bub;
-  if (!line.speaker)       bub = _bubNarr;
+  if (!line.speaker)           bub = _bubNarr;
   else if (line.speaker === 'А') bub = _bubA;
-  else                     bub = _bubB;
-  bub.textContent  = line.text;
-  bub.style.display = 'block';
+  else                          bub = _bubB;
+  _startTypewriter(bub, line.text);
 }
 
 function _dlgNext() {
@@ -315,6 +351,11 @@ function _dlgNext() {
 
 function _dlgClick() {
   if (!_dlgActive) return;
+  // Если идёт побуквенная анимация — клик скипает к полному тексту
+  if (_twTimer) {
+    _stopTypewriter(true);
+    return;
+  }
   const cur = _dlgLines[_dlgIdx];
   if (cur?.type === 'pause') {
     _pauseClicks++;
@@ -365,6 +406,7 @@ function interactItem(itemId, zone) {
     SaveManager.setScene('buddha', S);   // флаг сразу — не теряется при F5 за 2.8с
     removeItem(getItemSlot('glowstick'));  // removeItem sets selectedSlot=-1
     renderHotbar();
+    AudioSystem.playBell();
     showMsg(earMsg, 3500);
     setTimeout(() => {
       // Guard: не открываем диалог если игрок ушёл из buddha
@@ -387,6 +429,7 @@ function _hitBuddha(cx, cy) {
 // ── onTap ──────────────────────────────────────────────────────────────────
 function onTap(cx, cy) {
   if (state.activeScreen !== 'buddha') return;
+  if (S.wishPlaying) return;  // блокируем все взаимодействия во время анимации желания
 
   const item = getSelectedItem();
   trackZoneClick('buddha');
@@ -422,6 +465,7 @@ function onTap(cx, cy) {
         bFlash.push({ x: f.x, y: f.y, t: 0 });
         f.alive = false;
         item.caught = (item.caught ?? 0) + 1;
+        AudioSystem.playFlyCatch();
 
         // Оставляем банку в руке — обновляем только иконку (caught увеличился)
         renderHotbar();

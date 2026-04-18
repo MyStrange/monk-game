@@ -215,6 +215,7 @@ function interactItem(itemId, zone) {
     const slot = state.inventory.findIndex(i => i?.id === itemId && i === item);
     removeItem(slot >= 0 ? slot : getItemSlot(itemId));
     renderHotbar();
+    AudioSystem.playRock();
     _activateRock(zone, 'Вода впитывается в камень. Банка трескается от холода — и рассыпается.');
     return;
   }
@@ -223,6 +224,7 @@ function interactItem(itemId, zone) {
   if (itemId === 'dirt' && isRock) {
     removeItem(getItemSlot('dirt'));
     renderHotbar();
+    AudioSystem.playRock();
     _activateRock(zone, 'Земля ложится на камень. Что-то меняется.');
     return;
   }
@@ -235,6 +237,7 @@ function interactItem(itemId, zone) {
     state.inventory[gsSlot >= 0 ? gsSlot : getItemSlot('glowstick')] = makeItem('stick');
     state.selectedSlot = -1;
     renderHotbar();
+    AudioSystem.playRock();
     _activateRock(zone, 'Свет из палки переходит в камень. Камень начинает тихо светиться.');
     return;
   }
@@ -252,6 +255,7 @@ function interactItem(itemId, zone) {
     state.inventory[jarSlot]   = makeItem('jar_open');
     state.selectedSlot = -1;
     renderHotbar();
+    AudioSystem.playItemInteract();
     showMsg('Палка коснулась банки — и впитала весь свет. Банка снова пустая.');
     return;
   }
@@ -268,6 +272,7 @@ function zoneClick(zone) {
   if (zone === 'bottle') { pickUpJar(); return; }
 
   if (zone === 'rock1' || zone === 'rock2' || zone === 'rock3') {
+    AudioSystem.playRock();
     rockClicks[zone] = (rockClicks[zone] ?? 0) + 1;
     const msgs = S.rockStates[zone] ? ACTIVATED_ROCK_MSGS : BARE_ROCK_MSGS;
     showMsg(msgs[rockClicks[zone] % msgs.length]);
