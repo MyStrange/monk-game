@@ -15,9 +15,18 @@ import { resumeMain }     from './main.js';
 import { SaveManager }    from '../src/save.js';
 import { AudioSystem }    from '../src/audio.js';
 import { trackZoneClick } from '../src/achievements.js';
+import { getSelectedItem, removeItem } from '../src/inventory.js';
+import { renderHotbar }   from '../src/hotbar.js';
 
 // ── BG aspect ratio ────────────────────────────────────────────────────────
 const BG_W = 1920, BG_H = 1080;   // 16:9, object-fit:cover адаптирует
+
+// ── Heart sprite image (активное состояние с лотосом) ─────────────────────
+// Нормализованные координаты области, которая меняется между base и active:
+//   x0=0.36 y0=0.33 → x1=0.69 y1=0.92  (ниша с кристаллом в правой части)
+const _HEART_SPRITE = { nx0: 0.36, ny0: 0.33, nx1: 0.69, ny1: 0.92 };
+const _heartImg = new Image();
+_heartImg.src = 'assets/bg/inside_heart.png';
 
 // ── Hit zones (0..1 relative to BG) ───────────────────────────────────────
 const HEART_ZONE   = { x0: 0.36, y0: 0.44, x1: 0.66, y1: 0.90 };
@@ -26,15 +35,25 @@ const STAIRS_ZONE  = { x0: 0.03, y0: 0.20, x1: 0.54, y1: 0.82 };
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('inside');
-S.heartIdx   = S.heartIdx   ?? 0;
-S.stairsIdx  = S.stairsIdx  ?? 0;
-S.openingIdx = S.openingIdx ?? 0;
+S.heartIdx      = S.heartIdx      ?? 0;
+S.stairsIdx     = S.stairsIdx     ?? 0;
+S.openingIdx    = S.openingIdx    ?? 0;
+S.heartActivated = S.heartActivated ?? false;
 
+// Сообщения до активации (кристальное сердце)
 const HEART_MSGS = [
+  'Хрусталь холодный. Внутри что-то мерцает — но не отзывается.',
+  'Что-то ждёт. Возможно — тебя. Возможно — нет.',
+  'Кристалл помнит. Но не говорит что именно.',
+  'Холодный и тихий. Как будто спит.',
+];
+
+// Сообщения после активации (сердце с лотосом)
+const HEART_ACTIVE_MSGS = [
   'Это — ты. Всё, что искал снаружи, было здесь.',
-  'Хрусталь не отражает. Он помнит.',
   'Сердце не бьётся. Оно светит.',
   'Ты дотронулся. Ничего не изменилось. Изменилось всё.',
+  'Тёплое. Не остывает. Никогда.',
 ];
 const STAIRS_MSGS = [
   'Ступени ведут не вверх и не вниз. Просто — дальше.',
@@ -136,19 +155,45 @@ function animate() {
     ctx.globalAlpha = br;         ctx.fillRect(px,        py,       s,   s);
   }
 
+  // ── Спрайт активного сердца (лотос) ──────────────────────────────────────
+  if (S.heartActivated && _heartImg.complete && _heartImg.naturalWidth) {
+    const { nx0, ny0, nx1, ny1 } = _HEART_SPRITE;
+    const iw = _heartImg.naturalWidth, ih = _heartImg.naturalHeight;
+    ctx.globalAlpha = 1;
+    ctx.drawImage(
+      _heartImg,
+      iw * nx0, ih * ny0, iw * (nx1 - nx0), ih * (ny1 - ny0),  // src
+      R.x + nx0 * R.w, R.y + ny0 * R.h,                         // dst pos
+      (nx1 - nx0) * R.w, (ny1 - ny0) * R.h                      // dst size
+    );
+  }
+
   // Пульс кристалла-сердца
   const hx    = Math.round(R.x + HEART_CX * R.w);
   const hy    = Math.round(R.y + HEART_CY * R.h);
   const pulse = 0.55 + 0.45 * Math.sin(_tick * 0.038);
   const baseR = Math.round(Math.min(R.w, R.h) * 0.07 * pulse);
 
-  ctx.fillStyle = '#60ffee';
+  // Цвет ореола зависит от состояния: тёплый (лотос) или бирюзовый (кристалл)
+  ctx.fillStyle = S.heartActivated ? '#ff8060' : '#60ffee';
   ctx.globalAlpha = pulse * 0.06;  ctx.fillRect(hx - baseR*3, hy - baseR*3, baseR*6, baseR*6);
   ctx.globalAlpha = pulse * 0.12;  ctx.fillRect(hx - baseR*2, hy - baseR*2, baseR*4, baseR*4);
   ctx.globalAlpha = pulse * 0.22;  ctx.fillRect(hx - baseR,   hy - baseR,   baseR*2, baseR*2);
 
   ctx.globalAlpha = 1;
   animId = requestAnimationFrame(animate);
+}
+
+// ── Применить лотос к сердцу ───────────────────────────────────────────────
+function _applyFlower() {
+  const slot = state.inventory.findIndex(i => i?.id === 'flower');
+  if (slot === -1) return;
+  removeItem(slot);
+  renderHotbar();
+  S.heartActivated = true;
+  SaveManager.setScene('inside', S);
+  AudioSystem.playBell?.();
+  showMsg('Лотос касается кристалла. Сердце отзывается. Ты не знаешь чьё.', { story: true, dur: 5500 });
 }
 
 // ── onTap ──────────────────────────────────────────────────────────────────
@@ -159,7 +204,13 @@ function onTap(cx, cy) {
   trackZoneClick(`inside_${zone}`);
 
   if (zone === 'heart') {
-    showMsg(HEART_MSGS[S.heartIdx % HEART_MSGS.length]);
+    const item = getSelectedItem();
+    if (item?.id === 'flower' && !S.heartActivated) {
+      _applyFlower();
+      return;
+    }
+    const msgs = S.heartActivated ? HEART_ACTIVE_MSGS : HEART_MSGS;
+    showMsg(msgs[S.heartIdx % msgs.length]);
     S.heartIdx++;
   } else if (zone === 'stairs') {
     showMsg(STAIRS_MSGS[S.stairsIdx % STAIRS_MSGS.length]);

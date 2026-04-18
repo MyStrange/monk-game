@@ -1,7 +1,8 @@
 // scenes/main.js — главная сцена: герой, зоны, медитация, символы
 
 import { state }           from '../src/state.js';
-import { showMsgIn, showLoading, hideLoading, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
+import { showMsgIn, showLoading, hideLoading, showChoiceIn, isStoryActive,
+         CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
@@ -12,6 +13,7 @@ import { SaveManager }     from '../src/save.js';
 import {
   catMsgs, monkMsgs, MEDITATE_MSGS,
   catBuryMsg1, catBuryMsg2, catBuryDoneMsg,
+  MONK_Q1_RESP, MONK_Q2_RESP, MONK_FINAL_MSG, FLOWER_GIVEN_MSG,
 } from '../src/dialogue.js';
 
 // ── DOM ────────────────────────────────────────────────────────────────────
@@ -77,6 +79,7 @@ const S = SaveManager.getScene('main');
 S.stickPickedUp     = S.stickPickedUp     ?? false;
 S.inscriptionCharge = S.inscriptionCharge ?? 0;
 S.inscriptionReady  = S.inscriptionReady  ?? false;
+S.monkDialogDone    = S.monkDialogDone    ?? false;
 
 function saveMain() { SaveManager.setScene('main', S); }
 
@@ -253,11 +256,66 @@ function _symTick() {
   }
 }
 
+// ── Monk meditation dialogue ──────────────────────────────────────────────
+// Запускается один раз: герой сидит + клик по монаху = философский разговор.
+// После — в инвентаре появляется лотос.
+function _startMonkDialog() {
+  if (isStoryActive(msgEl)) return;
+
+  showChoiceIn(msgEl,
+    'Монах открыл глаза. Первый раз за долгое время.\n«Чего ты ищешь?»',
+    [{ text: 'Покоя' }, { text: 'Смысла' }, { text: 'Не знаю' }],
+    val => {
+      const r1 = MONK_Q1_RESP[val] ?? 'Ответ уже есть. Ты просто ещё не видишь.';
+      showMsgIn(msgEl, r1, {
+        story: true, dur: 3400,
+        onDismiss: () => {
+          if (state.activeScreen !== 'main') return;
+          showChoiceIn(msgEl,
+            '«Что происходит, когда перестаёшь искать?»',
+            [{ text: 'Страшно' }, { text: 'Тишина' }, { text: 'Ничего' }],
+            val2 => {
+              const r2 = MONK_Q2_RESP[val2] ?? 'Именно. Ничего лишнего.';
+              showMsgIn(msgEl, r2, {
+                story: true, dur: 3400,
+                onDismiss: () => {
+                  if (state.activeScreen !== 'main') return;
+                  showMsgIn(msgEl, MONK_FINAL_MSG, {
+                    story: true, dur: 6000,
+                    onDismiss: () => {
+                      if (state.activeScreen !== 'main') return;
+                      S.monkDialogDone = true;
+                      saveMain();
+                      if (!addItem(makeItem('flower'))) {
+                        showMsg('Инвентарь полон. Освободи место — лотос ждёт.');
+                        return;
+                      }
+                      renderHotbar();
+                      AudioSystem.playBell?.();
+                      showMsg(FLOWER_GIVEN_MSG);
+                    },
+                  });
+                },
+              });
+            }
+          );
+        },
+      });
+    }
+  );
+}
+
 // ── Zone click (no item) ───────────────────────────────────────────────────
 function zoneClick(zone) {
   trackZoneClick(zone);
 
   if (hero.praying) {
+    // Первый разговор с монахом — только пока ещё не было диалога
+    if (zone === 'monk' && !S.monkDialogDone) {
+      _startMonkDialog();
+      return;
+    }
+
     const k = `meditate:${zone}`;
     interactCounts[k] = (interactCounts[k] ?? 0) + 1;
     const arr = MEDITATE_MSGS[zone];
