@@ -5,10 +5,12 @@
 export const AudioSystem = {
   ctx:            null,
   masterGain:     null,
+  sfxGain:        null,
   ambientGain:    null,
   meditationGain: null,
   sittingGain:    null,
-  muted:          false,
+  mutedMusic:     false,
+  mutedSfx:       false,
   _started:       false,
   _mode:          'silent',  // 'ambient' | 'meditation' | 'sitting' | 'silent'
 
@@ -104,10 +106,15 @@ export const AudioSystem = {
       }
     };
     this.masterGain = this.ctx.createGain();
-    // Стартуем с правильного значения сразу — иначе при muted=true всё равно
+    // Стартуем с правильного значения сразу — иначе при mutedMusic=true всё равно
     // слышно 2.8с пока setMode() плавно гасит до 0.
-    this.masterGain.gain.value = this.muted ? 0 : 0.18;
+    this.masterGain.gain.value = this.mutedMusic ? 0 : 0.18;
     this.masterGain.connect(this.ctx.destination);
+
+    // sfxGain для звуковых эффектов — независим от музыки
+    this.sfxGain = this.ctx.createGain();
+    this.sfxGain.gain.value = this.mutedSfx ? 0 : 0.18;
+    this.sfxGain.connect(this.ctx.destination);
 
     this.ambientGain    = this.ctx.createGain();  this.ambientGain.gain.value    = 1.0;
     this.meditationGain = this.ctx.createGain();  this.meditationGain.gain.value = 0.0;
@@ -123,19 +130,19 @@ export const AudioSystem = {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     if (mode === 'ambient') {
-      this.masterGain.gain.linearRampToValueAtTime(this.muted ? 0 : 0.18, now + 2.8);
+      this.masterGain.gain.linearRampToValueAtTime(this.mutedMusic ? 0 : 0.18, now + 2.8);
       this.ambientGain.gain.linearRampToValueAtTime(1.0,  now + 2.8);
       this.meditationGain.gain.linearRampToValueAtTime(0,   now + 2.8);
       if (this.sittingGain) this.sittingGain.gain.linearRampToValueAtTime(0, now + 2.8);
       if (!this._meditationStarted) this._startMeditation();
     } else if (mode === 'meditation') {
-      this.masterGain.gain.linearRampToValueAtTime(this.muted ? 0 : 0.28, now + 2.8);
+      this.masterGain.gain.linearRampToValueAtTime(this.mutedMusic ? 0 : 0.28, now + 2.8);
       this.ambientGain.gain.linearRampToValueAtTime(0.08, now + 2.8);
       this.meditationGain.gain.linearRampToValueAtTime(1.0, now + 2.8);
       if (this.sittingGain) this.sittingGain.gain.linearRampToValueAtTime(0, now + 2.8);
       if (!this._meditationStarted) this._startMeditation();
     } else if (mode === 'sitting') {
-      this.masterGain.gain.linearRampToValueAtTime(this.muted ? 0 : 0.22, now + 2.8);
+      this.masterGain.gain.linearRampToValueAtTime(this.mutedMusic ? 0 : 0.22, now + 2.8);
       this.ambientGain.gain.linearRampToValueAtTime(0.06, now + 2.8);
       this.meditationGain.gain.linearRampToValueAtTime(0,   now + 2.8);
       if (this.sittingGain) this.sittingGain.gain.linearRampToValueAtTime(1.0, now + 2.8);
@@ -143,13 +150,20 @@ export const AudioSystem = {
     }
   },
 
-  toggle() {
-    this.muted = !this.muted;
+  toggleMusic() {
+    this.mutedMusic = !this.mutedMusic;
     if (this.masterGain) {
-      const vol = this.muted ? 0 : (this._mode === 'meditation' ? 0.28 : this._mode === 'sitting' ? 0.22 : 0.18);
+      const vol = this.mutedMusic ? 0 : (this._mode === 'meditation' ? 0.28 : this._mode === 'sitting' ? 0.22 : 0.18);
       this.masterGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.1);
     }
-    return this.muted;
+    return this.mutedMusic;
+  },
+  toggleSfx() {
+    this.mutedSfx = !this.mutedSfx;
+    if (this.sfxGain) {
+      this.sfxGain.gain.setTargetAtTime(this.mutedSfx ? 0 : 0.18, this.ctx.currentTime, 0.1);
+    }
+    return this.mutedSfx;
   },
 
   // ── Ambient music ──────────────────────────────────────────────────────
@@ -356,7 +370,7 @@ export const AudioSystem = {
   playPrayerSound() {
     if (!this.ctx) return;
     const ac  = this.ctx;
-    const out = this.masterGain;
+    const out = this.sfxGain;
     [[220, 0.20, 4.0], [440, 0.10, 3.0], [660, 0.055, 2.2], [880, 0.03, 1.6]].forEach(([f, amp, dec]) => {
       const osc = ac.createOscillator();
       const g   = ac.createGain();
@@ -371,7 +385,7 @@ export const AudioSystem = {
   playCatMeow() {
     if (!this.ctx) return;
     const ac  = this.ctx;
-    const out = this.masterGain;
+    const out = this.sfxGain;
     const now = ac.currentTime;
     const dur = 0.6;
 
@@ -421,7 +435,7 @@ export const AudioSystem = {
     lfo.connect(lg); lg.connect(osc.frequency);
     g.gain.setValueAtTime(0.055, now);
     g.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
-    osc.connect(g); g.connect(this.masterGain);
+    osc.connect(g); g.connect(this.sfxGain);
     osc.start(now); osc.stop(now + 0.38);
     lfo.start(now); lfo.stop(now + 0.38);
   },
@@ -437,7 +451,7 @@ export const AudioSystem = {
     osc.frequency.linearRampToValueAtTime(900, now + 0.1);
     g.gain.setValueAtTime(0.12, now);
     g.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
-    osc.connect(g); g.connect(this.masterGain);
+    osc.connect(g); g.connect(this.sfxGain);
     osc.start(now); osc.stop(now + 0.3);
   },
 
@@ -451,12 +465,11 @@ export const AudioSystem = {
       osc.type = 'sine'; osc.frequency.value = f;
       g.gain.setValueAtTime(amp, now);
       g.gain.exponentialRampToValueAtTime(0.0001, now + dec);
-      osc.connect(g); g.connect(this.masterGain);
+      osc.connect(g); g.connect(this.sfxGain);
       osc.start(now); osc.stop(now + dec);
     });
   },
 };
 
-export function toggleSound() {
-  return AudioSystem.toggle();
-}
+export function toggleMusic() { return AudioSystem.toggleMusic(); }
+export function toggleSfx()   { return AudioSystem.toggleSfx(); }

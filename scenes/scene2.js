@@ -113,6 +113,27 @@ const _PARTICLE_COLORS = [
   '#ffb830', '#fff0c8',
 ];
 
+// ── Ambient orbital particles (светятся над каждым активированным камнем) ──
+const _ambientParticles = {};   // { rockName: [particles] }
+
+function _spawnAmbientParticles() {
+  const N = 28;
+  const arr = [];
+  for (let i = 0; i < N; i++) {
+    const r = Math.random();
+    arr.push({
+      angle:     (i / N) * Math.PI * 2 + Math.random() * 0.4,
+      speed:     (0.006 + Math.random() * 0.014) * (Math.random() < 0.5 ? 1 : -1),
+      radius:    0.10 + Math.random() * 0.32,   // доля от ширины камня
+      phase:     Math.random() * Math.PI * 2,
+      phaseRate: 0.016 + Math.random() * 0.028,
+      sz:        r < 0.55 ? 1 : 2,              // 55% мелких, 45% средних
+      col:       _PARTICLE_COLORS[Math.floor(Math.random() * _PARTICLE_COLORS.length)],
+    });
+  }
+  return arr;
+}
+
 function _spawnActivationParticles() {
   const arr = [];
   // 80 штук — плотное но прозрачное облако
@@ -309,8 +330,7 @@ function animate() {
       const age = now - act.t0;
       pulse = Math.min(1, age / 900);
     } else {
-      // Ambient breathing для уже активированных камней (не мерцание — дыхание)
-      pulse = 0.78 + 0.22 * Math.sin(now * 0.003 + rock.length);
+      pulse = 1;
     }
     ctx.save();
     ctx.globalAlpha = pulse;
@@ -359,6 +379,29 @@ function animate() {
       }
       ctx.globalAlpha = 1;
     }
+
+    // ── Бесконечные орбитальные частицы над активированным камнем ──────────
+    if (!_ambientParticles[rock]) _ambientParticles[rock] = _spawnAmbientParticles();
+    const cx = rx + rw * 0.50;          // центр по горизонтали
+    const cy = ry + rh * 0.20;          // верхняя треть камня — там виден символ
+    const orbitW = rw * 0.40;           // полуось X эллипса
+    const orbitH = rw * 0.14;           // полуось Y (сплюснутая — вид сверху)
+    for (const p of _ambientParticles[rock]) {
+      p.angle += p.speed;
+      p.phase += p.phaseRate;
+      const br = 0.40 + 0.60 * (0.5 + 0.5 * Math.sin(p.phase));
+      const px = Math.round(cx + Math.cos(p.angle) * p.radius * orbitW);
+      const py = Math.round(cy + Math.sin(p.angle) * p.radius * orbitH);
+      const s  = p.sz;
+      ctx.fillStyle = p.col;
+      // halo
+      ctx.globalAlpha = br * 0.22;
+      ctx.fillRect(px - s, py - s, s * 3, s * 3);
+      // core
+      ctx.globalAlpha = br;
+      ctx.fillRect(px, py, s, s);
+    }
+    ctx.globalAlpha = 1;
   }
 
   animId = requestAnimationFrame(animate);
