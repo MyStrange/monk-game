@@ -566,6 +566,24 @@ export const AudioSystem = {
     osc.start(now); osc.stop(now + 0.36);
   },
 
+  // 10 кристальных тонов для символов медитации — по одному на цвет
+  playSymbolTone(colorIdx = 0) {
+    if (!this.ctx) return;
+    const ac  = this.ctx;
+    const now = ac.currentTime;
+    const CRYSTAL_NOTES = [587, 622, 659, 698, 740, 784, 831, 880, 932, 988];
+    const freq = CRYSTAL_NOTES[Math.min(Math.max(colorIdx, 0), CRYSTAL_NOTES.length - 1)];
+    [[freq, 0.13, 2.2], [freq * 2.01, 0.04, 1.4], [freq * 0.501, 0.025, 1.6]].forEach(([f, amp, dec]) => {
+      const osc = ac.createOscillator();
+      const g   = ac.createGain();
+      osc.type = 'sine'; osc.frequency.value = f;
+      g.gain.setValueAtTime(amp, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dec);
+      osc.connect(g); g.connect(this.sfxGain);
+      osc.start(now); osc.stop(now + dec);
+    });
+  },
+
   playTypewriterChirp() {
     if (!this.ctx) return;
     const ac  = this.ctx;

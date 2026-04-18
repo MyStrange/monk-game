@@ -80,6 +80,7 @@ S.stickPickedUp     = S.stickPickedUp     ?? false;
 S.inscriptionCharge = S.inscriptionCharge ?? 0;
 S.inscriptionReady  = S.inscriptionReady  ?? false;
 S.monkDialogDone    = S.monkDialogDone    ?? false;
+S.wantMoreSounds    = S.wantMoreSounds    ?? false;
 
 function saveMain() { SaveManager.setScene('main', S); }
 
@@ -87,6 +88,7 @@ function saveMain() { SaveManager.setScene('main', S); }
 let catBurying   = false;
 let catBuryTimer = 0;
 let inscriptionGlow = 0;
+let _symDropStatueShown = false;  // подсказка показывается 1 раз за сессию
 
 // ── Hero ───────────────────────────────────────────────────────────────────
 const hero = {
@@ -521,6 +523,31 @@ function _deliverSym() {
   saveMain();
 }
 
+// ── Символ брошен на статую — звук + предложение слышать больше ────────────
+function _onSymDropStatue() {
+  AudioSystem.playSymbolTone?.(Math.floor(Math.random() * PURPLE_PALETTE.length));
+  if (S.wantMoreSounds || _symDropStatueShown || isStoryActive(msgEl)) return;
+  _symDropStatueShown = true;
+  showMsgIn(msgEl,
+    'Символ коснулся статуи. Ничего не произошло. Звук, правда, был очень даже.',
+    {
+      story: true, dur: 3800,
+      onDismiss: () => {
+        if (state.activeScreen !== 'main' || S.wantMoreSounds) return;
+        showChoiceIn(msgEl, 'Хочешь слышать больше?',
+          [{ text: 'Да' }, { text: 'Нет' }],
+          v => {
+            if (v !== 'Да') return;
+            S.wantMoreSounds = true;
+            saveMain();
+            showMsg('Теперь каждый символ звучит по-своему.');
+          }
+        );
+      },
+    }
+  );
+}
+
 // ── Animation loop ─────────────────────────────────────────────────────────
 let animId = null;
 let tick   = 0;
@@ -816,16 +843,21 @@ export async function initMain() {
   });
   canvas.addEventListener('mouseup', e => {
     if (!draggedSym) return;
-    // Доставка ТОЛЬКО если было реальное перетаскивание И отпустили у надписи.
-    // Обычный клик по знаку → просто бросаем обратно в полёт.
-    const cx = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
-    const iz = ZONES_BG.inscription;
-    const ip = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
-    if (_dragMoved &&
-        Math.hypot(cx - ip.x, cy - ip.y) < 80 &&
-        (hero.praying || meditationPhase > 0)) {
+    const cx  = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
+    const sym = draggedSym;
+    const iz  = ZONES_BG.inscription;
+    const ip  = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
+    if (_dragMoved && Math.hypot(cx - ip.x, cy - ip.y) < 80 && (hero.praying || meditationPhase > 0)) {
       _deliverSym();
       _justDelivered = true;
+    } else if (_dragMoved) {
+      // Перетащили не к надписи — проверяем статую
+      const bx = cx * BG_W / W, by = cy * BG_H / H;
+      const sz = ZONES_BG.statue;
+      if (bx >= sz.x && bx < sz.x + sz.w && by >= sz.y && by < sz.y + sz.h) _onSymDropStatue();
+    } else if (S.wantMoreSounds && sym) {
+      // Простой тап по символу → кристальный тон по цвету
+      AudioSystem.playSymbolTone?.(PURPLE_PALETTE.indexOf(sym.col));
     }
     if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
     _dragMoved = false;
@@ -850,15 +882,19 @@ export async function initMain() {
     const t = e.changedTouches[0];
     const cx = t.clientX - _cRect.left, cy = t.clientY - _cRect.top;
     if (draggedSym) {
-      // Доставка ТОЛЬКО если было реальное перетаскивание И отпустили у надписи.
       draggedSym.x = cx;
       draggedSym.y = cy;
-      const iz = ZONES_BG.inscription;
-      const ip = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
-      if (_dragMoved &&
-          Math.hypot(cx - ip.x, cy - ip.y) < 80 &&
-          (hero.praying || meditationPhase > 0)) {
+      const sym = draggedSym;
+      const iz  = ZONES_BG.inscription;
+      const ip  = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
+      if (_dragMoved && Math.hypot(cx - ip.x, cy - ip.y) < 80 && (hero.praying || meditationPhase > 0)) {
         _deliverSym();
+      } else if (_dragMoved) {
+        const bx = cx * BG_W / W, by = cy * BG_H / H;
+        const sz = ZONES_BG.statue;
+        if (bx >= sz.x && bx < sz.x + sz.w && by >= sz.y && by < sz.y + sz.h) _onSymDropStatue();
+      } else if (S.wantMoreSounds && sym) {
+        AudioSystem.playSymbolTone?.(PURPLE_PALETTE.indexOf(sym.col));
       }
       if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
       _dragMoved = false;
