@@ -169,22 +169,33 @@ export function showChoiceIn(el, prompt, options, onPick) {
 
   const p = document.createElement('div');
   p.className = 'scene-choice-prompt';
-  p.textContent = prompt;
+  p.textContent = prompt;                   // \n → перенос (CSS white-space:pre-line)
   box.appendChild(p);
 
   const btns = document.createElement('div');
   btns.className = 'scene-choice-btns';
+
+  // Гард от двойных кликов и повторного срабатывания во время фейда
+  let picked = false;
   options.forEach(opt => {
     const btn = document.createElement('button');
     btn.className = 'scene-choice-btn';
     btn.textContent = opt.text;
     btn.onclick = () => {
+      if (picked) return;
+      picked = true;
       s.storyActive  = false;
       s.storyDismiss = null;
       s.current      = null;
+      // Блокируем повторные клики, пока блок уезжает
+      box.style.pointerEvents = 'none';
       box.classList.remove('visible');
-      setTimeout(() => box.remove(), 200);
-      onPick?.(opt.value ?? opt.text, opt.text);
+      // Ждём завершения CSS-фейда (transition .25s), и только после удаления
+      // блока запускаем onPick — иначе ответ появляется поверх уезжающего блока.
+      setTimeout(() => {
+        box.remove();
+        onPick?.(opt.value ?? opt.text, opt.text);
+      }, 260);
     };
     btns.appendChild(btn);
   });

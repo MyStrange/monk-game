@@ -265,25 +265,25 @@ function _startMonkDialog() {
   if (isStoryActive(msgEl)) return;
 
   showChoiceIn(msgEl,
-    'Монах открыл глаза. Первый раз за долгое время.\n«Чего ты ищешь?»',
+    'Монах открыл глаза. Первый раз за долгое время.\nСмотрит сквозь тебя, как сквозь воду.\n— Чего ты ищешь на самом деле?',
     [{ text: 'Покоя' }, { text: 'Смысла' }, { text: 'Не знаю' }],
     val => {
       const r1 = MONK_Q1_RESP[val] ?? 'Ответ уже есть. Ты просто ещё не видишь.';
       showMsgIn(msgEl, r1, {
-        story: true, dur: 3400,
+        story: true, dur: 3800,
         onDismiss: () => {
           if (state.activeScreen !== 'main') return;
           showChoiceIn(msgEl,
-            '«Что происходит, когда перестаёшь искать?»',
+            'Он кивает — медленно, будто слышал это много раз.\n— А что остаётся, когда отпускаешь поиск?',
             [{ text: 'Страшно' }, { text: 'Тишина' }, { text: 'Ничего' }],
             val2 => {
               const r2 = MONK_Q2_RESP[val2] ?? 'Именно. Ничего лишнего.';
               showMsgIn(msgEl, r2, {
-                story: true, dur: 3400,
+                story: true, dur: 3800,
                 onDismiss: () => {
                   if (state.activeScreen !== 'main') return;
                   showChoiceIn(msgEl,
-                    'Где живёт покой?',
+                    'Голос монаха тише ветра в ветвях.\n— Последний вопрос. Где покой перестаёт прятаться от тебя?',
                     [{ text: 'Внутри' }, { text: 'Не там' }, { text: 'Везде' }],
                     val3 => {
                       const r3 = MONK_Q3_RESP[val3] ?? 'Там, где ты позволяешь ему быть.';
