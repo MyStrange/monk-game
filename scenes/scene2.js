@@ -10,7 +10,8 @@ import { renderHotbar }  from '../src/hotbar.js';
 import { SaveManager }   from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
 import { trackZoneClick, trackEmptyClick, trackSpotClick } from '../src/achievements.js';
-import { BARE_ROCK_MSGS, ACTIVATED_ROCK_MSGS, JAR_ON_ROCK_MSGS } from '../src/dialogue.js';
+import { BARE_ROCK_MSGS, ACTIVATED_ROCK_MSGS, JAR_ON_ROCK_MSGS,
+         ROCK1_REFLECT, ROCK2_REFLECT } from '../src/dialogue.js';
 import { waitImg, coverRect, hitZone as _hitZone } from '../src/scene-base.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
@@ -147,10 +148,40 @@ function _spawnActivationParticles() {
   }
   return arr;
 }
+// Сколько камней активировано — нужно для reflection после 1-го и 2-го.
+function _activatedCount() {
+  return Object.values(S.rockStates).filter(Boolean).length;
+}
+
+// Показать массив story-сообщений подряд через cascade onDismiss.
+// Каждое само закрывается по dur, и следующая строка появляется после.
+function _showReflectionSequence(msgs, startDelay = 1200) {
+  setTimeout(() => {
+    if (state.activeScreen !== SCREENS.SCENE2) return;
+    let i = 0;
+    const next = () => {
+      if (i >= msgs.length || state.activeScreen !== SCREENS.SCENE2) return;
+      const txt = msgs[i++];
+      showMsgIn(msgEl, txt, {
+        story: true,
+        dur:   4200,
+        onDismiss: next,
+      });
+    };
+    next();
+  }, startDelay);
+}
+
 function _activateRock(zone, msg) {
   if (S.rockStates[zone]) return;
   S.rockStates[zone] = true;
   _saveS();
+
+  // После активации считаем общее количество. На 1-м и 2-м — показываем
+  // reflection-последовательность в дополнение к обычному сообщению.
+  // На 3-м ничего не добавляем — там уже дальше по сюжету (выход из сцены).
+  const n = _activatedCount();
+
   const entry = {
     t0:        performance.now(),
     particles: _spawnActivationParticles(),
@@ -160,7 +191,12 @@ function _activateRock(zone, msg) {
   entry.timer = setTimeout(() => {
     entry.timer = null;
     delete _activating[zone];
-    if (state.activeScreen === SCREENS.SCENE2) showMsg(msg);
+    if (state.activeScreen !== SCREENS.SCENE2) return;
+    showMsg(msg);
+    // Reflection идёт ПОСЛЕ обычного сообщения, с задержкой чтобы не
+    // наложиться. dur у обычного msg дефолтный (3200мс), поэтому +1400.
+    if      (n === 1) _showReflectionSequence(ROCK1_REFLECT, 3600);
+    else if (n === 2) _showReflectionSequence(ROCK2_REFLECT, 3600);
   }, ACTIVATION_DUR);
   _activating[zone] = entry;
 }

@@ -15,6 +15,7 @@ import {
   catMsgs, monkMsgs, MEDITATE_MSGS,
   catBuryMsg1, catBuryMsg2, catBuryDoneMsg,
   MONK_Q1_RESP, MONK_Q2_RESP, MONK_Q3_RESP, MONK_FINAL_MSG, FLOWER_GIVEN_MSG,
+  MONK_NEED_ROCKS_MSG,
 } from '../src/dialogue.js';
 
 // ── DOM ────────────────────────────────────────────────────────────────────
@@ -83,6 +84,7 @@ S.inscriptionReady  = S.inscriptionReady  ?? false;
 S.monkDialogDone    = S.monkDialogDone    ?? false;
 S.wantMoreSounds    = S.wantMoreSounds    ?? false;
 S.statueSymDrops    = S.statueSymDrops    ?? 0;       // счётчик дропов на статую ПОСЛЕ активации входа
+S.monkHintShown     = S.monkHintShown     ?? false;   // story-подсказка про «ещё нет запроса» (один раз)
 
 function saveMain() { SaveManager.setScene('main', S); }
 
@@ -281,26 +283,26 @@ function _startMonkDialog() {
   if (isStoryActive(msgEl)) return;
 
   showChoiceIn(msgEl,
-    'Монах открыл глаза. Первый раз за долгое время.\nСмотрит сквозь тебя, как сквозь воду.\n— Чего ты ищешь на самом деле?',
-    [{ text: 'Покоя' }, { text: 'Смысла' }, { text: 'Не знаю' }],
+    'Монах открывает глаза. Медленно — будто продолжая прерванный разговор.\n— Что не отпускает?',
+    [{ text: 'Прошлое' }, { text: 'Страх' }, { text: 'Важное' }],
     val => {
-      const r1 = MONK_Q1_RESP[val] ?? 'Ответ уже есть. Ты просто ещё не видишь.';
+      const r1 = MONK_Q1_RESP[val] ?? 'Ты держишь. Это уже ответ.';
       showMsgIn(msgEl, r1, {
-        story: true, dur: 3800,
+        story: true, dur: 4200,
         onDismiss: () => {
           if (state.activeScreen !== SCREENS.MAIN) return;
           showChoiceIn(msgEl,
-            'Он кивает — медленно, будто слышал это много раз.\n— А что остаётся, когда отпускаешь поиск?',
-            [{ text: 'Страшно' }, { text: 'Тишина' }, { text: 'Ничего' }],
+            'Он кивает, не открывая глаз.\n— А что ты делаешь, когда оно приходит?',
+            [{ text: 'Думаю' }, { text: 'Отгоняю' }, { text: 'Жду' }],
             val2 => {
-              const r2 = MONK_Q2_RESP[val2] ?? 'Именно. Ничего лишнего.';
+              const r2 = MONK_Q2_RESP[val2] ?? 'Что бы ты ни делал — ты делаешь.';
               showMsgIn(msgEl, r2, {
-                story: true, dur: 3800,
+                story: true, dur: 4200,
                 onDismiss: () => {
                   if (state.activeScreen !== SCREENS.MAIN) return;
                   showChoiceIn(msgEl,
-                    'Голос монаха тише ветра в ветвях.\n— Последний вопрос. Где покой перестаёт прятаться от тебя?',
-                    [{ text: 'Внутри' }, { text: 'Не там' }, { text: 'Везде' }],
+                    'Голос монаха становится тише.\n— И последнее. Ты бы отпустил — если бы мог?',
+                    [{ text: 'Да' }, { text: 'Не знаю' }, { text: 'Хочу, но не могу' }],
                     val3 => {
                       const r3 = MONK_Q3_RESP[val3] ?? 'Там, где ты позволяешь ему быть.';
                       showMsgIn(msgEl, r3, {
@@ -342,9 +344,22 @@ function zoneClick(zone) {
 
   if (hero.praying) {
     // Первый разговор с монахом — только пока ещё не было диалога
+    // и только ПОСЛЕ активации ≥2 камней (иначе у героя нет запроса).
     if (zone === 'monk' && !S.monkDialogDone) {
-      _startMonkDialog();
-      return;
+      const rocks = SaveManager.getScene('scene2')?.rockStates ?? {};
+      const activated = Object.values(rocks).filter(Boolean).length;
+      if (activated >= 2) {
+        _startMonkDialog();
+        return;
+      }
+      // <2 камней: разовая story-подсказка, дальше — MEDITATE_MSGS.monk ниже.
+      if (!S.monkHintShown) {
+        S.monkHintShown = true;
+        saveMain();
+        showMsg(MONK_NEED_ROCKS_MSG, { story: true, dur: 4200 });
+        return;
+      }
+      // fallthrough: ниже сработает стандартная MEDITATE_MSGS.monk
     }
 
     const k = `meditate:${zone}`;
