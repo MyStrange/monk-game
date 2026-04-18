@@ -141,19 +141,9 @@ const PURPLE_PALETTE = [
   '#b888ff','#9966ee','#ddaaff','#ffe8ff','#ccbbff','#aa88ee',
 ];
 
-// ── Pixel-art Thai glyph (cached, drawn at 10px → scaled up) ───────────────
-let _thaiGlyphPurple = null;
-let _thaiGlyphGold   = null;
-function _makeThaiGlyph(color) {
-  const c = document.createElement('canvas');
-  c.width = 48; c.height = 14;
-  const tc = c.getContext('2d');
-  tc.fillStyle = color;
-  tc.font = 'bold 10px sans-serif';
-  tc.textAlign = 'center'; tc.textBaseline = 'middle';
-  tc.fillText('ธรรม', 24, 7);
-  return c;
-}
+// (_makeThaiGlyph и кэши _thaiGlyph* удалены — процедурная надпись
+// полностью заменена спрайтом INSCRIPTION_OVERLAY. THAI_CHARS всё ещё
+// используется для спавна летящих символов в медитации.)
 
 // ── Ambient fireflies (240, yellow pixel, varied sizes + glow) ────────────
 const _SIZES = [1,1,2,2,2,2,3,3,3,4,5];
@@ -180,9 +170,12 @@ function bgToCanvas(bgX, bgY) {
 function hitZoneBG(cx, cy) {
   const bx = cx * BG_W / W, by = cy * BG_H / H;
 
+  // Клик по надписи — только в медитации. Используем зону спрайта
+  // (INSCRIPTION_TARGET), а не старую узкую ZONES_BG.inscription,
+  // чтобы попадать именно по видимой полоске рун.
   if (hero.praying || meditationPhase > 0) {
-    const iz = ZONES_BG.inscription;
-    if (bx >= iz.x && bx < iz.x + iz.w && by >= iz.y && by < iz.y + iz.h)
+    const t = INSCRIPTION_TARGET;
+    if (bx >= t.x && bx < t.x + t.w && by >= t.y && by < t.y + t.h)
       return 'inscription';
   }
   for (const [name, z] of Object.entries(ZONES_BG)) {
@@ -884,35 +877,9 @@ function animate() {
     // её роль теперь полностью выполняет спрайт INSCRIPTION_OVERLAY.)
 
     inscriptionGlow = Math.max(inscriptionGlow - 0.02, 0);
-    const iz = bgToCanvas(ZONES_BG.inscription.x, ZONES_BG.inscription.y);
-    const iw = ZONES_BG.inscription.w * sx;
-    const ih = ZONES_BG.inscription.h * sy;
-
-    ctx.save();
-    // Charge dots (без рамки/обводки)
-    for (let i = 0; i < 5; i++) {
-      const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      const r     = 16 * sx;
-      const cx2   = iz.x + iw / 2 + Math.cos(angle) * r;
-      const cy2   = iz.y + ih / 2 + Math.sin(angle) * r;
-      ctx.globalAlpha = 0.6 + inscriptionGlow * 0.3;
-      ctx.fillStyle   = i < S.inscriptionCharge ? '#ffe080' : '#302040';
-      ctx.beginPath();
-      ctx.arc(cx2, cy2, 3 * sx, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Символ — виден всегда: тусклый пока не заряжен, яркий когда готов
-    const _symAlpha = S.inscriptionReady
-      ? 0.85 + inscriptionGlow * 0.15
-      : 0.12 + S.inscriptionCharge * 0.05 + inscriptionGlow * 0.15;
-    ctx.globalAlpha  = _symAlpha;
-    ctx.fillStyle    = S.inscriptionReady ? '#ffe080' : '#9080d0';
-    ctx.font         = `${Math.round(44 * sx)}px serif`;
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('ᩮ', iz.x + iw / 2, iz.y + ih / 2);
-    ctx.textBaseline = 'alphabetic';
-    ctx.restore();
+    // Старый процедурный placeholder (центральный глиф «ᩮ» + 5 точек заряда
+    // вокруг него) удалён. Прогресс доставки теперь полностью виден через
+    // мерцание спрайта bright-over-dim, а после 5 — через постоянный bright.
   }
 
   animId = requestAnimationFrame(animate);
