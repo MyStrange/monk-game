@@ -147,7 +147,22 @@ if (item?.id === 'A' && inZoneB && !_hintShownFlag) {
 - [ ] `closeSceneXXX()` вызывает `cancelAnimationFrame(animId); animId = null`
 - [ ] `window.closeSceneXXX = closeSceneXXX` — в конце файла сцены (не в game.js!)
 - [ ] Сообщения через `const showMsg = (t,d) => showMsgIn(msgEl, t, d)` — не `.textContent`
-- [ ] Добавить `<link rel="preload">` для фона в `index.html` если новый ассет
+- [ ] Добавить `<link rel="preload">` для ВСЕХ ассетов сцены в `index.html` (фон + все спрайт-слои)
+
+### ⚠️ КРИТИЧЕСКОЕ ПРАВИЛО: Preload + await перед показом сцены
+
+**Все спрайты и фоны ДОЛЖНЫ быть загружены ДО того, как игрок видит сцену.**
+Нарушение = pop-in спрайтов на глазах у игрока = спойлер прогресса.
+
+1. **`index.html`**: каждый новый ассет → отдельный `<link rel="preload" as="image">`.
+2. **`openSceneXXX()`**: ждать ВСЕ картинки через `Promise.all([_waitImg(img1), _waitImg(img2), ...])` перед `hideLoading()` и `el.style.display = 'block'`.
+3. **`_waitImg` helper** (копировать в каждую сцену с несколькими картинками):
+```js
+const _waitImg = img => img.complete && img.naturalWidth
+  ? Promise.resolve()
+  : new Promise(r => { img.onload = r; img.onerror = r; });
+```
+4. **Если загрузка провалилась** (`!bgImg.naturalWidth`): `hideLoading()`, восстановить предыдущую сцену (`resumeMain()` или `s4.style.display='block'`), затем `showError(...)`.
 
 **Паттерн сцены с картинкой:**
 ```js
@@ -158,7 +173,15 @@ const canvas = document.createElement('canvas');
 canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
 el.appendChild(bg); el.appendChild(canvas); // bg ПЕРВЫМ
 ```
-Загрузка: `showLoading` → `img.onload` → `hideLoading`.
+Загрузка (async/await, обязательно!):
+```js
+showLoading('название');
+await Promise.all([_waitImg(bgImg), _waitImg(layer2Img), ...]); // ВСЕ слои
+if (!bgImg.naturalWidth) { hideLoading(); resumeMain(); showError('...'); return; }
+hideLoading();
+state.activeScreen = 'sceneName';
+el.style.display = 'block';
+```
 
 **Паттерн пролога (слайды)** — используй `src/sequence.js`:
 ```js

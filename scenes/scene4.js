@@ -317,6 +317,11 @@ function createEl() {
   el.addEventListener('mouseleave', () => setCursor(false));
 }
 
+// ── Image wait helper ─────────────────────────────────────────────────────
+const _waitImg = img => img.complete && img.naturalWidth
+  ? Promise.resolve()
+  : new Promise(r => { img.onload = r; img.onerror = r; });
+
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 export async function openSceneScene4() {
   leaveMain();
@@ -337,24 +342,23 @@ export async function openSceneScene4() {
 
   showLoading('высота');
 
-  const _onReady = () => {
+  // Ждём ВСЕ три картинки: фон + оба слоя-спрайта.
+  // Без этого игрок видел pop-in слоёв поверх уже открытой сцены.
+  await Promise.all([_waitImg(bgEl), _waitImg(layer2El), _waitImg(layer3El)]);
+
+  if (!bgEl.naturalWidth) {
     hideLoading();
-    state.activeScreen = 'scene4';
-    el.style.display   = 'block';
-    setCursor(false);   // сбросить курсор в дефолт при входе в сцену
-    requestAnimationFrame(_layoutLayers);
-    trackZoneClick('scene4');
-  };
-  const _onFail = () => {
-    hideLoading();
+    resumeMain();
     showError('не удалось загрузить сцену');
-  };
-  bgEl.onerror = _onFail;
-  bgEl.onload  = _onReady;
-  if (bgEl.complete) {
-    if (bgEl.naturalWidth) _onReady();
-    else _onFail();
+    return;
   }
+
+  hideLoading();
+  state.activeScreen = 'scene4';
+  el.style.display   = 'block';
+  setCursor(false);
+  requestAnimationFrame(_layoutLayers);
+  trackZoneClick('scene4');
 }
 
 export function closeSceneScene4() {

@@ -216,6 +216,7 @@ function interactItem(itemId, zone) {
 
   // jar_open or jar with hasWater → rock
   if ((itemId === 'jar_open' || (itemId === 'jar' && item.hasWater)) && isRock) {
+    if (S.rockStates[zone]) { showMsg('Этот камень уже принял воду. Другой ждёт.'); return; }
     const slot = state.inventory.findIndex(i => i?.id === itemId && i === item);
     removeItem(slot >= 0 ? slot : getItemSlot(itemId));
     renderHotbar();
@@ -226,6 +227,7 @@ function interactItem(itemId, zone) {
 
   // dirt on rock
   if (itemId === 'dirt' && isRock) {
+    if (S.rockStates[zone]) { showMsg('Камень уже принял что нужно.'); return; }
     removeItem(getItemSlot('dirt'));
     renderHotbar();
     AudioSystem.playRock();
@@ -233,16 +235,11 @@ function interactItem(itemId, zone) {
     return;
   }
 
-  // glowstick on rock
+  // glowstick on rock — инструмент многоразовый, остаётся в инвентаре
   if (itemId === 'glowstick' && isRock) {
     if (S.rockStates[zone]) { showMsg('Этот камень уже впитал свет.'); return; }
-    // Свет уходит в камень — палка становится обычной
-    const gsSlot = state.inventory.findIndex(i => i === item);
-    state.inventory[gsSlot >= 0 ? gsSlot : getItemSlot('glowstick')] = makeItem('stick');
-    state.selectedSlot = -1;
-    renderHotbar();
     AudioSystem.playRock();
-    _activateRock(zone, 'Свет из палки переходит в камень. Камень начинает тихо светиться.');
+    _activateRock(zone, 'Свет из палки касается камня. Что-то начинает тихо светиться.');
     return;
   }
 

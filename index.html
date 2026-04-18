@@ -20,13 +20,25 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=5">
-<!-- Preload only main scene assets — остальные сцены грузятся при открытии -->
+<!-- Preload ALL scene assets — каждая сцена должна загружаться без pop-in -->
 <link rel="preload" as="image" href="assets/bg/main.png">
 <link rel="preload" as="image" href="assets/sprites/hero_right.png">
 <link rel="preload" as="image" href="assets/sprites/hero_left.png">
 <link rel="preload" as="image" href="assets/sprites/hero_sit.png">
 <link rel="preload" as="image" href="assets/sprites/cat.png">
 <link rel="preload" as="image" href="assets/sprites/monk_red.png">
+<link rel="preload" as="image" href="assets/bg/tree.png">
+<link rel="preload" as="image" href="assets/items/bottle.png">
+<link rel="preload" as="image" href="assets/items/rock1.png">
+<link rel="preload" as="image" href="assets/items/rock2.png">
+<link rel="preload" as="image" href="assets/items/rock3.png">
+<link rel="preload" as="image" href="assets/bg/buddha.jpeg">
+<link rel="preload" as="image" href="assets/bg/flyroom.jpeg">
+<link rel="preload" as="image" href="assets/bg/above_main.jpeg">
+<link rel="preload" as="image" href="assets/bg/above2.png">
+<link rel="preload" as="image" href="assets/bg/above3.png">
+<link rel="preload" as="image" href="assets/bg/inside.png">
+<link rel="preload" as="image" href="assets/bg/inside_heart.png">
 </head>
 <body>
 
@@ -148,6 +160,6 @@
 
 <!-- Сцены создаются динамически из своих JS-модулей -->
 
-<script type="module" src="game.js?v=40" defer></script>
+<script type="module" src="game.js?v=41" defer></script>
 </body>
 </html>

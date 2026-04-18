@@ -177,7 +177,7 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   border:1px solid rgba(240,192,64,0.5);
   color:var(--c-gold);
   padding:9px 20px;
-  font-family:var(--font);font-size:var(--sz-sm);
+  font-family:var(--font);font-size:var(--sz-base);
   letter-spacing:0.04em;cursor:pointer;
   border-radius:var(--r);
   transition:border-color .15s,background .15s;
@@ -192,6 +192,7 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   .scene-msg-item{font-size:var(--sz-sm);padding:8px 14px;max-width:68vw;}
   .scene-choice{max-width:76vw;min-width:220px;}
   .scene-choice-prompt{font-size:var(--sz-sm);}
+  .scene-choice-btn{font-size:var(--sz-sm);}
 }
 
 /* ── Scene4 portrait overlay layers (above2, above3) ── */

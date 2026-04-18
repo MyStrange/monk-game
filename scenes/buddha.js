@@ -400,11 +400,11 @@ function startFireflyDialog() {
 
 // ── interactItem ───────────────────────────────────────────────────────────
 function interactItem(itemId, zone) {
-  // Glowstick on ear
+  // Glowstick on ear — инструмент многоразовый, остаётся в инвентаре
   if (itemId === 'glowstick' && zone === 'ear' && !S.earUsed) {
     S.earUsed = true;
     SaveManager.setScene('buddha', S);   // флаг сразу — не теряется при F5 за 2.8с
-    removeItem(getItemSlot('glowstick'));  // removeItem sets selectedSlot=-1
+    state.selectedSlot = -1;             // снять с руки, но не удалять
     renderHotbar();
     AudioSystem.playBell();
     showMsg(earMsg, 3500);

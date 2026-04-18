@@ -304,7 +304,14 @@ export async function openSceneInside() {
     }, 500);
   };
 
-  const _onFail = () => { hideLoading(); showError('не удалось загрузить сцену'); };
+  const _onFail = () => {
+    hideLoading();
+    // Восстановить scene4 — она была скрыта в начале openSceneInside.
+    // Без этого игрок застревал на пустом экране после ошибки загрузки.
+    const s4 = document.getElementById('scene4');
+    if (s4) s4.style.display = 'block';
+    showError('Сохрани inside.png в assets/bg/ для этой сцены');
+  };
   bgImg.onerror = _onFail;
   bgImg.onload  = _onReady;
   if (bgImg.complete) {

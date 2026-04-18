@@ -13,7 +13,7 @@ import { SaveManager }     from '../src/save.js';
 import {
   catMsgs, monkMsgs, MEDITATE_MSGS,
   catBuryMsg1, catBuryMsg2, catBuryDoneMsg,
-  MONK_Q1_RESP, MONK_Q2_RESP, MONK_FINAL_MSG, FLOWER_GIVEN_MSG,
+  MONK_Q1_RESP, MONK_Q2_RESP, MONK_Q3_RESP, MONK_FINAL_MSG, FLOWER_GIVEN_MSG,
 } from '../src/dialogue.js';
 
 // ── DOM ────────────────────────────────────────────────────────────────────
@@ -280,21 +280,34 @@ function _startMonkDialog() {
                 story: true, dur: 3400,
                 onDismiss: () => {
                   if (state.activeScreen !== 'main') return;
-                  showMsgIn(msgEl, MONK_FINAL_MSG, {
-                    story: true, dur: 6000,
-                    onDismiss: () => {
-                      if (state.activeScreen !== 'main') return;
-                      S.monkDialogDone = true;
-                      saveMain();
-                      if (!addItem(makeItem('flower'))) {
-                        showMsg('Инвентарь полон. Освободи место — лотос ждёт.');
-                        return;
-                      }
-                      renderHotbar();
-                      AudioSystem.playBell?.();
-                      showMsg(FLOWER_GIVEN_MSG);
-                    },
-                  });
+                  showChoiceIn(msgEl,
+                    'Где живёт покой?',
+                    [{ text: 'Внутри' }, { text: 'Не там' }, { text: 'Везде' }],
+                    val3 => {
+                      const r3 = MONK_Q3_RESP[val3] ?? 'Там, где ты позволяешь ему быть.';
+                      showMsgIn(msgEl, r3, {
+                        story: true, dur: 3400,
+                        onDismiss: () => {
+                          if (state.activeScreen !== 'main') return;
+                          showMsgIn(msgEl, MONK_FINAL_MSG, {
+                            story: true, dur: 6000,
+                            onDismiss: () => {
+                              if (state.activeScreen !== 'main') return;
+                              S.monkDialogDone = true;
+                              saveMain();
+                              if (!addItem(makeItem('flower'))) {
+                                showMsg('Инвентарь полон. Освободи место — лотос ждёт.');
+                                return;
+                              }
+                              renderHotbar();
+                              AudioSystem.playBell?.();
+                              showMsg(FLOWER_GIVEN_MSG);
+                            },
+                          });
+                        },
+                      });
+                    }
+                  );
                 },
               });
             }

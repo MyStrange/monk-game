@@ -298,7 +298,7 @@ export function renderFireflowerIcon() {
   </svg>`;
 }
 
-// ── Lotus flower ──────────────────────────────────────────────────────────
+// ── Lotus flower (red — matching inside_heart.png rose) ───────────────────
 export function renderFlowerIcon() {
   return `<svg width="48" height="48" viewBox="0 0 48 48"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
@@ -311,22 +311,26 @@ export function renderFlowerIcon() {
     <rect x="10" y="40" width="10" height="2"  fill="#38741e"/>
     <rect x="28" y="42" width="10" height="2"  fill="#38741e"/>
     <!-- shadow base -->
-    <rect x="14" y="18" width="20" height="18" fill="#c05888"/>
+    <rect x="14" y="18" width="20" height="18" fill="#7a0e18"/>
     <!-- outer petals — bottom pair -->
-    <rect x="10" y="28" width="12" height="10" fill="#e07aaa"/>
-    <rect x="26" y="28" width="12" height="10" fill="#e07aaa"/>
+    <rect x="10" y="28" width="12" height="10" fill="#b01828"/>
+    <rect x="26" y="28" width="12" height="10" fill="#b01828"/>
     <!-- outer petals — sides -->
-    <rect x="6"  y="20" width="14" height="8"  fill="#f090b8"/>
-    <rect x="4"  y="22" width="4"  height="4"  fill="#ffc0d8"/>
-    <rect x="28" y="20" width="14" height="8"  fill="#f090b8"/>
-    <rect x="44" y="22" width="2"  height="4"  fill="#ffc0d8"/>
+    <rect x="6"  y="20" width="14" height="8"  fill="#c82030"/>
+    <rect x="4"  y="22" width="4"  height="4"  fill="#e04050"/>
+    <rect x="28" y="20" width="14" height="8"  fill="#c82030"/>
+    <rect x="44" y="22" width="2"  height="4"  fill="#e04050"/>
     <!-- outer petal — top -->
-    <rect x="20" y="8"  width="8"  height="14" fill="#f090b8"/>
-    <rect x="22" y="6"  width="4"  height="4"  fill="#ffc8e0"/>
+    <rect x="20" y="8"  width="8"  height="14" fill="#c82030"/>
+    <rect x="22" y="6"  width="4"  height="4"  fill="#e04050"/>
     <!-- inner petals -->
-    <rect x="16" y="16" width="16" height="16" fill="#ffb4d4"/>
-    <rect x="18" y="12" width="12" height="6"  fill="#ffcce0"/>
-    <rect x="20" y="10" width="8"  height="4"  fill="#ffe0ee"/>
+    <rect x="16" y="16" width="16" height="16" fill="#d83040"/>
+    <rect x="18" y="12" width="12" height="6"  fill="#e04858"/>
+    <rect x="20" y="10" width="8"  height="4"  fill="#f06070"/>
+    <!-- petal tips highlight -->
+    <rect x="22" y="8"  width="4"  height="2"  fill="#ff9090"/>
+    <rect x="8"  y="22" width="2"  height="2"  fill="#ff8080"/>
+    <rect x="38" y="22" width="2"  height="2"  fill="#ff8080"/>
     <!-- center -->
     <rect x="18" y="18" width="12" height="12" fill="#f0c040"/>
     <rect x="20" y="20" width="8"  height="8"  fill="#ffe860"/>
