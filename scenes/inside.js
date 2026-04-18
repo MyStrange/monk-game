@@ -12,7 +12,7 @@
 import { state }          from '../src/state.js';
 import { SCREENS }        from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showError, setCursor } from '../src/utils.js';
-import { resumeMain }     from './main.js';
+import { resumeMain, setMeditating } from './main.js';
 import { SaveManager }    from '../src/save.js';
 import { AudioSystem }    from '../src/audio.js';
 import { trackZoneClick } from '../src/achievements.js';
@@ -60,10 +60,12 @@ const STAIRS_MSGS = [
   'Дерево помнит каждого, кто поднимался. Теперь — и тебя.',
   'Ты можешь идти вверх. Ты можешь стоять. Дерево подождёт.',
 ];
+// Клик по отверстию = выход вверх к сцене парения. Сообщения короткие,
+// потому что сразу после них запускается переход (1.4с).
 const OPENING_MSGS = [
-  'Там, откуда ты пришёл. Теперь ты знаешь путь.',
-  'Снаружи — лес. Внутри — тоже. Разница только в том, кто смотрит.',
-  'Свет приходит сверху. Но источник — здесь.',
+  'Ты поднимаешься. Свет сверху зовёт обратно.',
+  'Отверстие шире, чем казалось. Ты выходишь.',
+  'Вверх. Туда, откуда пришёл.',
 ];
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
@@ -246,8 +248,17 @@ function onTap(cx, cy) {
     showMsg(STAIRS_MSGS[S.stairsIdx % STAIRS_MSGS.length]);
     S.stairsIdx++;
   } else {
-    showMsg(OPENING_MSGS[S.openingIdx % OPENING_MSGS.length]);
+    // Клик по отверстию наверху дупла — выход обратно в сцену парения.
+    // Короткая story-подсказка и через неё переход (чтобы не было резкого
+    // прыжка без контекста).
+    showMsg(OPENING_MSGS[S.openingIdx % OPENING_MSGS.length], { story: true, dur: 1400 });
     S.openingIdx++;
+    SaveManager.setScene('inside', S);
+    setTimeout(() => {
+      if (state.activeScreen !== SCREENS.INSIDE) return;  // guard на случай back-btn
+      _exitToScene4();
+    }, 1400);
+    return;
   }
   SaveManager.setScene('inside', S);
 }
@@ -375,14 +386,35 @@ export async function openSceneInside() {
   }
 }
 
-export function closeSceneInside() {
-  state.activeScreen = SCREENS.MAIN;
+// Общая чистка inside. Используется и back-кнопкой, и выходом через отверстие.
+function _tearDownInside() {
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   window.removeEventListener('resize', _iCacheRect);
   window.removeEventListener('scroll', _iCacheRect);
   setCursor(false);
   SaveManager.setScene('inside', S);
+}
+
+export function closeSceneInside() {
+  // Back-кнопка: возвращаемся в main, но по сюжету герой остаётся в медитации
+  // (он только что общался с сердцем — из этого состояния не выходят одним щелчком).
+  state.activeScreen = SCREENS.MAIN;
+  _tearDownInside();
+  setMeditating(true);   // ключевой момент — герой остаётся сидеть
   resumeMain();
+}
+
+// Выход через отверстие в потолке дупла — возвращаемся в сцену парения (scene4).
+// Scene4 статична (canvas не анимируется) и её DOM ещё жив под нами,
+// просто скрыт — достаточно снова показать и переключить activeScreen.
+function _exitToScene4() {
+  state.activeScreen = SCREENS.SCENE4;
+  _tearDownInside();
+  const s4 = document.getElementById('scene4');
+  if (s4) s4.style.display = 'block';
+  // F5 в scene4 должен возвращать в scene4, а не в inside
+  SaveManager.global.lastScene = 'scene4';
+  SaveManager.save();
 }
 window.closeSceneInside = closeSceneInside;

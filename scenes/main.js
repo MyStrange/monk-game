@@ -215,6 +215,20 @@ function sitDown() {
   AudioSystem.setMode('sitting');
 }
 
+// Принудительно включить/выключить медитацию извне (вызывается из inside.js,
+// когда игрок возвращается из дупла — по сюжету он остаётся в медитативном
+// состоянии, так как только что общался с сердцем-огнём).
+// НЕ toggle — sitDown переключает, а эта гарантирует нужное состояние.
+export function setMeditating(on = true) {
+  if (on && !hero.praying) {
+    hero.praying = true;
+    AudioSystem.playPrayerSound?.();
+    AudioSystem.setMode?.('sitting');
+  } else if (!on && hero.praying) {
+    standUp();
+  }
+}
+
 function _spawnSym() {
   if (!hero.praying) return;
   const ch   = THAI_CHARS[Math.floor(Math.random() * THAI_CHARS.length)];
