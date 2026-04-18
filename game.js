@@ -9,6 +9,7 @@ import { renderHotbar }                     from './src/hotbar.js';
 import { toggleFullscreen, initHoverAnim, initRotateOverlay } from './src/utils.js';
 import { openAchievements, closeAchievements, loadAchievements } from './src/achievements.js';
 import { initMain, leaveMain }              from './scenes/main.js';
+import { openScene }                        from './src/nav.js';
 
 // ── window.* для HTML onclick= ─────────────────────────────────────────────
 // closeSceneXXX экспортируется и присваивается window.* в каждом файле сцены.
@@ -27,10 +28,19 @@ SaveManager.load();
 const _savedInv = SaveManager.global.inventory;
 if (_savedInv) for (let i = 0; i < 5; i++) state.inventory[i] = _savedInv[i] ?? null;
 
+// Восстановить мут ДО инициализации аудио — toggle() учтёт его при первом запуске
+AudioSystem.muted = SaveManager.global.muted ?? false;
+
 loadAchievements();
 AudioSystem.init();
 renderHotbar();
-initMain();
+await initMain();
+
+// Восстановить последнюю открытую сцену (F5 / перезагрузка вернёт туда же)
+{
+  const _last = SaveManager.global.lastScene;
+  if (_last && _last !== 'main') openScene(_last);
+}
 initHoverAnim();
 initRotateOverlay();
 
@@ -57,7 +67,14 @@ initRotateOverlay();
   });
   backdrop?.addEventListener('click', _closeMenu);
 
-  gmSound?.addEventListener('click', () => { toggleSound(); _closeMenu(); });
+  gmSound?.addEventListener('click', () => {
+    const muted = toggleSound();
+    // Сохраняем состояние звука — восстановится после перезагрузки
+    SaveManager.global.muted = muted;
+    SaveManager.save();
+    if (gmSound) gmSound.textContent = muted ? '♪ Звук выкл' : '♪ Звук вкл';
+    _closeMenu();
+  });
   gmAch?.addEventListener('click',   () => { openAchievements(); _closeMenu(); });
   gmFs?.addEventListener('click',    () => { toggleFullscreen(); _closeMenu(); });
   gmReset?.addEventListener('click', () => {

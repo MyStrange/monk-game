@@ -9,7 +9,7 @@ import { renderHotbar }  from '../src/hotbar.js';
 import { SaveManager }   from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
 import { trackZoneClick, trackEmptyClick, trackSpotClick } from '../src/achievements.js';
-import { BARE_ROCK_MSGS, JAR_ON_ROCK_MSGS } from '../src/dialogue.js';
+import { BARE_ROCK_MSGS, ACTIVATED_ROCK_MSGS, JAR_ON_ROCK_MSGS } from '../src/dialogue.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('scene2');
@@ -248,7 +248,8 @@ function zoneClick(zone) {
 
   if (zone === 'rock1' || zone === 'rock2' || zone === 'rock3') {
     rockClicks[zone] = (rockClicks[zone] ?? 0) + 1;
-    showMsg(BARE_ROCK_MSGS[rockClicks[zone] % BARE_ROCK_MSGS.length]);
+    const msgs = S.rockStates[zone] ? ACTIVATED_ROCK_MSGS : BARE_ROCK_MSGS;
+    showMsg(msgs[rockClicks[zone] % msgs.length]);
     return;
   }
 }

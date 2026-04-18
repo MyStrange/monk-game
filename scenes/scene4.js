@@ -29,7 +29,9 @@ import { leaveMain, resumeMain }         from './main.js';
 import { SaveManager }                   from '../src/save.js';
 import { trackZoneClick }                from '../src/achievements.js';
 import { S4_CAT_MSGS, S4_MONK_MSGS,
+         S4_DURIAN_CAT_MSGS, S4_DURIAN_MONK_MSGS,
          SCENE4_OPEN_MSG1, SCENE4_OPEN_MSG2, SCENE4_OPEN_MSG3 } from '../src/dialogue.js';
+import { getSelectedItem } from '../src/inventory.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('scene4');
@@ -38,6 +40,8 @@ S.layer2Removed  = S.layer2Removed  ?? false;   // above2 снят
 S.layer3Removed  = S.layer3Removed  ?? false;   // above3 (лианы) снят
 S.catMsgIdx      = S.catMsgIdx      ?? 0;
 S.monkMsgIdx     = S.monkMsgIdx     ?? 0;
+S.durCatIdx      = S.durCatIdx      ?? 0;
+S.durMonkIdx     = S.durMonkIdx     ?? 0;
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, bgEl, layer2El, layer3El, msgEl;
@@ -162,8 +166,15 @@ function _onElCapture(e) {
   if (_inZone(cx, cy, CAT_ZONE)) {
     e.stopPropagation();
     e.preventDefault?.();
-    const msg = S4_CAT_MSGS[S.catMsgIdx % S4_CAT_MSGS.length];
-    S.catMsgIdx++;
+    const sel = getSelectedItem();
+    let msg;
+    if (sel?.id === 'durian') {
+      msg = S4_DURIAN_CAT_MSGS[S.durCatIdx % S4_DURIAN_CAT_MSGS.length];
+      S.durCatIdx++;
+    } else {
+      msg = S4_CAT_MSGS[S.catMsgIdx % S4_CAT_MSGS.length];
+      S.catMsgIdx++;
+    }
     SaveManager.setScene('scene4', S);
     showMsgIn(msgEl, msg);
     trackZoneClick('scene4_cat');
@@ -172,8 +183,15 @@ function _onElCapture(e) {
   if (_inZone(cx, cy, MONK_ZONE)) {
     e.stopPropagation();
     e.preventDefault?.();
-    const msg = S4_MONK_MSGS[S.monkMsgIdx % S4_MONK_MSGS.length];
-    S.monkMsgIdx++;
+    const sel = getSelectedItem();
+    let msg;
+    if (sel?.id === 'durian') {
+      msg = S4_DURIAN_MONK_MSGS[S.durMonkIdx % S4_DURIAN_MONK_MSGS.length];
+      S.durMonkIdx++;
+    } else {
+      msg = S4_MONK_MSGS[S.monkMsgIdx % S4_MONK_MSGS.length];
+      S.monkMsgIdx++;
+    }
     SaveManager.setScene('scene4', S);
     showMsgIn(msgEl, msg);
     trackZoneClick('scene4_monk');

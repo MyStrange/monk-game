@@ -9,6 +9,8 @@ const DEFAULT = {
     inventory:     Array(5).fill(null),
     achievements:  [],
     visitedScenes: [],
+    lastScene:     'main',   // id сцены при последнем сохранении (для восстановления после F5)
+    muted:         false,    // состояние звука — сохраняется при переключении
   },
   scenes: {},  // { scene_id: { ...флаги сцены } }
 };

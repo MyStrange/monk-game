@@ -666,6 +666,9 @@ function _onKey(e) {
 
 // ── resumeMain — вызывается из closeScene* чтобы перезапустить loop ───────
 export function resumeMain() {
+  // Фиксируем возврат на main: F5 теперь не будет бросать назад в закрытую сцену.
+  SaveManager.global.lastScene = 'main';
+  SaveManager.save();
   if (state.activeScreen === 'main' && !animId) animate();
 }
 
