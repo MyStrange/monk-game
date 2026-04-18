@@ -650,9 +650,9 @@ function _onSymDropStatue() {
   S.statueSymDrops = (S.statueSymDrops ?? 0) + 1;
   saveMain();
 
-  // Подсказка требует двух условий: ≥5 дропов И активированного входа.
-  if (S.statueSymDrops < 5) return;
-  if (!S.inscriptionReady)  return;
+  // Подсказка срабатывает на ПЕРВОМ дропе после активации входа.
+  // До активации — просто увеличиваем счётчик, звук и всё.
+  if (!S.inscriptionReady) return;
 
   _symDropStatueShown = true;
   S.wantMoreSounds = true;

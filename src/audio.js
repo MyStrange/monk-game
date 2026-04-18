@@ -646,22 +646,124 @@ export const AudioSystem = {
     osc.start(now); osc.stop(now + 0.36);
   },
 
-  // 10 кристальных тонов для символов медитации — по одному на цвет
+  // 10 разных «инструментов» для символов медитации — по одному на цвет.
+  // Все ноты — в D-minor-пентатонике (D F G A C), в разных октавах,
+  // поэтому любая последовательность звучит консонантно.
+  // Каждый индекс имеет уникальный тембр: колокол/дерево/щипок/
+  // стекло/маримба/куранты/гонг. Сочетаются как в одном ансамбле.
   playSymbolTone(colorIdx = 0) {
     if (!this.ctx) return;
-    const ac  = this.ctx;
-    const now = ac.currentTime;
-    const CRYSTAL_NOTES = [587, 622, 659, 698, 740, 784, 831, 880, 932, 988];
-    const freq = CRYSTAL_NOTES[Math.min(Math.max(colorIdx, 0), CRYSTAL_NOTES.length - 1)];
-    [[freq, 0.13, 2.2], [freq * 2.01, 0.04, 1.4], [freq * 0.501, 0.025, 1.6]].forEach(([f, amp, dec]) => {
+    const ac    = this.ctx;
+    const out   = this.sfxGain;
+    const now   = ac.currentTime;
+    const VOICES = [
+      { f: 440.00, kind: 'bell'    },   // 0 — A4   колокол
+      { f: 523.25, kind: 'wood'    },   // 1 — C5   деревянный блок
+      { f: 587.33, kind: 'pluck'   },   // 2 — D5   щипок (кото)
+      { f: 698.46, kind: 'glass'   },   // 3 — F5   стекло
+      { f: 783.99, kind: 'marimba' },   // 4 — G5   маримба
+      { f: 880.00, kind: 'chime'   },   // 5 — A5   FM-колокольчик
+      { f: 1046.50,kind: 'bell'    },   // 6 — C6   высокий колокол
+      { f: 349.23, kind: 'pluck'   },   // 7 — F4   низкий щипок
+      { f: 392.00, kind: 'marimba' },   // 8 — G4   низкая маримба
+      { f: 293.66, kind: 'gong'    },   // 9 — D4   гонг
+    ];
+    const v = VOICES[Math.min(Math.max(colorIdx, 0), VOICES.length - 1)];
+    const f = v.f;
+    // Каждый kind — отдельная мини-функция синтеза
+    const mkOsc = (type, hz, amp, attack, decay, t0 = now) => {
       const osc = ac.createOscillator();
       const g   = ac.createGain();
-      osc.type = 'sine'; osc.frequency.value = f;
-      g.gain.setValueAtTime(amp, now);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + dec);
-      osc.connect(g); g.connect(this.sfxGain);
-      osc.start(now); osc.stop(now + dec);
-    });
+      osc.type = type;
+      osc.frequency.value = hz;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(amp, t0 + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + attack + decay);
+      osc.connect(g); g.connect(out);
+      osc.start(t0); osc.stop(t0 + attack + decay + 0.05);
+    };
+    switch (v.kind) {
+      case 'bell': {
+        // Sine fundamental + обертоны × 2.01, × 3.01 (слегка расстроенные)
+        mkOsc('sine', f,         0.13, 0.001, 2.2);
+        mkOsc('sine', f * 2.01,  0.045,0.001, 1.4);
+        mkOsc('sine', f * 3.01,  0.02, 0.001, 0.9);
+        break;
+      }
+      case 'wood': {
+        // Triangle короткий + тихий click noise в атаке
+        mkOsc('triangle', f,       0.14, 0.001, 0.35);
+        mkOsc('triangle', f * 2.0, 0.05, 0.001, 0.20);
+        // Noise click transient
+        const cLen = Math.floor(ac.sampleRate * 0.025);
+        const cBuf = ac.createBuffer(1, cLen, ac.sampleRate);
+        const cd   = cBuf.getChannelData(0);
+        for (let i = 0; i < cLen; i++) cd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / cLen, 2);
+        const cs = ac.createBufferSource(); cs.buffer = cBuf;
+        const cg = ac.createGain(); cg.gain.value = 0.08;
+        cs.connect(cg); cg.connect(out);
+        cs.start(now);
+        break;
+      }
+      case 'pluck': {
+        // Sine + AM-tremolo (эффект щипка)
+        const osc = ac.createOscillator();
+        const g   = ac.createGain();
+        const lfo = ac.createOscillator();
+        const lg  = ac.createGain();
+        osc.type = 'sine'; osc.frequency.value = f;
+        lfo.type = 'sine'; lfo.frequency.value = 7;
+        lg.gain.value = 0.06;
+        lfo.connect(lg); lg.connect(g.gain);
+        g.gain.setValueAtTime(0.16, now);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+        osc.connect(g); g.connect(out);
+        osc.start(now); osc.stop(now + 1.2);
+        lfo.start(now); lfo.stop(now + 1.2);
+        // Верхняя гармоника добавляет «щипковый» характер
+        mkOsc('sine', f * 2.0, 0.04, 0.001, 0.6);
+        break;
+      }
+      case 'glass': {
+        // Sine + высокие гармоники × 4 × 8 — кристальный звон
+        mkOsc('sine', f,        0.11, 0.001, 2.0);
+        mkOsc('sine', f * 4.0,  0.025, 0.001, 1.2);
+        mkOsc('sine', f * 8.0,  0.012, 0.001, 0.8);
+        break;
+      }
+      case 'marimba': {
+        // Sine с быстрым decay + суб-октава — тёплое деревянное
+        mkOsc('sine', f,       0.15, 0.001, 0.45);
+        mkOsc('sine', f * 0.5, 0.08, 0.001, 0.55);
+        mkOsc('sine', f * 2.0, 0.04, 0.001, 0.20);
+        break;
+      }
+      case 'chime': {
+        // FM-колокольчик: carrier + modulator
+        const c  = ac.createOscillator();
+        const cg = ac.createGain();
+        const m  = ac.createOscillator();
+        const mg = ac.createGain();
+        c.type = 'sine'; c.frequency.value = f;
+        m.type = 'sine'; m.frequency.value = f * 1.4;
+        mg.gain.value = f * 0.6;
+        m.connect(mg); mg.connect(c.frequency);
+        cg.gain.setValueAtTime(0.12, now);
+        cg.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
+        c.connect(cg); cg.connect(out);
+        c.start(now); c.stop(now + 1.9);
+        m.start(now); m.stop(now + 1.9);
+        mkOsc('sine', f * 2.0, 0.03, 0.001, 1.0);
+        break;
+      }
+      case 'gong': {
+        // Низкий triangle + медленный shimmer × 3, × 5 — гонг
+        mkOsc('triangle', f,       0.14, 0.005, 2.8);
+        mkOsc('sine',     f * 3.0, 0.035, 0.005, 2.0);
+        mkOsc('sine',     f * 5.0, 0.018, 0.005, 1.4);
+        break;
+      }
+    }
   },
 
   playTypewriterChirp() {
