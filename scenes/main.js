@@ -39,6 +39,13 @@ inscriptionBrightImg.src   = 'assets/bg/inscription_bright.png';
 // + его отражение в воде — именно там меняется картинка между state'ами.
 const INSCRIPTION_OVERLAY = { x: 537, y: 494, w: 479, h: 620 };
 
+// Узкая зона-«полоска рун» внутри спрайта — это и есть цель доставки.
+// Раньше доставка работала по радиусу (hypot < 80px от центра zone).
+// Теперь игрок должен попасть на сам кусочек надписи.
+// Вычислено через нормализованные координаты рун внутри 330×427 спрайта:
+// x 0.06..0.94, y 0.16..0.40 → в BG-координатах (537,494 + …):
+const INSCRIPTION_TARGET  = { x: 566, y: 593, w: 421, h: 149 };
+
 // ── Sprites ────────────────────────────────────────────────────────────────
 // hero_left/right.png: 1376×348, 5 frames (275×348 each)
 // hero_sit.png:        1376×204, 5 frames (275×204 each)
@@ -460,11 +467,11 @@ function onTap(cx, cy) {
   trackSpotClick(cx, cy, 'main');
 
   if (draggedSym) {
-    // Доставка только при реальном перетаскивании на надпись.
-    const iz = ZONES_BG.inscription;
-    const ip = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
-    const dist = Math.hypot(cx - ip.x, cy - ip.y);
-    if (_dragMoved && dist < 60 && (hero.praying || meditationPhase > 0)) _deliverSym();
+    // Доставка только при реальном перетаскивании на полоску рун в спрайте.
+    if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
+      if (S.inscriptionReady) _onSymDropStatue();
+      else                    _deliverSym();
+    }
     if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
     _dragMoved = false;
     return;
@@ -528,6 +535,18 @@ function _pointInInscription(cx, cy) {
   return cx >= ox && cx < ox + ow && cy >= oy && cy < oy + oh * 0.6;
 }
 
+// Зона доставки символа — узкая полоска рун внутри спрайта.
+// Заменяет старую радиальную проверку (INSCRIPTION_HIT_R).
+function _pointInInscriptionTarget(cx, cy) {
+  if (meditationPhase <= 0) return false;
+  const sx = W / BG_W, sy = H / BG_H;
+  const tx = INSCRIPTION_TARGET.x * sx;
+  const ty = INSCRIPTION_TARGET.y * sy;
+  const tw = INSCRIPTION_TARGET.w * sx;
+  const th = INSCRIPTION_TARGET.h * sy;
+  return cx >= tx && cx < tx + tw && cy >= ty && cy < ty + th;
+}
+
 // Проверить, попадает ли точка по живому символу (для курсора)
 function _hitSym(cx, cy) {
   if (!hero.praying && meditationPhase <= 0) return false;
@@ -549,43 +568,62 @@ function onDragMove(cx, cy) {
 
 function _deliverSym() {
   if (!draggedSym) return;
-  pSyms = pSyms.filter(s => s !== draggedSym);
+  // Сохраняем позицию и цвет символа ПЕРЕД тем как его убрать из pSyms.
+  // Нужно для dissolve-анимации — частицы стартуют отсюда.
+  const sym   = draggedSym;
+  const symX  = sym.x, symY = sym.y;
+  const symCol = sym.color ?? '#c8aaff';
+
+  pSyms = pSyms.filter(s => s !== sym);
   draggedSym = null;
   S.inscriptionCharge = Math.min(S.inscriptionCharge + 1, 5);
-  inscriptionGlow     = 1.0;
+  inscriptionGlow     = 1.0;    // вспышка → bright-over-dim мерцание
   AudioSystem.playBell();
 
-  // Burst of sparks at inscription zone
-  const iz  = ZONES_BG.inscription;
-  const ip  = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
+  // Цель — центр полоски рун на спрайте.
+  const tx  = INSCRIPTION_TARGET.x + INSCRIPTION_TARGET.w / 2;
+  const ty  = INSCRIPTION_TARGET.y + INSCRIPTION_TARGET.h / 2;
+  const tp  = bgToCanvas(tx, ty);
   const csx = W / BG_W, csy = H / BG_H;
   const spd = Math.min(csx, csy);
-  for (let i = 0; i < 32; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const v     = (1.8 + Math.random() * 3.8) * spd;
-    const col   = i % 3 === 0 ? '#ffe080' : (i % 3 === 1 ? '#cc88ff' : '#ffffff');
+
+  // Dissolve: 40 частиц стартуют у СИМВОЛА и летят К надписи,
+  // гомингом подтягиваясь к цели. По пути распадаются (life↓).
+  // Цвет — mix из цвета символа + золотого + белого.
+  for (let i = 0; i < 40; i++) {
+    const sxPx = symX + (Math.random() - 0.5) * 26;
+    const syPx = symY + (Math.random() - 0.5) * 26;
+    const dx = tp.x - sxPx;
+    const dy = tp.y - syPx;
+    const flight = 24 + Math.random() * 16;  // кадров
+    const col = i % 3 === 0 ? '#ffe080' : (i % 3 === 1 ? symCol : '#ffffff');
     statueParticles.push({
-      x: ip.x, y: ip.y,
-      vx: Math.cos(angle) * v,
-      vy: Math.sin(angle) * v - 2.2 * spd,
+      x: sxPx, y: syPx,
+      // Начальный вектор в общем направлении цели + лёгкий рандом
+      vx: (dx / flight) * (0.6 + Math.random() * 0.6) + (Math.random() - 0.5) * 1.2,
+      vy: (dy / flight) * (0.6 + Math.random() * 0.6) + (Math.random() - 0.5) * 1.2,
       life: 1.0,
-      lv: 0.020 + Math.random() * 0.018,
+      lv: 1 / flight,
       sz: Math.max(1, Math.round((1 + Math.random() * 2) * spd)),
       color: col,
+      // Homing-поля: render-loop доворачивает частицу к цели, имитируя
+      // впитывание в надпись.
+      tx: tp.x, ty: tp.y,
+      homing: 0.06 + Math.random() * 0.04,
     });
   }
 
   if (S.inscriptionCharge >= 5 && !S.inscriptionReady) {
-    S.inscriptionReady  = true;
-    inscriptionGlow     = 2.0;
-    // Extra large burst for completion
-    for (let i = 0; i < 24; i++) {
+    S.inscriptionReady = true;
+    inscriptionGlow    = 2.0;
+    // Финальный сфокусированный burst — из центра надписи наружу.
+    for (let i = 0; i < 28; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const v     = (3 + Math.random() * 6) * spd;
+      const v     = (2.4 + Math.random() * 5) * spd;
       statueParticles.push({
-        x: ip.x, y: ip.y,
+        x: tp.x, y: tp.y,
         vx: Math.cos(angle) * v,
-        vy: Math.sin(angle) * v - 4 * spd,
+        vy: Math.sin(angle) * v - 3 * spd,
         life: 1.0,
         lv: 0.012 + Math.random() * 0.012,
         sz: Math.max(1, Math.round((2 + Math.random() * 3) * spd)),
@@ -643,18 +681,26 @@ function animate() {
   const sx = W / BG_W, sy = H / BG_H;
 
   // ── Inscription overlay (видна только в медитации) ──────────────────────
-  // Dim (до активации) ↔ Bright (после 5 доставок). Fade по meditationPhase:
-  // когда герой встаёт, надпись тоже плавно уходит вместе с остальной
-  // медитативной визуалкой. Рисуется поверх BG, но под героем/символами.
+  // Dim (до активации) ↔ Bright (после 5 доставок). Fade по meditationPhase.
+  // До активации на каждую доставку накладывается bright поверх dim с
+  // alpha=inscriptionGlow — эффект мерцания («вспыхнула и потухла»).
   if (meditationPhase > 0) {
-    const insImg = S.inscriptionReady ? inscriptionBrightImg : inscriptionDimImg;
-    if (insImg.complete && insImg.naturalWidth) {
+    const base = S.inscriptionReady ? inscriptionBrightImg : inscriptionDimImg;
+    if (base.complete && base.naturalWidth) {
       const ox = INSCRIPTION_OVERLAY.x * sx;
       const oy = INSCRIPTION_OVERLAY.y * sy;
       const ow = INSCRIPTION_OVERLAY.w * sx;
       const oh = INSCRIPTION_OVERLAY.h * sy;
       ctx.globalAlpha = meditationPhase;
-      ctx.drawImage(insImg, ox, oy, ow, oh);
+      ctx.drawImage(base, ox, oy, ow, oh);
+      // Мерцание: bright поверх dim на короткое время после доставки.
+      // После 5 доставок inscriptionReady=true и base уже = bright,
+      // так что эта ветка пропускается.
+      if (!S.inscriptionReady && inscriptionGlow > 0.01 &&
+          inscriptionBrightImg.complete && inscriptionBrightImg.naturalWidth) {
+        ctx.globalAlpha = meditationPhase * inscriptionGlow;
+        ctx.drawImage(inscriptionBrightImg, ox, oy, ow, oh);
+      }
       ctx.globalAlpha = 1;
     }
   }
@@ -805,12 +851,25 @@ function animate() {
     }
     ctx.restore();
 
-    // Sparkle particles (delivery burst) — in-place cleanup, no filter alloc
+    // Sparkle particles — два режима:
+    //  • homing (dissolve при доставке): тянутся к target (p.tx, p.ty)
+    //    с экспоненциальным торможением — имитация впитывания.
+    //  • burst (финальная вспышка при ready): обычная гравитация + drag.
     ctx.save();
     for (let i = statueParticles.length - 1; i >= 0; i--) {
       const p = statueParticles[i];
       p.x += p.vx; p.y += p.vy;
-      p.vy += 0.14; p.vx *= 0.97;
+      if (p.tx !== undefined) {
+        // Homing: каждый кадр доворачиваем скорость в сторону цели
+        const dx = p.tx - p.x, dy = p.ty - p.y;
+        p.vx += dx * p.homing;
+        p.vy += dy * p.homing;
+        p.vx *= 0.86;
+        p.vy *= 0.86;
+      } else {
+        p.vy += 0.14;
+        p.vx *= 0.97;
+      }
       p.life -= p.lv;
       if (p.life <= 0) { statueParticles.splice(i, 1); continue; }
       ctx.globalAlpha = p.life * meditationPhase;
@@ -821,31 +880,8 @@ function animate() {
     }
     ctx.restore();
 
-    // Thai pixel inscription on statue
-    if (!_thaiGlyphPurple) _thaiGlyphPurple = _makeThaiGlyph('#c0a0ff');
-    if (!_thaiGlyphGold)   _thaiGlyphGold   = _makeThaiGlyph('#ffe080');
-    {
-      const tsz  = ZONES_BG.statue;
-      const tPos = bgToCanvas(tsz.x + tsz.w * 0.5, tsz.y + tsz.h * 1.05);
-      const tScale = Math.max(1.2, 1.8 * sx);
-      const gW = 48, gH = 14;
-      const glyph = S.inscriptionReady ? _thaiGlyphGold : _thaiGlyphPurple;
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = Math.min(
-        0.18 + S.inscriptionCharge * 0.10 + inscriptionGlow * 0.38
-        + (S.inscriptionReady ? 0.28 : 0),
-        0.92
-      );
-      ctx.shadowColor = S.inscriptionReady ? '#ffd040' : '#7744bb';
-      ctx.shadowBlur  = (2 + inscriptionGlow * 14) * tScale;
-      ctx.drawImage(glyph,
-        Math.round(tPos.x - gW * tScale / 2),
-        Math.round(tPos.y - gH * tScale / 2),
-        Math.round(gW * tScale),
-        Math.round(gH * tScale));
-      ctx.restore();
-    }
+    // (Процедурная фиолетовая «надпись на шее» статуи удалена —
+    // её роль теперь полностью выполняет спрайт INSCRIPTION_OVERLAY.)
 
     inscriptionGlow = Math.max(inscriptionGlow - 0.02, 0);
     const iz = bgToCanvas(ZONES_BG.inscription.x, ZONES_BG.inscription.y);
@@ -957,12 +993,12 @@ export async function initMain() {
     if (!draggedSym) return;
     const cx  = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
     const sym = draggedSym;
-    const iz  = ZONES_BG.inscription;
-    const ip  = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
-    if (_dragMoved && Math.hypot(cx - ip.x, cy - ip.y) < INPUT.INSCRIPTION_HIT_R && (hero.praying || meditationPhase > 0)) {
+    // Цель доставки — кусочек рун в спрайте (INSCRIPTION_TARGET),
+    // а не старый радиус вокруг ZONES_BG.inscription.
+    if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
       if (S.inscriptionReady) {
-        // Надпись уже активирована — дальнейшие дропы на неё идут
-        // в счётчик «слышать больше», а не в бессмысленные доставки.
+        // Надпись активирована — дальнейшие дропы считаются в
+        // statueSymDrops (ветка «слышишь больше»).
         _onSymDropStatue();
         _justDelivered = true;
       } else {
@@ -1005,10 +1041,7 @@ export async function initMain() {
       draggedSym.x = cx;
       draggedSym.y = cy;
       const sym = draggedSym;
-      const iz  = ZONES_BG.inscription;
-      const ip  = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
-      if (_dragMoved && Math.hypot(cx - ip.x, cy - ip.y) < INPUT.INSCRIPTION_HIT_R && (hero.praying || meditationPhase > 0)) {
-        // После активации надписи дропы на неё идут в счётчик «слышать больше».
+      if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
         if (S.inscriptionReady) _onSymDropStatue();
         else                    _deliverSym();
       } else if (_dragMoved) {
