@@ -298,70 +298,75 @@ export function renderFireflowerIcon() {
   </svg>`;
 }
 
-// ── Flower from inside_heart.png — round bloom with 4 rosette petals + warm core
+// ── Red hibiscus — 5 flat overlapping petals + long staminate column
 export function renderFlowerIcon() {
-  // Крестообразный цветок с круглыми лепестками (N/E/S/W),
-  // мягкими диагональными долями и тёплым оранжево-жёлтым центром.
-  // НЕ роза — просто округлая роза́тка с ярким ядром.
+  // Гибискус: 5 плоских, перекрывающих друг друга лепестков,
+  // тёмное горло, длинный тычиночный столбик с жёлтыми пыльниками,
+  // который торчит из центра (характерная черта гибискуса).
   return `<svg width="48" height="48" viewBox="0 0 48 48"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <!-- stem + leaves -->
-    <rect x="22" y="38" width="4"  height="8"  fill="#2a6620"/>
-    <rect x="10" y="40" width="12" height="4"  fill="#2a6620"/>
-    <rect x="26" y="41" width="12" height="4"  fill="#2a6620"/>
-    <rect x="12" y="42" width="8"  height="2"  fill="#38741e"/>
-    <rect x="28" y="43" width="8"  height="2"  fill="#38741e"/>
+    <!-- stem (снизу-справа, не по центру — цветок смотрит чуть вверх) -->
+    <rect x="24" y="38" width="3" height="10" fill="#2a5a1a"/>
+    <rect x="26" y="40" width="8" height="3"  fill="#2a5a1a"/>
+    <rect x="26" y="42" width="8" height="2"  fill="#3a7a2a"/>
+    <rect x="18" y="41" width="8" height="3"  fill="#2a5a1a"/>
+    <rect x="18" y="43" width="8" height="2"  fill="#3a7a2a"/>
 
-    <!-- deep outer shadow ring (dark burgundy) -->
-    <rect x="14" y="6"  width="20" height="4"  fill="#4a0810"/>
-    <rect x="10" y="10" width="28" height="4"  fill="#4a0810"/>
-    <rect x="6"  y="14" width="36" height="20" fill="#4a0810"/>
-    <rect x="10" y="34" width="28" height="4"  fill="#4a0810"/>
-    <rect x="14" y="38" width="20" height="2"  fill="#4a0810"/>
+    <!-- deep burgundy outer shadow (форма гибискуса — пять широких лепестков) -->
+    <rect x="18" y="4"  width="12" height="2"  fill="#50101a"/>
+    <rect x="14" y="6"  width="20" height="4"  fill="#50101a"/>
+    <rect x="8"  y="10" width="32" height="6"  fill="#50101a"/>
+    <rect x="4"  y="16" width="40" height="12" fill="#50101a"/>
+    <rect x="8"  y="28" width="32" height="6"  fill="#50101a"/>
+    <rect x="12" y="34" width="24" height="4"  fill="#50101a"/>
 
-    <!-- mid ring (deep red — main petal body) -->
-    <rect x="14" y="8"  width="20" height="4"  fill="#8a1220"/>
-    <rect x="10" y="12" width="28" height="4"  fill="#8a1220"/>
-    <rect x="8"  y="16" width="32" height="16" fill="#8a1220"/>
-    <rect x="10" y="32" width="28" height="4"  fill="#8a1220"/>
-    <rect x="14" y="36" width="20" height="2"  fill="#8a1220"/>
+    <!-- main body (red, filling the 5-petal silhouette) -->
+    <rect x="18" y="6"  width="12" height="2"  fill="#c02028"/>
+    <rect x="14" y="8"  width="20" height="4"  fill="#c02028"/>
+    <rect x="10" y="12" width="28" height="4"  fill="#c02028"/>
+    <rect x="6"  y="16" width="36" height="12" fill="#c02028"/>
+    <rect x="10" y="28" width="28" height="4"  fill="#c02028"/>
+    <rect x="14" y="32" width="20" height="4"  fill="#c02028"/>
 
-    <!-- 4 outer petal bumps (N / E / S / W) — brighter red lobes -->
-    <!-- N -->
-    <rect x="18" y="6"  width="12" height="4"  fill="#b01828"/>
-    <rect x="20" y="4"  width="8"  height="2"  fill="#b01828"/>
-    <!-- S -->
-    <rect x="18" y="36" width="12" height="4"  fill="#b01828"/>
-    <rect x="20" y="40" width="8"  height="2"  fill="#b01828"/>
-    <!-- W -->
-    <rect x="6"  y="18" width="4"  height="12" fill="#b01828"/>
-    <rect x="4"  y="20" width="2"  height="8"  fill="#b01828"/>
-    <!-- E -->
-    <rect x="38" y="18" width="4"  height="12" fill="#b01828"/>
-    <rect x="42" y="20" width="2"  height="8"  fill="#b01828"/>
+    <!-- petal lobes (brighter red — чтобы видно было 5 лепестков) -->
+    <!-- top petal -->
+    <rect x="20" y="4"  width="8"  height="4"  fill="#dc303c"/>
+    <rect x="22" y="2"  width="4"  height="2"  fill="#dc303c"/>
+    <!-- upper-left petal -->
+    <rect x="6"  y="10" width="8"  height="6"  fill="#dc303c"/>
+    <rect x="4"  y="12" width="4"  height="4"  fill="#dc303c"/>
+    <!-- upper-right petal -->
+    <rect x="34" y="10" width="8"  height="6"  fill="#dc303c"/>
+    <rect x="40" y="12" width="4"  height="4"  fill="#dc303c"/>
+    <!-- lower-left petal -->
+    <rect x="8"  y="26" width="10" height="6"  fill="#dc303c"/>
+    <rect x="12" y="32" width="6"  height="2"  fill="#dc303c"/>
+    <!-- lower-right petal -->
+    <rect x="30" y="26" width="10" height="6"  fill="#dc303c"/>
+    <rect x="30" y="32" width="6"  height="2"  fill="#dc303c"/>
 
-    <!-- inner rosette body (bright red, rounded square) -->
-    <rect x="14" y="12" width="20" height="24" fill="#c82030"/>
-    <rect x="12" y="14" width="24" height="20" fill="#c82030"/>
-    <rect x="10" y="16" width="28" height="16" fill="#c82030"/>
+    <!-- crinkled petal highlights (малые яркие блики на лепестках) -->
+    <rect x="22" y="6"  width="4"  height="2"  fill="#f06070"/>
+    <rect x="8"  y="14" width="4"  height="2"  fill="#f06070"/>
+    <rect x="36" y="14" width="4"  height="2"  fill="#f06070"/>
+    <rect x="12" y="28" width="4"  height="2"  fill="#f06070"/>
+    <rect x="32" y="28" width="4"  height="2"  fill="#f06070"/>
 
-    <!-- diagonal petal highlights (4 corners of rosette) -->
-    <rect x="14" y="14" width="4"  height="4"  fill="#d83040"/>
-    <rect x="30" y="14" width="4"  height="4"  fill="#d83040"/>
-    <rect x="14" y="30" width="4"  height="4"  fill="#d83040"/>
-    <rect x="30" y="30" width="4"  height="4"  fill="#d83040"/>
+    <!-- dark throat (характерная тёмная воронка в центре гибискуса) -->
+    <rect x="18" y="18" width="12" height="8"  fill="#3a0810"/>
+    <rect x="20" y="16" width="8"  height="2"  fill="#3a0810"/>
+    <rect x="20" y="26" width="8"  height="2"  fill="#3a0810"/>
 
-    <!-- petal tips — soft pink highlights at cardinal points -->
-    <rect x="22" y="10" width="4"  height="2"  fill="#f05060"/>
-    <rect x="22" y="36" width="4"  height="2"  fill="#f05060"/>
-    <rect x="10" y="22" width="2"  height="4"  fill="#f05060"/>
-    <rect x="36" y="22" width="2"  height="4"  fill="#f05060"/>
-
-    <!-- warm glowing core (yellow-orange pistil) -->
-    <rect x="20" y="20" width="8"  height="8"  fill="#d84020"/>
-    <rect x="21" y="21" width="6"  height="6"  fill="#f07028"/>
-    <rect x="22" y="22" width="4"  height="4"  fill="#f8a030"/>
-    <rect x="23" y="23" width="2"  height="2"  fill="#fff0a0"/>
+    <!-- staminate column (длинный тычиночный столбик — главная черта гибискуса) -->
+    <!-- column сам — красно-коричневый, тянется вниз-вправо -->
+    <rect x="23" y="22" width="2"  height="14" fill="#7a2018"/>
+    <rect x="22" y="22" width="4"  height="2"  fill="#9a3020"/>
+    <!-- yellow anthers на конце столбика — россыпь пыльников -->
+    <rect x="21" y="36" width="6"  height="2"  fill="#f0c040"/>
+    <rect x="22" y="38" width="4"  height="2"  fill="#f8d860"/>
+    <rect x="20" y="37" width="2"  height="2"  fill="#f8d860"/>
+    <rect x="26" y="37" width="2"  height="2"  fill="#f8d860"/>
+    <rect x="23" y="39" width="2"  height="2"  fill="#ffffa0"/>
   </svg>`;
 }
 

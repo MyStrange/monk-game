@@ -49,8 +49,8 @@ export const ITEM_DEFS = {
   },
   flower: {
     id:          'flower',
-    label:       'лотос',
-    description: 'Тихий. Не просит ничего. Раскрылся — и всё.',
+    label:       'гибискус',
+    description: 'Красный. Тихий. Не просит ничего. Раскрылся — и всё.',
   },
 };
 

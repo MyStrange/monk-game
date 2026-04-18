@@ -23,10 +23,15 @@ import { coverRect, hitZone as _hitNormZone } from '../src/scene-base.js';
 // ── BG aspect ratio ────────────────────────────────────────────────────────
 const BG_W = 1920, BG_H = 1080;   // 16:9, object-fit:cover адаптирует
 
-// ── Heart sprite image (активное состояние с лотосом) ─────────────────────
+// ── Heart sprite image (активное состояние с гибискусом) ─────────────────
 // Нормализованные координаты области, которая меняется между base и active:
 //   x0=0.36 y0=0.33 → x1=0.69 y1=0.92  (ниша с кристаллом в правой части)
-const _HEART_SPRITE = { nx0: 0.36, ny0: 0.33, nx1: 0.69, ny1: 0.92 };
+// Область свапа. Раньше была узкой (0.36-0.69 × 0.33-0.92) — вырезала только
+// центральное сердечко, и красное свечение при активации резко обрывалось.
+// Теперь покрывает почти весь центр+пол+правую стенку, где в исходнике
+// видна разница между базовым и активным состоянием (тёплое зарево,
+// отражения на дереве, ореол по полу). Найдено через ImageChops-диф.
+const _HEART_SPRITE = { nx0: 0.22, ny0: 0.30, nx1: 0.92, ny1: 1.00 };
 const _heartImg = new Image();
 _heartImg.src = 'assets/bg/inside_heart.png';
 
@@ -50,7 +55,7 @@ const HEART_MSGS = [
   'Холодный и тихий. Как будто спит.',
 ];
 
-// Сообщения после активации (сердце с лотосом)
+// Сообщения после активации (сердце с гибискусом)
 const HEART_ACTIVE_MSGS = [
   'Это — ты. Всё, что искал снаружи, было здесь.',
   'Сердце не бьётся. Оно светит.',
@@ -96,7 +101,9 @@ const _SPORE_COLS = [
 let _spores = [];
 
 function _spawnSpores() {
-  _spores = Array.from({ length: 50 }, () => ({
+  // Было 50 — пользователь попросил плотнее. 100 даёт ощутимо насыщенный
+  // дрейф вверх, но не перегружает draw-loop (частицы простые, без shadowBlur).
+  _spores = Array.from({ length: 100 }, () => ({
     x:         Math.random(),
     y:         Math.random(),
     vy:        -(0.0005 + Math.random() * 0.0018),
@@ -109,6 +116,21 @@ function _spawnSpores() {
     col:       _SPORE_COLS[Math.floor(Math.random() * _SPORE_COLS.length)],
   }));
 }
+
+// ── Mushroom glow (по бокам сцены — бирюзово-голубые, зелёно-бирюзовые) ──
+// Позиции и цвета сверены с inside.png: грибы нарисованы в PNG, а мы
+// поверх рисуем мягкий пульсирующий ореол того же оттенка что и шляпка,
+// чтобы они выглядели как будто правда светятся.
+const MUSHROOMS = [
+  // Левая стенка
+  { nx: 0.09,  ny: 0.30, r: 0.055, col: '#4aa8d8', phase: 0.0 }, // верхняя синяя гроздь
+  { nx: 0.05,  ny: 0.43, r: 0.030, col: '#3ac8c0', phase: 1.2 }, // маленькая бирюзовая
+  { nx: 0.10,  ny: 0.62, r: 0.038, col: '#60e0a0', phase: 2.4 }, // нижняя зелёная
+  // Правая стенка
+  { nx: 0.925, ny: 0.46, r: 0.060, col: '#4ac8e0', phase: 0.6 }, // главная яркая гроздь
+  { nx: 0.92,  ny: 0.27, r: 0.028, col: '#60e8a0', phase: 1.8 }, // верхняя маленькая
+  { nx: 0.905, ny: 0.72, r: 0.032, col: '#48c0c8', phase: 3.0 }, // нижняя
+];
 
 // ── Heart pulse центр (relative to BG) ────────────────────────────────────
 const HEART_CX = 0.50, HEART_CY = 0.65;
@@ -143,7 +165,7 @@ function animate() {
     ctx.globalAlpha = br;         ctx.fillRect(px,        py,       s,   s);
   }
 
-  // ── Спрайт активного сердца (лотос) ──────────────────────────────────────
+  // ── Спрайт активного сердца (гибискус) ──────────────────────────────────
   if (S.heartActivated && _heartImg.complete && _heartImg.naturalWidth) {
     const { nx0, ny0, nx1, ny1 } = _HEART_SPRITE;
     const iw = _heartImg.naturalWidth, ih = _heartImg.naturalHeight;
@@ -156,13 +178,31 @@ function animate() {
     );
   }
 
+  // ── Свечение боковых грибов ─────────────────────────────────────────────
+  // Каждый гриб пульсирует независимо (phase), цвет ореола = цвету шляпки.
+  // Рисуется тремя концентрическими квадратами с нарастающим alpha —
+  // тот же приём что для пульса сердца: дёшево, пиксельно, без shadowBlur.
+  ctx.globalCompositeOperation = 'lighter';   // аддитивное смешение — свечение на тёмном дереве
+  for (const m of MUSHROOMS) {
+    const cx = Math.round(R.x + m.nx * R.w);
+    const cy = Math.round(R.y + m.ny * R.h);
+    const pulse = 0.65 + 0.35 * Math.sin(_tick * 0.032 + m.phase);
+    const baseR = Math.round(Math.min(R.w, R.h) * m.r * pulse);
+    ctx.fillStyle = m.col;
+    ctx.globalAlpha = pulse * 0.05;  ctx.fillRect(cx - baseR*3, cy - baseR*3, baseR*6, baseR*6);
+    ctx.globalAlpha = pulse * 0.12;  ctx.fillRect(cx - baseR*2, cy - baseR*2, baseR*4, baseR*4);
+    ctx.globalAlpha = pulse * 0.22;  ctx.fillRect(cx - baseR,   cy - baseR,   baseR*2, baseR*2);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+
   // Пульс кристалла-сердца
   const hx    = Math.round(R.x + HEART_CX * R.w);
   const hy    = Math.round(R.y + HEART_CY * R.h);
   const pulse = 0.55 + 0.45 * Math.sin(_tick * 0.038);
   const baseR = Math.round(Math.min(R.w, R.h) * 0.07 * pulse);
 
-  // Цвет ореола зависит от состояния: тёплый (лотос) или бирюзовый (кристалл)
+  // Цвет ореола зависит от состояния: тёплый (гибискус) или бирюзовый (кристалл)
   ctx.fillStyle = S.heartActivated ? '#ff8060' : '#60ffee';
   ctx.globalAlpha = pulse * 0.06;  ctx.fillRect(hx - baseR*3, hy - baseR*3, baseR*6, baseR*6);
   ctx.globalAlpha = pulse * 0.12;  ctx.fillRect(hx - baseR*2, hy - baseR*2, baseR*4, baseR*4);
@@ -172,7 +212,7 @@ function animate() {
   animId = requestAnimationFrame(animate);
 }
 
-// ── Применить лотос к сердцу ───────────────────────────────────────────────
+// ── Применить гибискус к сердцу ────────────────────────────────────────────
 function _applyFlower() {
   const slot = state.inventory.findIndex(i => i?.id === 'flower');
   if (slot === -1) return;
@@ -181,7 +221,7 @@ function _applyFlower() {
   S.heartActivated = true;
   SaveManager.setScene('inside', S);
   AudioSystem.playBell?.();
-  showMsg('Лотос касается кристалла. Сердце отзывается. Ты не знаешь чьё.', { story: true, dur: 5500 });
+  showMsg('Красный цветок касается кристалла. Сердце отзывается. Ты не знаешь чьё.', { story: true, dur: 5500 });
 }
 
 // ── onTap ──────────────────────────────────────────────────────────────────

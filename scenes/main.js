@@ -261,7 +261,7 @@ function _symTick() {
 
 // ── Monk meditation dialogue ──────────────────────────────────────────────
 // Запускается один раз: герой сидит + клик по монаху = философский разговор.
-// После — в инвентаре появляется лотос.
+// После — в инвентаре появляется гибискус.
 function _startMonkDialog() {
   if (isStoryActive(msgEl)) return;
 
@@ -299,7 +299,7 @@ function _startMonkDialog() {
                               S.monkDialogDone = true;
                               saveMain();
                               if (!addItem(makeItem('flower'))) {
-                                showMsg('Инвентарь полон. Освободи место — лотос ждёт.');
+                                showMsg('Инвентарь полон. Освободи место — гибискус ждёт.');
                                 return;
                               }
                               renderHotbar();
