@@ -39,12 +39,14 @@ S.stairsIdx     = S.stairsIdx     ?? 0;
 S.openingIdx    = S.openingIdx    ?? 0;
 S.heartActivated = S.heartActivated ?? false;
 
-// Сообщения до активации (кристальное сердце)
+// Сообщения до активации — сердце ноет, герой не может отпустить важность.
+// Это центральное эмоциональное состояние игры до гибискуса.
 const HEART_MSGS = [
-  'Хрусталь холодный. Внутри что-то мерцает — но не отзывается.',
-  'Что-то ждёт. Возможно — тебя. Возможно — нет.',
-  'Кристалл помнит. Но не говорит что именно.',
-  'Холодный и тихий. Как будто спит.',
+  'Сердце ноет. Чего-то не хватает. Ты не знаешь чего именно — и это хуже всего.',
+  'Тяжело. Отпустить не получается. Ты пытаешься — оно сжимается крепче.',
+  'Ты хочешь сказать: всё неважно. Но тебе, блин, важно. И это тоже тяжесть.',
+  'Холодный камень. Внутри тебя — что-то давит. Ты молчишь об этом даже с собой.',
+  'Ты стоишь тут уже минуту. Уходить не хочется. Остаться — страшно. Застрял.',
 ];
 
 // Сообщения после активации (сердце с гибискусом)
@@ -114,17 +116,15 @@ function _spawnSpores() {
 }
 
 // ── Mushroom glow (по бокам сцены) ───────────────────────────────────────
-// Рисуется через createRadialGradient — гладкий плавный ореол, без пикселизации.
-// rgb-строка хранится отдельно чтобы собирать rgba() в gradient stops.
+// Позиции и цвета сверены с inside.png через кластерный анализ ярких
+// сине-зелёных пикселей (L-upper 261,302 / L-lower 167,561 / R-main 1194,404).
+// Средний цвет каждой грозди: L-upper #4ecabd, L-lower #54ca99, R-main #49b0c6.
 const MUSHROOMS = [
-  // Левая стенка
-  { nx: 0.09,  ny: 0.30, r: 0.055, rgb: '74,168,216',  phase: 0.0 }, // верхняя синяя гроздь
-  { nx: 0.05,  ny: 0.43, r: 0.030, rgb: '58,200,192',  phase: 1.2 }, // маленькая бирюзовая
-  { nx: 0.10,  ny: 0.62, r: 0.038, rgb: '96,224,160',  phase: 2.4 }, // нижняя зелёная
-  // Правая стенка
-  { nx: 0.925, ny: 0.46, r: 0.060, rgb: '74,200,224',  phase: 0.6 }, // главная яркая гроздь
-  { nx: 0.92,  ny: 0.27, r: 0.028, rgb: '96,232,160',  phase: 1.8 }, // верхняя маленькая
-  { nx: 0.905, ny: 0.72, r: 0.032, rgb: '72,192,200',  phase: 3.0 }, // нижняя
+  // Левая стенка — две грозди
+  { nx: 0.190, ny: 0.393, r: 0.070, rgb: '78,202,189',  phase: 0.0 }, // верхняя бирюзовая
+  { nx: 0.121, ny: 0.730, r: 0.060, rgb: '84,202,153',  phase: 2.4 }, // нижняя зелёная
+  // Правая стенка — одна большая яркая гроздь
+  { nx: 0.868, ny: 0.525, r: 0.075, rgb: '73,176,198',  phase: 0.6 },
 ];
 
 // ── Heart pulse центр (relative to BG) ────────────────────────────────────
@@ -203,18 +203,26 @@ function animate() {
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
 
-  // Пульс кристалла-сердца
-  const hx    = Math.round(R.x + HEART_CX * R.w);
-  const hy    = Math.round(R.y + HEART_CY * R.h);
-  const pulse = 0.55 + 0.45 * Math.sin(_tick * 0.038);
-  const baseR = Math.round(Math.min(R.w, R.h) * 0.07 * pulse);
+  // Пульс кристалла-сердца — плавный радиальный градиент (без пикселизации).
+  const hx     = R.x + HEART_CX * R.w;
+  const hy     = R.y + HEART_CY * R.h;
+  const pulse  = 0.55 + 0.45 * Math.sin(_tick * 0.038);
+  const hRadius = Math.min(R.w, R.h) * 0.22 * (0.75 + 0.25 * pulse);
+  const hRgb   = S.heartActivated ? '255,128,96' : '96,255,238';
 
-  // Цвет ореола зависит от состояния: тёплый (гибискус) или бирюзовый (кристалл)
-  ctx.fillStyle = S.heartActivated ? '#ff8060' : '#60ffee';
-  ctx.globalAlpha = pulse * 0.06;  ctx.fillRect(hx - baseR*3, hy - baseR*3, baseR*6, baseR*6);
-  ctx.globalAlpha = pulse * 0.12;  ctx.fillRect(hx - baseR*2, hy - baseR*2, baseR*4, baseR*4);
-  ctx.globalAlpha = pulse * 0.22;  ctx.fillRect(hx - baseR,   hy - baseR,   baseR*2, baseR*2);
-
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.filter = 'blur(3px)';
+  const hGrad = ctx.createRadialGradient(hx, hy, 0, hx, hy, hRadius);
+  hGrad.addColorStop(0,    `rgba(${hRgb},${(pulse * 0.55).toFixed(3)})`);
+  hGrad.addColorStop(0.30, `rgba(${hRgb},${(pulse * 0.28).toFixed(3)})`);
+  hGrad.addColorStop(0.70, `rgba(${hRgb},${(pulse * 0.08).toFixed(3)})`);
+  hGrad.addColorStop(1,    `rgba(${hRgb},0)`);
+  ctx.fillStyle = hGrad;
+  ctx.beginPath();
+  ctx.arc(hx, hy, hRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.filter = 'none';
+  ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
   animId = requestAnimationFrame(animate);
 }

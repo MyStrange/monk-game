@@ -555,28 +555,30 @@ function _deliverSym() {
 }
 
 // ── Символ брошен на статую — звук + скрытая подсказка ────────────────────
-// Счётчик считается с САМОГО ПЕРВОГО дропа, независимо от состояния входа.
-// А показывается подсказка только когда ОБА: счётчик ≥ 5 И вход активирован.
-// Если игрок уже бросил 5+ до активации — подсказка всплывёт на ближайшем
-// дропе после activation. Если ещё нет 5 — будет считать дальше.
+// Счётчик считается с САМОГО ПЕРВОГО дропа, независимо от чего-либо.
+// Прошлый баг: `isStoryActive` возвращался ПЕРЕД инкрементом, и если в момент
+// дропа на экране была story-подсказка (например, reflection после камней),
+// счётчик не рос — игрок мог сделать 10 дропов, а state.statueSymDrops=0.
 function _onSymDropStatue() {
   AudioSystem.playSymbolTone?.(Math.floor(Math.random() * PURPLE_PALETTE.length));
 
   // Уже открыли «слух» — просто звук, ничего не делаем.
-  if (S.wantMoreSounds) return;
-  if (_symDropStatueShown || isStoryActive(msgEl)) return;
+  if (S.wantMoreSounds)    return;
+  if (_symDropStatueShown) return;
 
-  // Счётчик бежит всегда — и до, и после активации входа.
+  // ВСЕГДА инкрементим — никаких гейтов ДО этой строки.
   S.statueSymDrops = (S.statueSymDrops ?? 0) + 1;
   saveMain();
 
-  // Подсказка требует обоих условий.
+  // Подсказка требует двух условий: ≥5 дропов И активированного входа.
   if (S.statueSymDrops < 5) return;
   if (!S.inscriptionReady)  return;
 
   _symDropStatueShown = true;
   S.wantMoreSounds = true;
   saveMain();
+  // story-месседжи сами вытесняют любой предыдущий story — isStoryActive
+  // не может нам помешать показать эту подсказку.
   showMsgIn(msgEl,
     'Ничего не происходит. Но звук — классный. Кажется, ты теперь слышишь больше.',
     { story: true, dur: 4200 }
