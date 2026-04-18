@@ -1,6 +1,8 @@
 // src/utils.js — только примитивы UI
 // Не знает ни об одном DOM-элементе сцены.
 
+import { UI_TIMING } from './constants.js';
+
 // ── Custom pixel-art cursors ────────────────────────────────────────────────
 // Default: chunky bud 20×28 — 5 blocks, no fine details, hotspot (10, 2)
 const _SVG_DEF = "data:image/svg+xml,%3Csvg width='20' height='28' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='8' y='0' width='4' height='4' fill='%23fffce8'/%3E%3Crect x='6' y='4' width='8' height='6' fill='%23f0c040'/%3E%3Crect x='4' y='10' width='12' height='6' fill='%23d4a028'/%3E%3Crect x='6' y='16' width='8' height='4' fill='%23c09020'/%3E%3Crect x='8' y='20' width='4' height='8' fill='%234a6018'/%3E%3C%2Fsvg%3E";
@@ -130,7 +132,7 @@ export function showMsgIn(el, text, durOrOpts = {}) {
         capListener = () => dismiss();
         document.addEventListener('click',    capListener, true);
         document.addEventListener('touchend', capListener, true);
-      }, 50);
+      }, UI_TIMING.STORY_CAP_DELAY);
     }
   } else {
     const dur = opts.dur ?? 3200;
@@ -195,7 +197,7 @@ export function showChoiceIn(el, prompt, options, onPick) {
       setTimeout(() => {
         box.remove();
         onPick?.(opt.value ?? opt.text, opt.text);
-      }, 260);
+      }, UI_TIMING.MSG_FADE_MS);
     };
     btns.appendChild(btn);
   });
@@ -210,7 +212,7 @@ export function showChoiceIn(el, prompt, options, onPick) {
     s.storyDismiss = null;
     s.current = null;
     box.classList.remove('visible');
-    setTimeout(() => box.remove(), 200);
+    setTimeout(() => box.remove(), UI_TIMING.MSG_BOUNCE_MS - 150);
   };
 }
 
@@ -232,7 +234,7 @@ export function hideLoading() {
   const el = _getLoading();
   if (!el) return;
   el.style.opacity = '0';
-  setTimeout(() => { el.style.display = 'none'; }, 400);
+  setTimeout(() => { el.style.display = 'none'; }, UI_TIMING.LOADING_FADE_MS);
 }
 
 // ── Error overlay ──────────────────────────────────────────────────────────

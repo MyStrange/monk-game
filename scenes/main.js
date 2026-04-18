@@ -1,7 +1,7 @@
 // scenes/main.js — главная сцена: герой, зоны, медитация, символы
 
 import { state }           from '../src/state.js';
-import { SCREENS }         from '../src/constants.js';
+import { SCREENS, INPUT }  from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showChoiceIn, isStoryActive,
          CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
@@ -440,7 +440,7 @@ function onTap(cx, cy) {
 // Отслеживаем, было ли реальное перетаскивание (мышь/палец двигались).
 // Без движения — это тап/клик и доставка НЕ происходит.
 let _dragStartX = 0, _dragStartY = 0, _dragMoved = false;
-const _DRAG_THRESHOLD = 10; // px — сколько надо сдвинуться, чтобы считать «перетаскиванием»
+const _DRAG_THRESHOLD = INPUT.DRAG_THRESHOLD_PX;
 
 function onDragStart(cx, cy) {
   if (state.activeScreen !== SCREENS.MAIN) return;
@@ -848,7 +848,7 @@ export async function initMain() {
     const sym = draggedSym;
     const iz  = ZONES_BG.inscription;
     const ip  = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
-    if (_dragMoved && Math.hypot(cx - ip.x, cy - ip.y) < 80 && (hero.praying || meditationPhase > 0)) {
+    if (_dragMoved && Math.hypot(cx - ip.x, cy - ip.y) < INPUT.INSCRIPTION_HIT_R && (hero.praying || meditationPhase > 0)) {
       _deliverSym();
       _justDelivered = true;
     } else if (_dragMoved) {
@@ -888,7 +888,7 @@ export async function initMain() {
       const sym = draggedSym;
       const iz  = ZONES_BG.inscription;
       const ip  = bgToCanvas(iz.x + iz.w / 2, iz.y + iz.h / 2);
-      if (_dragMoved && Math.hypot(cx - ip.x, cy - ip.y) < 80 && (hero.praying || meditationPhase > 0)) {
+      if (_dragMoved && Math.hypot(cx - ip.x, cy - ip.y) < INPUT.INSCRIPTION_HIT_R && (hero.praying || meditationPhase > 0)) {
         _deliverSym();
       } else if (_dragMoved) {
         const bx = cx * BG_W / W, by = cy * BG_H / H;

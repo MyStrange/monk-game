@@ -677,21 +677,24 @@ function createEl() {
   el.appendChild(bMsgEl);
   document.getElementById('wrap').appendChild(el);
 
+  // Кэш bounding-rect — обновляется на resize/scroll, а не 60 раз/сек в mousemove.
+  // Было: три getBoundingClientRect() в каждом обработчике = layout-thrash.
+  _bCacheRect();
+  window.addEventListener('resize', _bCacheRect);
+  window.addEventListener('scroll', _bCacheRect, { passive: true });
+
   bCanvas.addEventListener('click', e => {
-    const r = bCanvas.getBoundingClientRect();
-    onTap(e.clientX - r.left, e.clientY - r.top);
+    onTap(e.clientX - _bRect.left, e.clientY - _bRect.top);
   });
   bCanvas.addEventListener('touchend', e => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    const r = bCanvas.getBoundingClientRect();
-    onTap(t.clientX - r.left, t.clientY - r.top);
+    onTap(t.clientX - _bRect.left, t.clientY - _bRect.top);
   }, { passive: false });
   let _stickHintZone = false;
   bCanvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== SCREENS.BUDDHA) return;
-    const r  = bCanvas.getBoundingClientRect();
-    const cx = e.clientX - r.left, cy = e.clientY - r.top;
+    const cx = e.clientX - _bRect.left, cy = e.clientY - _bRect.top;
     setCursor(_hitBuddha(cx, cy));
     // Подсказка: стик над зоной уха
     const item = getSelectedItem();
@@ -704,6 +707,12 @@ function createEl() {
     }
   });
   bCanvas.addEventListener('mouseleave', () => { setCursor(false); });
+}
+
+// Кэш rect для bCanvas — чтобы не звать getBoundingClientRect 60Hz.
+let _bRect = { left: 0, top: 0, width: 0, height: 0 };
+function _bCacheRect() {
+  if (bCanvas) _bRect = bCanvas.getBoundingClientRect();
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -732,20 +741,22 @@ export async function openSceneBuddha() {
       const r = el.getBoundingClientRect();
       bW = bCanvas.width = wishCanvas.width  = Math.round(r.width);
       bH = bCanvas.height = wishCanvas.height = Math.round(r.height);
+      _bCacheRect();         // rect валиден только после resize canvas
       _spawnFlies(30);
       if (!animId) animate();
     });
   };
   const _onFail = () => {
     hideLoading();
+    resumeMain();            // чтобы игрок не остался на пустом экране
     showError('не удалось загрузить сцену');
   };
-  bgImg.onerror = _onFail;
-  bgImg.onload  = _onReady;
+  // Тот же guard от double-fire, что в inside/flyroom.
   if (bgImg.complete) {
-    // complete=true может означать ошибку загрузки → naturalWidth===0
-    if (bgImg.naturalWidth) _onReady();
-    else _onFail();
+    if (bgImg.naturalWidth) _onReady(); else _onFail();
+  } else {
+    bgImg.addEventListener('error', _onFail,  { once: true });
+    bgImg.addEventListener('load',  _onReady, { once: true });
   }
 }
 
@@ -799,6 +810,9 @@ function _closeNow() {
   state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
+  // Снимаем глобальные слушатели resize/scroll — без этого они висели всю сессию.
+  window.removeEventListener('resize', _bCacheRect);
+  window.removeEventListener('scroll', _bCacheRect);
   SaveManager.setScene('buddha', S);
   resumeMain();
 }

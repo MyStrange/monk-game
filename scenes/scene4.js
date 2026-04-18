@@ -49,7 +49,7 @@ S.doorEntered    = S.doorEntered    ?? false;
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, bgEl, layer2El, layer3El, msgEl;
-let _onResize = null;
+let _resizeObs = null;
 
 // ── BG dims + layer sprite coords ─────────────────────────────────────────
 const BG_W = 2051, BG_H = 1154;
@@ -296,10 +296,13 @@ function createEl() {
   el.appendChild(msgEl);
   document.getElementById('wrap').appendChild(el);
 
-  // Сохраняем ссылку, чтобы снять listener в closeSceneScene4 —
-  // без этого он висел навсегда и тикал при каждом resize всю сессию.
-  _onResize = () => { if (state.activeScreen === SCREENS.SCENE4) _layoutLayers(); };
-  window.addEventListener('resize', _onResize);
+  // ResizeObserver точнее window.resize: реагирует на любое изменение размера
+  // контейнера (включая rotate на мобильных без события resize), и сам
+  // отключается при disconnect() в close — не нужен внешний removeEventListener.
+  _resizeObs = new ResizeObserver(() => {
+    if (state.activeScreen === SCREENS.SCENE4) _layoutLayers();
+  });
+  _resizeObs.observe(el);
 
   // Все зоны — capture-фаза на el (срабатывает ДО layer-хендлеров)
   el.addEventListener('click',    _onElCapture, true);
@@ -354,7 +357,7 @@ export function closeSceneScene4() {
   state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   setCursor(false);
-  if (_onResize) { window.removeEventListener('resize', _onResize); _onResize = null; }
+  if (_resizeObs) { _resizeObs.disconnect(); _resizeObs = null; }
   SaveManager.setScene('scene4', S);
   resumeMain();
 }

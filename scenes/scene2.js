@@ -455,10 +455,13 @@ function createEl() {
   }, { passive: false });
   canvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== SCREENS.SCENE2) return;
-    const r = canvas.getBoundingClientRect();
-    setCursor(!!hitZone(e.clientX - r.left, e.clientY - r.top));
+    // Кэш _s2Rect обновляется только на resize/scroll — не 60Hz.
+    setCursor(!!hitZone(e.clientX - _s2Rect.left, e.clientY - _s2Rect.top));
   });
   canvas.addEventListener('mouseleave', () => { setCursor(false); });
+  _s2CacheRect();
+  window.addEventListener('resize', _s2CacheRect);
+  window.addEventListener('scroll', _s2CacheRect, { passive: true });
 
   // keydown слушатель нужен только пока сцена открыта; подписываем на open,
   // снимаем на close — иначе навеки висит и продолжает обрабатывать события
@@ -466,6 +469,12 @@ function createEl() {
 }
 function _bindKeydown()   { document.addEventListener('keydown', _onKey); }
 function _unbindKeydown() { document.removeEventListener('keydown', _onKey); }
+
+// Кэш canvas rect — чтобы mousemove не вызывал getBoundingClientRect 60 раз/сек.
+let _s2Rect = { left: 0, top: 0, width: 0, height: 0 };
+function _s2CacheRect() {
+  if (canvas) _s2Rect = canvas.getBoundingClientRect();
+}
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 // _waitImg перенесён в src/scene-base.js (waitImg) — см. другие сцены.
@@ -497,6 +506,7 @@ export async function openSceneScene2() {
     const r = el.getBoundingClientRect();
     W = canvas.width  = Math.round(r.width);
     H = canvas.height = Math.round(r.height);
+    _s2CacheRect();                       // rect валиден после resize canvas
     if (!animId) animate();
   });
 }
@@ -507,6 +517,8 @@ export function closeSceneScene2() {
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   _cancelActivations();
   _unbindKeydown();
+  window.removeEventListener('resize', _s2CacheRect);
+  window.removeEventListener('scroll', _s2CacheRect);
   SaveManager.setScene('scene2', S);
   resumeMain();
 }

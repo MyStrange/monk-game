@@ -241,22 +241,26 @@ function createEl() {
   document.getElementById('wrap').appendChild(el);
 
   canvas.addEventListener('click', e => {
-    const r = canvas.getBoundingClientRect();
-    onTap(e.clientX - r.left, e.clientY - r.top);
+    onTap(e.clientX - _iRect.left, e.clientY - _iRect.top);
   });
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    const r = canvas.getBoundingClientRect();
-    onTap(t.clientX - r.left, t.clientY - r.top);
+    onTap(t.clientX - _iRect.left, t.clientY - _iRect.top);
   }, { passive: false });
   canvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== SCREENS.INSIDE) return;
-    const r = canvas.getBoundingClientRect();
-    setCursor(!!_hitZone(e.clientX - r.left, e.clientY - r.top));
+    setCursor(!!_hitZone(e.clientX - _iRect.left, e.clientY - _iRect.top));
   });
   canvas.addEventListener('mouseleave', () => setCursor(false));
+  _iCacheRect();
+  window.addEventListener('resize', _iCacheRect);
+  window.addEventListener('scroll', _iCacheRect, { passive: true });
 }
+
+// Кэш rect — заменяет три getBoundingClientRect на событие.
+let _iRect = { left: 0, top: 0, width: 0, height: 0 };
+function _iCacheRect() { if (canvas) _iRect = canvas.getBoundingClientRect(); }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 export async function openSceneInside() {
@@ -283,6 +287,7 @@ export async function openSceneInside() {
       const r = el.getBoundingClientRect();
       W = canvas.width  = Math.round(r.width);
       H = canvas.height = Math.round(r.height);
+      _iCacheRect();
       _spawnSpores();
       if (!animId) animate();
     });
@@ -313,6 +318,8 @@ export function closeSceneInside() {
   state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
+  window.removeEventListener('resize', _iCacheRect);
+  window.removeEventListener('scroll', _iCacheRect);
   setCursor(false);
   SaveManager.setScene('inside', S);
   resumeMain();
