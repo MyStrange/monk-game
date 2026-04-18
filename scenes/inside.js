@@ -113,19 +113,18 @@ function _spawnSpores() {
   }));
 }
 
-// ── Mushroom glow (по бокам сцены — бирюзово-голубые, зелёно-бирюзовые) ──
-// Позиции и цвета сверены с inside.png: грибы нарисованы в PNG, а мы
-// поверх рисуем мягкий пульсирующий ореол того же оттенка что и шляпка,
-// чтобы они выглядели как будто правда светятся.
+// ── Mushroom glow (по бокам сцены) ───────────────────────────────────────
+// Рисуется через createRadialGradient — гладкий плавный ореол, без пикселизации.
+// rgb-строка хранится отдельно чтобы собирать rgba() в gradient stops.
 const MUSHROOMS = [
   // Левая стенка
-  { nx: 0.09,  ny: 0.30, r: 0.055, col: '#4aa8d8', phase: 0.0 }, // верхняя синяя гроздь
-  { nx: 0.05,  ny: 0.43, r: 0.030, col: '#3ac8c0', phase: 1.2 }, // маленькая бирюзовая
-  { nx: 0.10,  ny: 0.62, r: 0.038, col: '#60e0a0', phase: 2.4 }, // нижняя зелёная
+  { nx: 0.09,  ny: 0.30, r: 0.055, rgb: '74,168,216',  phase: 0.0 }, // верхняя синяя гроздь
+  { nx: 0.05,  ny: 0.43, r: 0.030, rgb: '58,200,192',  phase: 1.2 }, // маленькая бирюзовая
+  { nx: 0.10,  ny: 0.62, r: 0.038, rgb: '96,224,160',  phase: 2.4 }, // нижняя зелёная
   // Правая стенка
-  { nx: 0.925, ny: 0.46, r: 0.060, col: '#4ac8e0', phase: 0.6 }, // главная яркая гроздь
-  { nx: 0.92,  ny: 0.27, r: 0.028, col: '#60e8a0', phase: 1.8 }, // верхняя маленькая
-  { nx: 0.905, ny: 0.72, r: 0.032, col: '#48c0c8', phase: 3.0 }, // нижняя
+  { nx: 0.925, ny: 0.46, r: 0.060, rgb: '74,200,224',  phase: 0.6 }, // главная яркая гроздь
+  { nx: 0.92,  ny: 0.27, r: 0.028, rgb: '96,232,160',  phase: 1.8 }, // верхняя маленькая
+  { nx: 0.905, ny: 0.72, r: 0.032, rgb: '72,192,200',  phase: 3.0 }, // нижняя
 ];
 
 // ── Heart pulse центр (relative to BG) ────────────────────────────────────
@@ -167,29 +166,40 @@ function animate() {
   // Никаких canvas.drawImage — меняется весь кадр целиком по CSS opacity.
 
   // ── Свечение боковых грибов ─────────────────────────────────────────────
-  // Три слоя анимации, чтобы глаз читал «живое свечение»:
-  //   breath — медленное дыхание (slow sin, базовая пульсация)
-  //   shimmer — быстрая мелкая вибрация яркости (эффект мерцания)
-  //   flash — редкие короткие вспышки (sin-порог > 0.985 даёт ~1% кадров
-  //           в пиковом множителе, пики расходятся по фазам грибов).
-  // Радиус дышит сам по себе (breath), alpha дышит + мерцает + вспышка.
+  // Гладкий круговой градиент (createRadialGradient) вместо трёх fillRect —
+  // даёт плавный soft-edge ореол, без пикселизации на краях.
+  //   breath  — медленное дыхание (радиус + базовая яркость)
+  //   shimmer — быстрая лёгкая вибрация яркости
+  //   flash   — редкая короткая вспышка (~1% кадров, фазы разъезжаются)
+  // Сглажено дополнительно через ctx.filter='blur(…)' — реальный постэффект.
   ctx.globalCompositeOperation = 'lighter';
+  ctx.filter = 'blur(2px)';
   for (const m of MUSHROOMS) {
-    const cx = Math.round(R.x + m.nx * R.w);
-    const cy = Math.round(R.y + m.ny * R.h);
+    const cx = R.x + m.nx * R.w;
+    const cy = R.y + m.ny * R.h;
 
     const breath  = 0.65 + 0.35 * Math.sin(_tick * 0.032 + m.phase);
     const shimmer = 0.85 + 0.15 * Math.sin(_tick * 0.180 + m.phase * 5);
     const fp      = Math.sin(_tick * 0.009 + m.phase * 7);
-    const flash   = fp > 0.985 ? 1.6 : 1.0;
-    const al      = breath * shimmer * flash;
+    const flash   = fp > 0.985 ? 1.8 : 1.0;
+    const al      = Math.min(1, breath * shimmer * flash);
 
-    const baseR = Math.round(Math.min(R.w, R.h) * m.r * breath);
-    ctx.fillStyle = m.col;
-    ctx.globalAlpha = Math.min(1, al * 0.08);  ctx.fillRect(cx - baseR*4, cy - baseR*4, baseR*8, baseR*8);
-    ctx.globalAlpha = Math.min(1, al * 0.22);  ctx.fillRect(cx - baseR*2, cy - baseR*2, baseR*4, baseR*4);
-    ctx.globalAlpha = Math.min(1, al * 0.40);  ctx.fillRect(cx - baseR,   cy - baseR,   baseR*2, baseR*2);
+    const radius = Math.min(R.w, R.h) * m.r * 4.2 * breath;
+    const rgb = m.rgb;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    // Центр ярко, 30% — половина, 70% — слабо, край — прозрачно.
+    // Плавная интерполяция alpha даёт soft glow без кольцевых артефактов.
+    grad.addColorStop(0,    `rgba(${rgb},${(al * 0.85).toFixed(3)})`);
+    grad.addColorStop(0.30, `rgba(${rgb},${(al * 0.45).toFixed(3)})`);
+    grad.addColorStop(0.70, `rgba(${rgb},${(al * 0.12).toFixed(3)})`);
+    grad.addColorStop(1,    `rgba(${rgb},0)`);
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
   }
+  ctx.filter = 'none';
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
 
