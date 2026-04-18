@@ -360,18 +360,20 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   border:var(--b-gold-lo);
 }
 
-/* ── Achievement toast ── */
+/* ── Achievement toast — верхний левый угол, под back-btn ── */
 .ach-toast{
-  position:fixed;bottom:80px;left:50%;
-  transform:translateX(-50%) translateY(12px);
+  position:fixed;
+  top:52px;   /* back-btn: top:8px + ~36px высота + 8px зазор */
+  left:8px;
+  transform:translateY(-8px);
   background:var(--c-panel-dk);border:var(--b-gold-lo);
   color:var(--c-gold);font-family:var(--font);font-size:var(--sz-sm);
   padding:10px 14px;border-radius:var(--r);z-index:500;
   display:flex;align-items:center;gap:12px;
-  max-width:320px;width:90%;opacity:0;pointer-events:none;
+  max-width:260px;opacity:0;pointer-events:none;
   transition:opacity .3s,transform .3s;
 }
-.ach-toast.visible{opacity:1;transform:translateX(-50%) translateY(0);}
+.ach-toast.visible{opacity:1;transform:translateY(0);}
 .ach-toast-icon{flex-shrink:0;image-rendering:pixelated;}
 .ach-toast-text{display:flex;flex-direction:column;gap:3px;}
 .ach-toast-text strong{font-size:var(--sz-sm);letter-spacing:1px;}
