@@ -60,7 +60,7 @@ function _spawnFlies(n) {
     y:  Math.random() * bH,
     vx: (Math.random() - 0.5) * 1.2,
     vy: (Math.random() - 0.5) * 0.8,
-    sz: 14 + Math.random() * 14,
+    sz: 3 + Math.random() * 4,   // маленькое ядро (3–7px), большое свечение
     br: Math.random(),
     bv: (Math.random() - 0.5) * 0.025,
     alive: true,
@@ -106,7 +106,7 @@ function _startWish(jar) {
       y:          startY,
       trail:      [],
       alpha:      1.0,
-      sz:         14 + Math.random() * 14,  // same size as ambient bFlies
+      sz:         3 + Math.random() * 4,    // то же что ambient: маленькое ядро, большое свечение
     };
   });
 
@@ -421,7 +421,7 @@ function interactItem(itemId, zone) {
 function _hitBuddha(cx, cy) {
   if (_inEar(cx, cy)) return true;
   for (const f of bFlies) {
-    if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < f.sz * 1.2 + 10) return true;
+    if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < Math.max(22, f.sz * 3)) return true;
   }
   return false;
 }
@@ -443,7 +443,7 @@ function onTap(cx, cy) {
   // No jar: click on fly → it escapes with buzz + trail
   if (!item || (item.id !== 'jar' && item.id !== 'jar_open')) {
     for (const f of bFlies) {
-      if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < f.sz * 1.2 + 10) {
+      if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < Math.max(22, f.sz * 3)) {
         f.escaping = true;
         const angle = Math.random() * Math.PI * 2;
         f.escapeVx  = Math.cos(angle) * (5 + Math.random() * 4);
@@ -461,7 +461,7 @@ function onTap(cx, cy) {
     for (let i = 0; i < bFlies.length; i++) {
       const f = bFlies[i];
       if (!f.alive) continue;
-      if (Math.hypot(cx - f.x, cy - f.y) < f.sz * 1.5 + 6) {
+      if (Math.hypot(cx - f.x, cy - f.y) < Math.max(22, f.sz * 3)) {
         bFlash.push({ x: f.x, y: f.y, t: 0 });
         f.alive = false;
         item.caught = (item.caught ?? 0) + 1;
@@ -520,23 +520,25 @@ function animate() {
       if (f.escapeA <= 0 || f.x < -80 || f.x > bW + 80 || f.y < -80 || f.y > bH + 80) {
         f.alive = false; continue;
       }
-      // Светящийся след
-      bCtx.save();
+      // Светящийся след (3 слоя без shadowBlur)
       for (let ti = 0; ti < f.trail.length; ti++) {
-        const p = f.trail[ti];
+        const p  = f.trail[ti];
         const ta = (ti / f.trail.length) * f.escapeA * 0.7;
-        bCtx.shadowColor = `rgba(255,200,0,${ta})`;
-        bCtx.shadowBlur  = 8;
-        bCtx.fillStyle   = `rgba(255,220,60,${ta})`;
-        bCtx.fillRect(Math.round(p.x), Math.round(p.y), 3, 3);
+        if (ta < 0.01) continue;
+        bCtx.fillStyle = `rgba(255,220,60,${ta})`;
+        bCtx.globalAlpha = ta * 0.18; bCtx.fillRect(Math.round(p.x) - 2, Math.round(p.y) - 2, 7, 7);
+        bCtx.globalAlpha = ta * 0.45; bCtx.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, 5, 5);
+        bCtx.globalAlpha = ta;        bCtx.fillRect(Math.round(p.x),     Math.round(p.y),     3, 3);
       }
-      // Сам светлячок
-      const half = Math.round(f.sz / 2);
-      bCtx.shadowColor = `rgba(255,240,80,${f.escapeA})`;
-      bCtx.shadowBlur  = 14 + f.sz;
-      bCtx.fillStyle   = `rgba(255,255,160,${f.escapeA})`;
-      bCtx.fillRect(Math.round(f.x) - half, Math.round(f.y) - half, Math.ceil(f.sz), Math.ceil(f.sz));
-      bCtx.restore();
+      // Сам улетающий светлячок — 4 слоя
+      const s    = Math.ceil(f.sz);
+      const px   = Math.round(f.x), py = Math.round(f.y);
+      const ea   = f.escapeA;
+      bCtx.fillStyle = `rgba(255,255,200,${ea})`;
+      bCtx.globalAlpha = ea * 0.08;  bCtx.fillRect(px - s*5, py - s*5, s*11, s*11);
+      bCtx.globalAlpha = ea * 0.18;  bCtx.fillRect(px - s*3, py - s*3, s*7,  s*7);
+      bCtx.globalAlpha = ea * 0.42;  bCtx.fillRect(px - s,   py - s,   s*3,  s*3);
+      bCtx.globalAlpha = ea;         bCtx.fillRect(px,        py,       s,    s);
       continue;
     }
 
@@ -545,13 +547,20 @@ function animate() {
     if (f.br < 0 || f.br > 1) f.bv *= -1;
     if (f.x < 0) f.x = bW; if (f.x > bW) f.x = 0;
     if (f.y < 0) f.y = bH; if (f.y > bH) f.y = 0;
-    const a = 0.4 + f.br * 0.6;
-    bCtx.save();
-    bCtx.shadowColor = `rgba(255,210,40,${a})`;
-    bCtx.shadowBlur  = 6 + f.br * 10;
-    bCtx.fillStyle   = `rgba(255,220,80,${a})`;
-    bCtx.fillRect(Math.round(f.x), Math.round(f.y), Math.ceil(f.sz), Math.ceil(f.sz));
-    bCtx.restore();
+    // Светлячок: маленькое ядро + большой многослойный ореол (без shadowBlur)
+    const a  = 0.4 + f.br * 0.6;
+    const s  = Math.ceil(f.sz);
+    const px = Math.round(f.x), py = Math.round(f.y);
+    bCtx.fillStyle = `rgba(255,220,80,${a})`;
+    // внешнее широкое свечение
+    bCtx.globalAlpha = a * 0.07;  bCtx.fillRect(px - s*5, py - s*5, s*11, s*11);
+    // средний ореол
+    bCtx.globalAlpha = a * 0.16;  bCtx.fillRect(px - s*3, py - s*3, s*7,  s*7);
+    // ближний ореол
+    bCtx.globalAlpha = a * 0.38;  bCtx.fillRect(px - s,   py - s,   s*3,  s*3);
+    // яркое ядро
+    bCtx.globalAlpha = a;         bCtx.fillRect(px,        py,       s,    s);
+    bCtx.globalAlpha = 1;
   }
 
   // ── Catch flashes ─────────────────────────────────────────────────────────
@@ -602,24 +611,26 @@ function animate() {
       wf.trail.push({ x: wf.x, y: wf.y });
       if (wf.trail.length > 38) wf.trail.shift();
 
-      // Draw trail
-      const trailSz = Math.max(2, Math.round(wf.sz * 0.25));
-      wCtx.save();
+      // Draw trail (3 слоя без shadowBlur)
+      const trailSz = Math.max(2, Math.ceil(wf.sz * 0.8));
       for (let ti = 0; ti < wf.trail.length; ti++) {
         const p  = wf.trail[ti];
         const ta = (ti / wf.trail.length) * wf.alpha * 0.65;
-        wCtx.shadowColor = `rgba(255,200,0,${ta * 0.8})`;
-        wCtx.shadowBlur  = 10;
-        wCtx.fillStyle   = `rgba(255,220,60,${ta})`;
-        wCtx.fillRect(Math.round(p.x), Math.round(p.y), trailSz, trailSz);
+        if (ta < 0.01) continue;
+        wCtx.fillStyle = `rgba(255,220,60,${ta})`;
+        wCtx.globalAlpha = ta * 0.15; wCtx.fillRect(Math.round(p.x) - trailSz, Math.round(p.y) - trailSz, trailSz*3, trailSz*3);
+        wCtx.globalAlpha = ta * 0.40; wCtx.fillRect(Math.round(p.x),           Math.round(p.y),            trailSz,   trailSz);
       }
-      // Fly itself — same size as ambient flies
-      const half = Math.round(wf.sz / 2);
-      wCtx.shadowColor = `rgba(255,240,100,${wf.alpha})`;
-      wCtx.shadowBlur  = 20 + wf.sz + Math.sin(wf.t * 0.25) * 10;
-      wCtx.fillStyle   = `rgba(255,255,180,${wf.alpha})`;
-      wCtx.fillRect(Math.round(wf.x) - half, Math.round(wf.y) - half, Math.ceil(wf.sz), Math.ceil(wf.sz));
-      wCtx.restore();
+      // Wish fly — 4-layer glow
+      const ws  = Math.ceil(wf.sz);
+      const wpx = Math.round(wf.x), wpy = Math.round(wf.y);
+      const wa  = wf.alpha;
+      wCtx.fillStyle = `rgba(255,255,200,${wa})`;
+      wCtx.globalAlpha = wa * 0.07;  wCtx.fillRect(wpx - ws*6, wpy - ws*6, ws*13, ws*13);
+      wCtx.globalAlpha = wa * 0.16;  wCtx.fillRect(wpx - ws*3, wpy - ws*3, ws*7,  ws*7);
+      wCtx.globalAlpha = wa * 0.42;  wCtx.fillRect(wpx - ws,   wpy - ws,   ws*3,  ws*3);
+      wCtx.globalAlpha = wa;         wCtx.fillRect(wpx,         wpy,        ws,    ws);
+      wCtx.globalAlpha = 1;
     }
   }
 

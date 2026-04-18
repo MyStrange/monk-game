@@ -255,9 +255,10 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
 #hotbar.mobile .slot{width:52px;height:52px;}
 
 /* ── Item cursor (desktop) ── */
+/* Иконка слева-снизу от курсора: курсор виден в верхнем-правом углу иконки */
 #item-cursor{
   position:fixed;pointer-events:none;z-index:9999;display:none;
-  transform:translate(-50%,-50%);
+  transform:translate(-82%, 10px);
   filter:drop-shadow(0 0 6px rgba(240,192,64,0.5));
   image-rendering:pixelated;
 }

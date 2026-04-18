@@ -344,6 +344,7 @@ export async function openSceneScene4() {
     hideLoading();
     state.activeScreen = 'scene4';
     el.style.display   = 'block';
+    setCursor(false);   // сбросить курсор в дефолт при входе в сцену
     requestAnimationFrame(_layoutLayers);
     trackZoneClick('scene4');
   };

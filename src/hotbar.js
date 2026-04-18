@@ -142,7 +142,7 @@ export function updateItemCursor() {
   if (!cursorEl) {
     cursorEl = document.createElement('div');
     cursorEl.id = 'item-cursor';
-    cursorEl.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;display:none;transform:translate(-50%,-50%);';
+    cursorEl.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;display:none;';
     document.body.appendChild(cursorEl);
 
     document.addEventListener('mousemove', e => {

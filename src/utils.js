@@ -11,8 +11,10 @@ export const CURSOR_DEF = `url("${_SVG_DEF}") 10 2, default`;
 export const CURSOR_PTR = `url("${_SVG_PTR}") 10 10, pointer`;
 
 // ── Centralised cursor — все сцены вызывают это вместо element.style.cursor ─
+// Всегда выставляем курсор явно (не через CSS-fallback), чтобы работало
+// корректно во всех сценах включая те, где нет <canvas>.
 export function setCursor(isHot) {
-  document.body.style.cursor = isHot ? CURSOR_PTR : '';
+  document.body.style.cursor = isHot ? CURSOR_PTR : CURSOR_DEF;
 }
 
 // ── Hover glow animation (desktop only) ─────────────────────────────────────
@@ -33,7 +35,7 @@ export function initHoverAnim() {
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const isHot = el && (
       el.closest(SEL) ||
-      (el.tagName === 'CANVAS' && el.style.cursor === CURSOR_PTR)
+      document.body.style.cursor === CURSOR_PTR
     );
     if (isHot) { ring.style.display = 'block'; ring.classList.add('active'); }
     else        { ring.style.display = 'none';  ring.classList.remove('active'); }
