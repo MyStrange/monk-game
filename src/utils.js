@@ -10,6 +10,11 @@ const _SVG_PTR = "data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http:/
 export const CURSOR_DEF = `url("${_SVG_DEF}") 10 2, default`;
 export const CURSOR_PTR = `url("${_SVG_PTR}") 10 10, pointer`;
 
+// ── Centralised cursor — все сцены вызывают это вместо element.style.cursor ─
+export function setCursor(isHot) {
+  document.body.style.cursor = isHot ? CURSOR_PTR : '';
+}
+
 // ── Hover glow animation (desktop only) ─────────────────────────────────────
 // Pulsing golden ring around interactive elements on hover.
 // Detects both DOM buttons and canvas game objects (via cursor check).

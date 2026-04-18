@@ -1,7 +1,7 @@
 // scenes/scene2.js — корни / дерево
 
 import { state }         from '../src/state.js';
-import { showMsgIn, showLoading, hideLoading, showError, CURSOR_DEF, CURSOR_PTR } from '../src/utils.js';
+import { showMsgIn, showLoading, hideLoading, showError, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
 import { getZoneMsg }    from '../src/zone-msgs.js';
@@ -420,7 +420,7 @@ function createEl() {
   bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
 
   canvas = document.createElement('canvas');
-  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:default;';
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
   ctx = canvas.getContext('2d');
 
   const back = document.createElement('button');
@@ -449,9 +449,9 @@ function createEl() {
   canvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== 'scene2') return;
     const r = canvas.getBoundingClientRect();
-    canvas.style.cursor = hitZone(e.clientX - r.left, e.clientY - r.top) ? CURSOR_PTR : CURSOR_DEF;
+    setCursor(!!hitZone(e.clientX - r.left, e.clientY - r.top));
   });
-  canvas.addEventListener('mouseleave', () => { canvas.style.cursor = CURSOR_DEF; });
+  canvas.addEventListener('mouseleave', () => { setCursor(false); });
 
   document.addEventListener('keydown', _onKey);
 }

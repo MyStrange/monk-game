@@ -1,75 +1,71 @@
-// scenes/scene4.js — вид сверху / полёт
+// scenes/scene4.js — вид сверху
 // ─────────────────────────────────────────────────────────────────────────────
-// СТРУКТУРА:
-//   • BG: above_main.jpeg (на ней — кот, монах и дерево с дверью)
-//   • Layer3 (above3.png): верхний слой — лианы поверх двери
-//   • Layer2 (above2.png): средний слой — дверь без лиан, но ещё под покровом
-//   • Снятие слоёв: клик по двери → философская реплика →
-//                   слой уходит (fade-out) → открывается следующий
+// ЗОНЫ (normalized 0..1 относительно BG 2051×1154):
+//   TRUNK_ZONE  — тёмный арочный проём в стволе (над статуей)
+//   STATUE_ZONE — золотая статуя Будды на платформе
+//   CAT_ZONE    — маленький кот справа
+//   MONK_ZONE   — монах в красном, ниже центра
 //
-// ПОТОК КЛИКОВ ПО ДВЕРИ:
-//   1-й клик (на layer3, лианы):
-//       показывается SCENE4_OPEN_MSG1 на 5с — НЕЛЬЗЯ пропустить (story + dur).
-//       по окончании → layer3 уходит.
-//   2-й клик (на layer2):
-//       SCENE4_OPEN_MSG2 (тоже не пропустить) → layer2 уходит →
-//       чуть позже показывается SCENE4_OPEN_MSG3 (дверь уже видна).
+// ПОТОК КЛИКА ПО СТВОЛУ:
+//   Фаза 1 (layer3 на месте):
+//       showChoiceIn — вопрос про дерево (3 варианта) → ответ-реплика →
+//       layer3 уходит (анимация спрайта1 открывается)
+//   Фаза 2 (layer2 на месте):
+//       showChoiceIn — вопрос про дверь (3 варианта) → ответ-реплика →
+//       layer2 уходит → "Дверь была всегда..."
+//   Фаза 3 (оба сняты):
+//       один финальный клик — "Ты входишь..."
 //
-// КОТ И МОНАХ:
-//   Кликабельны в любой момент (если сейчас не идёт story-сообщение).
-//   Реплики берутся из S4_CAT_MSGS / S4_MONK_MSGS, идут циклически.
-//   Счётчики (S.catMsgIdx / S.monkMsgIdx) сохраняются в SaveManager.
+// КУРСОР: управляется централизованно через setCursor() из utils.js
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { state }                         from '../src/state.js';
+import { state }                          from '../src/state.js';
 import { showLoading, hideLoading, showError,
-         showMsgIn, isStoryActive,
-         CURSOR_DEF, CURSOR_PTR }        from '../src/utils.js';
-import { leaveMain, resumeMain }         from './main.js';
-import { SaveManager }                   from '../src/save.js';
-import { trackZoneClick }                from '../src/achievements.js';
+         showMsgIn, showChoiceIn, isStoryActive,
+         setCursor }                      from '../src/utils.js';
+import { leaveMain, resumeMain }          from './main.js';
+import { SaveManager }                    from '../src/save.js';
+import { trackZoneClick }                 from '../src/achievements.js';
 import { S4_CAT_MSGS, S4_MONK_MSGS,
          S4_DURIAN_CAT_MSGS, S4_DURIAN_MONK_MSGS,
-         SCENE4_OPEN_MSG1, SCENE4_OPEN_MSG2, SCENE4_OPEN_MSG3 } from '../src/dialogue.js';
-import { getSelectedItem } from '../src/inventory.js';
+         S4_STATUE_MSGS,
+         SCENE4_OPEN_MSG3 }              from '../src/dialogue.js';
+import { getSelectedItem }                from '../src/inventory.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('scene4');
 S.scene4Unlocked = S.scene4Unlocked ?? false;
-S.layer2Removed  = S.layer2Removed  ?? false;   // above2 снят
-S.layer3Removed  = S.layer3Removed  ?? false;   // above3 (лианы) снят
+S.layer2Removed  = S.layer2Removed  ?? false;
+S.layer3Removed  = S.layer3Removed  ?? false;
 S.catMsgIdx      = S.catMsgIdx      ?? 0;
 S.monkMsgIdx     = S.monkMsgIdx     ?? 0;
+S.statueIdx      = S.statueIdx      ?? 0;
 S.durCatIdx      = S.durCatIdx      ?? 0;
 S.durMonkIdx     = S.durMonkIdx     ?? 0;
+S.doorEntered    = S.doorEntered    ?? false;
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, bgEl, layer2El, layer3El, msgEl;
 
-// ── BG natural dims (для выравнивания спрайтов-оверлеев и hit-зон) ────────
+// ── BG dims + layer sprite coords ─────────────────────────────────────────
 const BG_W = 2051, BG_H = 1154;
-// Positional crop оверлейных спрайтов above2/above3 внутри BG (template match)
 const SP_X = 784, SP_Y = 0, SP_W = 509, SP_H = 854;
 
-// Hit-зоны кота и монаха (нормированные 0..1 относительно BG natural).
-// Координаты сверены по самой картинке above_main.jpeg:
-//   • кот (маленький рыжий) — чуть правее центра, около двух третей высоты
-//   • монах (красное пятно) — ниже центра, левее кота
-// Зоны пересекаются с прямоугольниками слоёв above2/above3 (X=0.38..0.63,
-// Y=0..0.74), поэтому обработчик вешается в capture-фазе на el — срабатывает
-// до layer-хендлеров и не даёт их stopPropagation заблокировать кот/монаха.
-const CAT_ZONE  = { x0: 0.60, y0: 0.52, x1: 0.72, y1: 0.70 };
-const MONK_ZONE = { x0: 0.48, y0: 0.68, x1: 0.63, y1: 0.85 };
+// ── Hit-зоны (normalized 0..1 в BG natural) ───────────────────────────────
+// Сверены по above_main.jpeg; CAT/MONK используют capture-фазу чтобы
+// перехватить клик даже если они под прямоугольником layer2/layer3 img.
+const TRUNK_ZONE  = { x0: 0.41, y0: 0.07, x1: 0.56, y1: 0.36 };
+const STATUE_ZONE = { x0: 0.39, y0: 0.42, x1: 0.60, y1: 0.78 };
+const CAT_ZONE    = { x0: 0.61, y0: 0.51, x1: 0.68, y1: 0.70 };
+const MONK_ZONE   = { x0: 0.48, y0: 0.70, x1: 0.61, y1: 0.84 };
 
 // ── Displayed-BG math (object-fit:cover + object-position:top) ────────────
 function _dispBG(vw, vh) {
   const bgA = BG_W / BG_H, vA = vw / vh;
   if (vA > bgA) {
-    // viewport шире → BG растянута по ширине, снизу обрезана
     const dW = vw, dH = vw / bgA;
     return { x: 0, y: 0, w: dW, h: dH, scale: dW / BG_W };
   } else {
-    // viewport уже → BG растянута по высоте, по бокам обрезана симметрично
     const dH = vh, dW = vh * bgA;
     return { x: (vw - dW) / 2, y: 0, w: dW, h: dH, scale: dH / BG_H };
   }
@@ -84,7 +80,6 @@ function _inZone(cx, cy, z) {
   return nx >= z.x0 && nx <= z.x1 && ny >= z.y0 && ny <= z.y1;
 }
 
-// Позиционировать оверлеи строго поверх их natural pixel-crop в BG
 function _layoutLayers() {
   if (!el) return;
   const r = el.getBoundingClientRect();
@@ -106,56 +101,82 @@ function _layoutLayers() {
 function _peelLayer(which) {
   const node = which === 3 ? layer3El : layer2El;
   if (!node) return;
-  // Снять можно только верхний видимый слой: layer3 → layer2 → BG
   if (which === 2 && !S.layer3Removed) return;
   if (which === 3 && S.layer3Removed)  return;
   node.classList.add('fade-out');
-  // Держим node в DOM ещё кадр, потом убираем из render-tree
   setTimeout(() => { node.style.display = 'none'; }, 600);
   if (which === 3) S.layer3Removed = true;
   else             S.layer2Removed = true;
   SaveManager.setScene('scene4', S);
 }
 
-// ── Door click flow (philosophical messages) ───────────────────────────────
-function _onDoorClick(which) {
-  if (isStoryActive(msgEl)) return;           // во время story — игнор
-  if (which === 3) {
-    if (S.layer3Removed) return;
-    // MSG1 — медитация, слои. 5с, нельзя пропустить. По завершении — peel.
-    showMsgIn(msgEl, SCENE4_OPEN_MSG1, {
-      story: true, dur: 5000,
-      onDismiss: () => {
-        if (state.activeScreen !== 'scene4') return;
-        _peelLayer(3);
-      },
-    });
-  } else if (which === 2) {
-    if (!S.layer3Removed || S.layer2Removed) return;
-    // MSG2 — страшно, но дверь. 4.5с. По завершении — peel + следом MSG3.
-    showMsgIn(msgEl, SCENE4_OPEN_MSG2, {
-      story: true, dur: 4500,
-      onDismiss: () => {
-        if (state.activeScreen !== 'scene4') return;
-        _peelLayer(2);
-        // Ждём, пока слой начнёт уходить (600мс fade) — тогда показываем MSG3
-        setTimeout(() => {
-          if (state.activeScreen !== 'scene4') return;
-          showMsgIn(msgEl, SCENE4_OPEN_MSG3, { story: true, dur: 5500 });
-        }, 800);
-      },
-    });
+// ── Trunk click — flow с выбором ───────────────────────────────────────────
+const _Q1_RESP = {
+  'Корни':    'Корни помнят каждый год, что прошёл над ними.',
+  'Время':    'Время — возможно. Оно держит всё, не зная об этом.',
+  'Тишина':   'Тишина держит больше, чем кажется.',
+};
+const _Q2_RESP = {
+  'Ответа':   'Ответы там есть. Но они задают новые вопросы.',
+  'Темноты':  'Темнота — это честно. Глаза привыкают.',
+  'Ничего':   'Ничего — это тоже что-то. Особенно здесь.',
+};
+
+function _onTrunkClick() {
+  if (isStoryActive(msgEl)) return;
+
+  if (!S.layer3Removed) {
+    // Фаза 1: вопрос про дерево
+    showChoiceIn(msgEl,
+      'Что держит это дерево вместе?',
+      [{text: 'Корни'}, {text: 'Время'}, {text: 'Тишина'}],
+      val => {
+        const resp = _Q1_RESP[val] || 'Дерево слушает. Слои отступают.';
+        showMsgIn(msgEl, resp, {
+          story: true, dur: 2800,
+          onDismiss: () => {
+            if (state.activeScreen !== 'scene4') return;
+            _peelLayer(3);
+          },
+        });
+      }
+    );
+  } else if (!S.layer2Removed) {
+    // Фаза 2: вопрос про дверь
+    showChoiceIn(msgEl,
+      'Что ты ждёшь по ту сторону?',
+      [{text: 'Ответа'}, {text: 'Темноты'}, {text: 'Ничего'}],
+      val => {
+        const resp = _Q2_RESP[val] || 'Страшно только до порога.';
+        showMsgIn(msgEl, resp, {
+          story: true, dur: 2800,
+          onDismiss: () => {
+            if (state.activeScreen !== 'scene4') return;
+            _peelLayer(2);
+            setTimeout(() => {
+              if (state.activeScreen !== 'scene4') return;
+              showMsgIn(msgEl, SCENE4_OPEN_MSG3, { story: true, dur: 5500 });
+            }, 800);
+          },
+        });
+      }
+    );
+  } else {
+    // Фаза 3: войти
+    if (S.doorEntered) return;
+    S.doorEntered = true;
+    SaveManager.setScene('scene4', S);
+    showMsgIn(msgEl,
+      'Ты входишь. За дверью — лес. Другой лес.',
+      { story: true, dur: 5000 }
+    );
   }
 }
 
-// ── Capture-phase click — кот/монах (приоритет перед слоями) ──────────────
-// Вешается на el через addEventListener('click', _, true). Срабатывает ДО
-// хендлеров на layer2/layer3, поэтому их stopPropagation нас не блокирует.
-// Back-btn остаётся работоспособной: её зона наверху слева, мимо cat/monk.
+// ── Capture-phase handler — все зоны ─────────────────────────────────────
+// Срабатывает ДО layer2/layer3 handlers → работает даже через прозрачные img.
 function _onElCapture(e) {
   if (state.activeScreen !== 'scene4') return;
-  if (isStoryActive(msgEl)) return;
-  // back-btn не трогаем — пусть обработает себя сам
   if (e.target && e.target.closest && e.target.closest('.back-btn')) return;
 
   const r = el.getBoundingClientRect();
@@ -163,7 +184,31 @@ function _onElCapture(e) {
   const cx = pt.clientX - r.left;
   const cy = pt.clientY - r.top;
 
+  // TRUNK — только ствол (верхний проём) активирует дверной флоу
+  if (_inZone(cx, cy, TRUNK_ZONE)) {
+    e.stopPropagation();
+    e.preventDefault?.();
+    _onTrunkClick();
+    trackZoneClick('scene4_trunk');
+    return;
+  }
+
+  // STATUE — статуя (всегда, вне зависимости от слоёв)
+  if (_inZone(cx, cy, STATUE_ZONE)) {
+    if (isStoryActive(msgEl)) return;
+    e.stopPropagation();
+    e.preventDefault?.();
+    const msg = S4_STATUE_MSGS[S.statueIdx % S4_STATUE_MSGS.length];
+    S.statueIdx++;
+    SaveManager.setScene('scene4', S);
+    showMsgIn(msgEl, msg);
+    trackZoneClick('scene4_statue');
+    return;
+  }
+
+  // CAT
   if (_inZone(cx, cy, CAT_ZONE)) {
+    if (isStoryActive(msgEl)) return;
     e.stopPropagation();
     e.preventDefault?.();
     const sel = getSelectedItem();
@@ -180,7 +225,10 @@ function _onElCapture(e) {
     trackZoneClick('scene4_cat');
     return;
   }
+
+  // MONK
   if (_inZone(cx, cy, MONK_ZONE)) {
+    if (isStoryActive(msgEl)) return;
     e.stopPropagation();
     e.preventDefault?.();
     const sel = getSelectedItem();
@@ -197,23 +245,23 @@ function _onElCapture(e) {
     trackZoneClick('scene4_monk');
     return;
   }
-  // Иначе — событие идёт дальше (layer3 / layer2 / bg)
+  // Прочие клики (фон, листва) — событие идёт дальше
 }
 
 // ── Cursor hint (desktop) ──────────────────────────────────────────────────
-// Слушаем mousemove на el, чтобы hover работал и поверх слоёв — тогда
-// визуально понятно, что кот/монах кликабельны даже через layer.
 function _onElMove(e) {
   if (state.activeScreen !== 'scene4') return;
   const r = el.getBoundingClientRect();
   const cx = e.clientX - r.left;
   const cy = e.clientY - r.top;
-  const hot = _inZone(cx, cy, CAT_ZONE) || _inZone(cx, cy, MONK_ZONE);
-  const cur = hot ? CURSOR_PTR : '';
-  // Ставим курсор на все img — под указателем может быть любой слой
-  bgEl.style.cursor     = cur || 'default';
-  if (layer2El) layer2El.style.cursor = cur; // '' вернёт CSS-умолчание (pointer)
-  if (layer3El) layer3El.style.cursor = cur;
+  // Зоны клика + видимые слои — всё интерактивно
+  const overVisible = (!S.layer3Removed && e.target === layer3El)
+                   || (!S.layer2Removed && e.target === layer2El);
+  const overZone = _inZone(cx, cy, TRUNK_ZONE)  ||
+                   _inZone(cx, cy, STATUE_ZONE) ||
+                   _inZone(cx, cy, CAT_ZONE)    ||
+                   _inZone(cx, cy, MONK_ZONE);
+  setCursor(overZone || overVisible);
 }
 
 // ── DOM creation ───────────────────────────────────────────────────────────
@@ -224,21 +272,17 @@ function createEl() {
   el.id = 'scene4';
   el.style.cssText = 'position:absolute;inset:0;display:none;z-index:55;overflow:hidden;';
 
-  // Base BG — картинка с дверью, object-fit:cover для кадрирования
   bgEl = document.createElement('img');
   bgEl.src = 'assets/bg/above_main.jpeg';
   bgEl.className = 's4-bg';
-  bgEl.style.cssText =
-    'display:block;width:100%;height:100%;object-fit:cover;object-position:top;cursor:default;';
+  bgEl.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;object-position:top;';
 
-  // Layer 2 — средний оверлей (дверь без лиан)
   layer2El = document.createElement('img');
   layer2El.src = 'assets/bg/above2.png';
   layer2El.className = 's4-layer';
   layer2El.dataset.layer = '2';
   layer2El.style.zIndex = '60';
 
-  // Layer 3 — верхний оверлей (лианы поверх двери)
   layer3El = document.createElement('img');
   layer3El.src = 'assets/bg/above3.png';
   layer3El.className = 's4-layer';
@@ -263,53 +307,36 @@ function createEl() {
   el.appendChild(msgEl);
   document.getElementById('wrap').appendChild(el);
 
-  // Resize — пересчитать позицию оверлеев
   window.addEventListener('resize', () => {
     if (state.activeScreen === 'scene4') _layoutLayers();
   });
 
-  // Клик по верхнему слою — дверной флоу (layer3 → MSG1 → peel)
-  const _tap3 = e => { e.stopPropagation(); e.preventDefault?.(); _onDoorClick(3); };
-  layer3El.addEventListener('click', _tap3);
-  layer3El.addEventListener('touchend', _tap3, { passive: false });
-
-  // Клик по среднему слою — дверной флоу (layer2 → MSG2 → peel → MSG3)
-  const _tap2 = e => { e.stopPropagation(); e.preventDefault?.(); _onDoorClick(2); };
-  layer2El.addEventListener('click', _tap2);
-  layer2El.addEventListener('touchend', _tap2, { passive: false });
-
-  // Кот/монах — capture-фаза на el. Перехватывает клик ДО layer-хендлеров,
-  // значит их stopPropagation нас не глушит, даже если зона под слоем.
+  // Все зоны — capture-фаза на el (срабатывает ДО layer-хендлеров)
   el.addEventListener('click',    _onElCapture, true);
   el.addEventListener('touchend', _onElCapture, true);
 
-  // Cursor hint для desktop — смотрим на всю сцену
-  el.addEventListener('mousemove', _onElMove);
-  el.addEventListener('mouseleave', () => {
-    bgEl.style.cursor = CURSOR_DEF;
-    if (layer2El) layer2El.style.cursor = '';
-    if (layer3El) layer3El.style.cursor = '';
-  });
+  // Курсор — mousemove на el, mouseleave сбрасывает
+  el.addEventListener('mousemove',  _onElMove);
+  el.addEventListener('mouseleave', () => setCursor(false));
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 export async function openSceneScene4() {
   leaveMain();
   createEl();
-  el = document.getElementById('scene4');
+  el       = document.getElementById('scene4');
   bgEl     = el.querySelector('.s4-bg');
   layer2El = el.querySelector('.s4-layer[data-layer="2"]');
   layer3El = el.querySelector('.s4-layer[data-layer="3"]');
   msgEl    = el.querySelector('.scene-msg');
 
-  // Восстановить состояние слоёв
   if (S.layer3Removed) { layer3El.style.display = 'none'; }
   else { layer3El.style.display = ''; layer3El.classList.remove('fade-out'); }
   if (S.layer2Removed) { layer2El.style.display = 'none'; }
   else { layer2El.style.display = ''; layer2El.classList.remove('fade-out'); }
 
   S.scene4Unlocked = true;
-  SaveManager.setScene('scene4', S);   // фиксируем сразу, иначе F5 внутри сцены сбросит
+  SaveManager.setScene('scene4', S);
 
   showLoading('высота');
 
@@ -335,6 +362,7 @@ export async function openSceneScene4() {
 export function closeSceneScene4() {
   state.activeScreen = 'main';
   if (el) el.style.display = 'none';
+  setCursor(false);
   SaveManager.setScene('scene4', S);
   resumeMain();
 }

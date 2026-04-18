@@ -200,7 +200,7 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
      на основе natural crop: sprite TL=(784,0), size=(509,854) в BG 2051×1154 */
   position:absolute;
   image-rendering:pixelated;
-  cursor:pointer;
+  cursor:inherit;
   user-select:none;-webkit-tap-highlight-color:transparent;
   transition:opacity .55s ease-out;
 }

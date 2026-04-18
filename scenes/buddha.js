@@ -1,7 +1,7 @@
 // scenes/buddha.js — Будда: светлячки, желание, ухо, диалог философов
 
 import { state }         from '../src/state.js';
-import { showMsgIn, showChoiceIn, showLoading, hideLoading, showError, CURSOR_DEF, CURSOR_PTR } from '../src/utils.js';
+import { showMsgIn, showChoiceIn, showLoading, hideLoading, showError, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
 import { renderHotbar }  from '../src/hotbar.js';
@@ -595,7 +595,7 @@ function createEl() {
   bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
 
   bCanvas = document.createElement('canvas');
-  bCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:default;';
+  bCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
   bCtx = bCanvas.getContext('2d');
 
   wishCanvas = document.createElement('canvas');
@@ -633,7 +633,7 @@ function createEl() {
     if (state.activeScreen !== 'buddha') return;
     const r  = bCanvas.getBoundingClientRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
-    bCanvas.style.cursor = _hitBuddha(cx, cy) ? CURSOR_PTR : CURSOR_DEF;
+    setCursor(_hitBuddha(cx, cy));
     // Подсказка: стик над зоной уха
     const item = getSelectedItem();
     const inEar = _inEar(cx, cy);
@@ -644,7 +644,7 @@ function createEl() {
       _stickHintZone = false;
     }
   });
-  bCanvas.addEventListener('mouseleave', () => { bCanvas.style.cursor = CURSOR_DEF; });
+  bCanvas.addEventListener('mouseleave', () => { setCursor(false); });
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────

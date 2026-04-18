@@ -1,7 +1,7 @@
 // scenes/scene3.js — поле огненных цветов (процедурная графика)
 
 import { state }        from '../src/state.js';
-import { showMsgIn, CURSOR_DEF, CURSOR_PTR } from '../src/utils.js';
+import { showMsgIn, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem } from '../src/inventory.js';
 import { renderHotbar } from '../src/hotbar.js';
@@ -209,7 +209,7 @@ function createEl() {
   el.style.cssText = 'position:absolute;inset:0;display:none;z-index:55;overflow:hidden;';
 
   canvas = document.createElement('canvas');
-  canvas.style.cssText = 'display:block;width:100%;height:100%;cursor:default;';
+  canvas.style.cssText = 'display:block;width:100%;height:100%;';
   ctx = canvas.getContext('2d');
 
   const back = document.createElement('button');
@@ -239,10 +239,10 @@ function createEl() {
     if (state.activeScreen !== 'scene3') return;
     const r = canvas.getBoundingClientRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
-    canvas.style.cursor = (!S.fireFlowerPicked &&
-      Math.abs(cx - s3W * 0.5) < 40 && Math.abs(cy - s3H * 0.58) < 40) ? CURSOR_PTR : CURSOR_DEF;
+    setCursor(!S.fireFlowerPicked &&
+      Math.abs(cx - s3W * 0.5) < 40 && Math.abs(cy - s3H * 0.58) < 40);
   });
-  canvas.addEventListener('mouseleave', () => { canvas.style.cursor = CURSOR_DEF; });
+  canvas.addEventListener('mouseleave', () => { setCursor(false); });
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────

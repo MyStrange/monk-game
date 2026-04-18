@@ -1,7 +1,7 @@
 // scenes/main.js — главная сцена: герой, зоны, медитация, символы
 
 import { state }           from '../src/state.js';
-import { showMsgIn, showLoading, hideLoading, CURSOR_DEF, CURSOR_PTR } from '../src/utils.js';
+import { showMsgIn, showLoading, hideLoading, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
@@ -103,6 +103,7 @@ let meditationPhase  = 0;
 let pSyms    = [];
 let mParticles = [];
 let draggedSym = null;
+let _justDelivered = false;  // блокирует click после mouseup с _deliverSym
 let statueParticles = [];  // вспышки при доставке символа
 
 const THAI_CHARS = 'ธมอนภวตสกรคทยชพระศษสหฬาิีุูเแโใไ';
@@ -318,6 +319,7 @@ function interactItem(itemId, zone) {
 
 // ── onTap ──────────────────────────────────────────────────────────────────
 function onTap(cx, cy) {
+  if (_justDelivered) { _justDelivered = false; return; }
   if (state.activeScreen !== 'main') return;
   trackSpotClick(cx, cy, 'main');
 
@@ -724,7 +726,7 @@ export async function initMain() {
     const cx = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
     onDragMove(cx, cy);
     // Pointer cursor over clickable zones OR meditation symbols
-    canvas.style.cursor = (hitZoneBG(cx, cy) || _hitSym(cx, cy)) ? CURSOR_PTR : CURSOR_DEF;
+    setCursor(hitZoneBG(cx, cy) || _hitSym(cx, cy));
   });
   canvas.addEventListener('mouseup', e => {
     if (!draggedSym) return;
@@ -737,12 +739,13 @@ export async function initMain() {
         Math.hypot(cx - ip.x, cy - ip.y) < 80 &&
         (hero.praying || meditationPhase > 0)) {
       _deliverSym();
+      _justDelivered = true;
     }
     if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
     _dragMoved = false;
   });
   canvas.addEventListener('mouseleave', () => {
-    canvas.style.cursor = CURSOR_DEF;
+    setCursor(false);
   });
 
   // Touch events
