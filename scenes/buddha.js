@@ -122,6 +122,7 @@ function _startWish(jar) {
     jar.description    = 'Светляковая жижка. Внутри мерцает тихий свет — след от десяти светлячков.';
     state.selectedSlot = -1;  // снять с руки после завершения желания
     renderHotbar();
+    AudioSystem.playReleaseChimes?.();      // перелив колокольчиков
     showMsg(wishDoneMsg, { story: true });
   }, (WISH_DURATION / 60) * 1000 + 200);
 }
@@ -404,11 +405,13 @@ function startFireflyDialog() {
 
 // ── interactItem ───────────────────────────────────────────────────────────
 function interactItem(itemId, zone) {
-  // Glowstick on ear — инструмент многоразовый, остаётся в инвентаре
+  // Glowstick on ear — свет уходит в ухо и там остаётся; палка гаснет и исчезает.
   if (itemId === 'glowstick' && zone === 'ear' && !S.earUsed) {
     S.earUsed = true;
     SaveManager.setScene('buddha', S);   // флаг сразу — не теряется при F5 за 2.8с
-    state.selectedSlot = -1;             // снять с руки, но не удалять
+    const slot = state.inventory.findIndex(i => i?.id === 'glowstick');
+    if (slot >= 0) state.inventory[slot] = null;
+    state.selectedSlot = -1;
     renderHotbar();
     AudioSystem.playBell();
     showMsg(earMsg, 3500);
@@ -773,6 +776,7 @@ export function closeSceneBuddha() {
         if (v !== 'Выпустить') return;
         jar.caught = 0;
         renderHotbar();
+        AudioSystem.playReleaseChimes?.();    // перелив колокольчиков при выходе
         // Визуально: светлячки возвращаются в сцену (доливаем до 30)
         if (state.activeScreen === SCREENS.BUDDHA) {
           const need = Math.max(0, 30 - bFlies.filter(f => f.alive).length);

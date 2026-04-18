@@ -474,27 +474,41 @@ export const AudioSystem = {
     if (!this.ctx) return;
     const ac  = this.ctx;
     const now = ac.currentTime;
-    // White noise filtered through bandpass sweep → rushing water
-    const bufLen = Math.floor(ac.sampleRate * 0.65);
+    // Капля в воду: короткий «plop» — pitched sine опускается + мягкий
+    // low-passed shimmer-tail (круги на воде).
+    // Тон 1 — основная «капля»: быстро падающая частота
+    const osc = ac.createOscillator();
+    const g   = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(900, now);
+    osc.frequency.exponentialRampToValueAtTime(220, now + 0.14);
+    g.gain.setValueAtTime(0.18, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+    osc.connect(g); g.connect(this.sfxGain);
+    osc.start(now); osc.stop(now + 0.30);
+    // Тон 2 — верхняя «капля» (отражение на поверхности)
+    const osc2 = ac.createOscillator();
+    const g2   = ac.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1700, now + 0.01);
+    osc2.frequency.exponentialRampToValueAtTime(600, now + 0.12);
+    g2.gain.setValueAtTime(0.06, now + 0.01);
+    g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    osc2.connect(g2); g2.connect(this.sfxGain);
+    osc2.start(now + 0.01); osc2.stop(now + 0.20);
+    // Шелест волны — короткий low-passed noise
+    const bufLen = Math.floor(ac.sampleRate * 0.35);
     const buf  = ac.createBuffer(1, bufLen, ac.sampleRate);
     const data = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-    const src  = ac.createBufferSource();
-    src.buffer = buf;
-    const f1 = ac.createBiquadFilter();
-    f1.type = 'bandpass'; f1.Q.value = 1.4;
-    f1.frequency.setValueAtTime(700, now);
-    f1.frequency.linearRampToValueAtTime(1600, now + 0.30);
-    f1.frequency.linearRampToValueAtTime(900,  now + 0.55);
-    const f2 = ac.createBiquadFilter();
-    f2.type = 'highpass'; f2.frequency.value = 400;
-    const g = ac.createGain();
-    g.gain.setValueAtTime(0, now);
-    g.gain.linearRampToValueAtTime(0.16, now + 0.07);
-    g.gain.linearRampToValueAtTime(0.12, now + 0.40);
-    g.gain.linearRampToValueAtTime(0,    now + 0.60);
-    src.connect(f1); f1.connect(f2); f2.connect(g); g.connect(this.sfxGain);
-    src.start(now); src.stop(now + 0.65);
+    for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const lp  = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
+    const ng  = ac.createGain();
+    ng.gain.setValueAtTime(0, now);
+    ng.gain.linearRampToValueAtTime(0.04, now + 0.08);
+    ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+    src.connect(lp); lp.connect(ng); ng.connect(this.sfxGain);
+    src.start(now); src.stop(now + 0.35);
   },
 
   playRock() {
@@ -526,29 +540,43 @@ export const AudioSystem = {
     if (!this.ctx) return;
     const ac  = this.ctx;
     const now = ac.currentTime;
-    // Short FM buzz (insect) + high shimmer
-    const osc = ac.createOscillator();
-    const g   = ac.createGain();
-    const lfo = ac.createOscillator();
-    const lg  = ac.createGain();
-    osc.type = 'sine'; osc.frequency.value = 240;
-    lfo.frequency.value = 72; lg.gain.value = 110;
-    lfo.connect(lg); lg.connect(osc.frequency);
-    g.gain.setValueAtTime(0.08, now);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-    osc.connect(g); g.connect(this.sfxGain);
-    osc.start(now); osc.stop(now + 0.18);
-    lfo.start(now); lfo.stop(now + 0.18);
-    // High shimmer
-    const osc2 = ac.createOscillator();
-    const g2   = ac.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(1400, now);
-    osc2.frequency.exponentialRampToValueAtTime(2800, now + 0.14);
-    g2.gain.setValueAtTime(0.055, now);
-    g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-    osc2.connect(g2); g2.connect(this.sfxGain);
-    osc2.start(now); osc2.stop(now + 0.20);
+    // Звонкий колокольчик-тинг: одна «ping»-нота с гармониками.
+    // Каждый пойманный светлячок — маленький бесплатный колокольчик.
+    // Случайный питч из пентатоники, чтобы серия ловли складывалась
+    // в мелодичное облако, а не в однообразный звон.
+    const NOTES = [880, 988, 1109, 1319, 1480, 1760];
+    const f = NOTES[Math.floor(Math.random() * NOTES.length)];
+    [[f, 0.12, 1.2], [f * 2.01, 0.045, 0.7], [f * 3.0, 0.02, 0.5]].forEach(([hz, amp, dec]) => {
+      const osc = ac.createOscillator();
+      const g   = ac.createGain();
+      osc.type = 'sine'; osc.frequency.value = hz;
+      g.gain.setValueAtTime(amp, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dec);
+      osc.connect(g); g.connect(this.sfxGain);
+      osc.start(now); osc.stop(now + dec);
+    });
+  },
+
+  // Каскад колокольчиков — когда светлячки разлетаются из банки.
+  // 6 нот восходящей пентатоникой, каждая с мягкой звонкостью,
+  // разнесены по времени — звучит как «перелив».
+  playReleaseChimes() {
+    if (!this.ctx) return;
+    const ac  = this.ctx;
+    const now = ac.currentTime;
+    const NOTES = [659, 784, 988, 1175, 1319, 1568, 1760];
+    NOTES.forEach((f, i) => {
+      const t = now + i * 0.11;
+      [[f, 0.13, 1.6], [f * 2.0, 0.05, 1.0]].forEach(([hz, amp, dec]) => {
+        const osc = ac.createOscillator();
+        const g   = ac.createGain();
+        osc.type = 'sine'; osc.frequency.value = hz;
+        g.gain.setValueAtTime(amp, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
+        osc.connect(g); g.connect(this.sfxGain);
+        osc.start(t); osc.stop(t + dec);
+      });
+    });
   },
 
   playItemInteract() {

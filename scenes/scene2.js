@@ -92,11 +92,14 @@ const rockClicks = { rock1: 0, rock2: 0, rock3: 0 };
 const ACTIVATION_DUR = 4000;      // ms
 const _activating = {};           // { rockName: { t0, particles, msg } }
 
-// Палитра — жёлто-белые тёплые оттенки. Каждая частица берёт случайный.
+// Палитра — 4 тёплых золотых тона, взяты из спрайтов активированных камней.
+// Было 10 цветов (от чистого белого до бронзы) — выглядело пёстро,
+// как фейерверк. Теперь всё в узкой жёлто-золотой гамме, одна семья оттенков.
 const _PARTICLE_COLORS = [
-  '#ffffff', '#fffde0', '#fff8c0', '#fff4a0',
-  '#ffee88', '#ffe066', '#ffd750', '#ffcc40',
-  '#ffb830', '#fff0c8',
+  '#fff4b0',   // светлый тёплый
+  '#ffe080',   // ядро
+  '#ffc848',   // насыщенный золотой
+  '#ffa820',   // тёплый янтарный акцент
 ];
 
 // ── Ambient orbital particles (светятся над каждым активированным камнем) ──
@@ -126,24 +129,26 @@ function _spawnAmbientParticles() {
 
 function _spawnActivationParticles() {
   const arr = [];
-  // 80 штук — плотное но прозрачное облако
-  for (let i = 0; i < 80; i++) {
-    const ang = Math.random() * Math.PI * 2;
-    // Скорости от очень медленных до быстрых — разброс по траекториям
-    const speed = 0.3 + Math.random() * 2.6;
+  // 60 штук, плавный восход вверх с лёгким боковым покачиванием —
+  // не фейерверк (разлёт во все стороны), а «пыль-искра, поднимающаяся
+  // от камня к небу». Скорости маленькие, гравитация отрицательная.
+  for (let i = 0; i < 60; i++) {
     arr.push({
-      // локальные координаты внутри прямоугольника камня (0..1)
-      x:  0.5 + (Math.random() - 0.5) * 0.20,
-      y:  0.5 + (Math.random() - 0.5) * 0.20,
-      vx: Math.cos(ang) * speed,
-      vy: Math.sin(ang) * speed - 0.5,   // чуть вверх в среднем
+      // Стартуем по всей площадке камня — не из центра, чтобы не выглядело
+      // как точечный взрыв
+      x:  0.15 + Math.random() * 0.70,
+      y:  0.55 + Math.random() * 0.35,   // нижняя половина
+      // Лёгкий вертикальный подъём + мягкое боковое покачивание
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: -(0.25 + Math.random() * 0.35),
+      // Sway для плавного колыхания траектории
+      swayAmp:   0.008 + Math.random() * 0.014,
+      swayFreq:  0.025 + Math.random() * 0.03,
+      swayPhase: Math.random() * Math.PI * 2,
       life: 0,
-      ttl: 70 + Math.random() * 120,     // разный срок жизни (70..190 frames)
-      sz:  1 + Math.floor(Math.random() * 4),   // 1..4 пикселя — разные
+      ttl: 120 + Math.random() * 120,     // 120..240 кадров — дольше видны
+      sz:  1 + Math.floor(Math.random() * 3),
       col: _PARTICLE_COLORS[Math.floor(Math.random() * _PARTICLE_COLORS.length)],
-      // легкий индивидуальный шум в направлении — мягче разлёт
-      dx: (Math.random() - 0.5) * 0.02,
-      dy: (Math.random() - 0.5) * 0.02,
     });
   }
   return arr;
@@ -177,9 +182,6 @@ function _activateRock(zone, msg) {
   S.rockStates[zone] = true;
   _saveS();
 
-  // После активации считаем общее количество. На 1-м и 2-м — показываем
-  // reflection-последовательность в дополнение к обычному сообщению.
-  // На 3-м ничего не добавляем — там уже дальше по сюжету (выход из сцены).
   const n = _activatedCount();
 
   const entry = {
@@ -192,11 +194,16 @@ function _activateRock(zone, msg) {
     entry.timer = null;
     delete _activating[zone];
     if (state.activeScreen !== SCREENS.SCENE2) return;
-    showMsg(msg);
-    // Reflection идёт ПОСЛЕ обычного сообщения, с задержкой чтобы не
-    // наложиться. dur у обычного msg дефолтный (3200мс), поэтому +1400.
-    if      (n === 1) _showReflectionSequence(ROCK1_REFLECT, 3600);
-    else if (n === 2) _showReflectionSequence(ROCK2_REFLECT, 3600);
+
+    // Складываем активационное сообщение и reflection в один chain —
+    // теперь всё идёт через showMsgIn(story) с onDismiss, без отдельных
+    // setTimeout и без риска, что обычный msg перекроет начало reflection.
+    // Раньше между msg и reflection был 3.6с зазор — всё работало, но
+    // отдельный msg (не story) и параллельные таймеры были хрупкими.
+    const chain = [msg];
+    if      (n === 1) chain.push(...ROCK1_REFLECT);
+    else if (n === 2) chain.push(...ROCK2_REFLECT);
+    _showReflectionSequence(chain, 0);
   }, ACTIVATION_DUR);
   _activating[zone] = entry;
 }
@@ -376,12 +383,13 @@ function animate() {
       for (const p of act.particles) {
         p.life++;
         if (p.life > p.ttl) continue;
-        // Движение: скорость + лёгкий индивидуальный дрейф
-        p.vx += p.dx;
-        p.vy += p.dy + 0.015;    // мягкая гравитация
-        p.vx *= 0.988;           // плавное торможение (было 0.985)
-        p.vy *= 0.988;
-        p.x += p.vx / rw;
+        // Движение: плавный восход без гравитации + боковое покачивание.
+        // Без fireworks-разлёта — частицы спокойно поднимаются вверх,
+        // слегка колышась в стороны (как тёплая пыль от костра).
+        p.swayPhase += p.swayFreq;
+        p.vx *= 0.994;
+        p.vy *= 0.994;
+        p.x += p.vx / rw + Math.sin(p.swayPhase) * p.swayAmp;
         p.y += p.vy / rh;
         const lifeFrac = p.life / p.ttl;
         // Плавная alpha-кривая: быстрый appear, долгий fade-out
@@ -394,13 +402,13 @@ function animate() {
         const py = Math.round(ry + p.y * rh);
         const s  = p.sz;
         ctx.fillStyle = p.col;
-        // 1) halo — широкое мягкое свечение
+        // halo — широкое мягкое свечение
         ctx.globalAlpha = a * 0.18;
         ctx.fillRect(px - s * 2, py - s * 2, s * 5, s * 5);
-        // 2) mid — средний ореол
+        // mid — средний ореол
         ctx.globalAlpha = a * 0.45;
         ctx.fillRect(px - s, py - s, s * 3, s * 3);
-        // 3) core — яркий пиксель
+        // core — яркий пиксель
         ctx.globalAlpha = a;
         ctx.fillRect(px, py, s, s);
       }
