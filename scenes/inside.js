@@ -23,17 +23,9 @@ import { coverRect, hitZone as _hitNormZone } from '../src/scene-base.js';
 // ── BG aspect ratio ────────────────────────────────────────────────────────
 const BG_W = 1920, BG_H = 1080;   // 16:9, object-fit:cover адаптирует
 
-// ── Heart sprite image (активное состояние с гибискусом) ─────────────────
-// Нормализованные координаты области, которая меняется между base и active:
-//   x0=0.36 y0=0.33 → x1=0.69 y1=0.92  (ниша с кристаллом в правой части)
-// Область свапа. Раньше была узкой (0.36-0.69 × 0.33-0.92) — вырезала только
-// центральное сердечко, и красное свечение при активации резко обрывалось.
-// Теперь покрывает почти весь центр+пол+правую стенку, где в исходнике
-// видна разница между базовым и активным состоянием (тёплое зарево,
-// отражения на дереве, ореол по полу). Найдено через ImageChops-диф.
-const _HEART_SPRITE = { nx0: 0.22, ny0: 0.30, nx1: 0.92, ny1: 1.00 };
-const _heartImg = new Image();
-_heartImg.src = 'assets/bg/inside_heart.png';
+// Активный фон подключается как второй <img> в createEl (dual-layer + opacity).
+// Раньше тут был canvas-crop через _HEART_SPRITE — обрезало по прямоугольнику
+// и выглядело криво. Теперь меняется весь кадр целиком через CSS transition.
 
 // ── Hit zones (0..1 relative to BG) ───────────────────────────────────────
 const HEART_ZONE   = { x0: 0.36, y0: 0.44, x1: 0.66, y1: 0.90 };
@@ -76,6 +68,7 @@ const OPENING_MSGS = [
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 let el, canvas, ctx, msgEl;
+let bgActive = null;   // второй <img> — активный фон с цветком
 let W = 0, H = 0;
 let animId = null;
 
@@ -101,9 +94,10 @@ const _SPORE_COLS = [
 let _spores = [];
 
 function _spawnSpores() {
-  // Было 50 — пользователь попросил плотнее. 100 даёт ощутимо насыщенный
-  // дрейф вверх, но не перегружает draw-loop (частицы простые, без shadowBlur).
-  _spores = Array.from({ length: 100 }, () => ({
+  // Пользователь попросил «чуть больше». 50→100→160 — плотный насыщенный
+  // дрейф, при этом каждая частица — 3 fillRect без shadowBlur, draw-loop
+  // не проседает.
+  _spores = Array.from({ length: 160 }, () => ({
     x:         Math.random(),
     y:         Math.random(),
     vy:        -(0.0005 + Math.random() * 0.0018),
@@ -165,33 +159,23 @@ function animate() {
     ctx.globalAlpha = br;         ctx.fillRect(px,        py,       s,   s);
   }
 
-  // ── Спрайт активного сердца (гибискус) ──────────────────────────────────
-  if (S.heartActivated && _heartImg.complete && _heartImg.naturalWidth) {
-    const { nx0, ny0, nx1, ny1 } = _HEART_SPRITE;
-    const iw = _heartImg.naturalWidth, ih = _heartImg.naturalHeight;
-    ctx.globalAlpha = 1;
-    ctx.drawImage(
-      _heartImg,
-      iw * nx0, ih * ny0, iw * (nx1 - nx0), ih * (ny1 - ny0),  // src
-      R.x + nx0 * R.w, R.y + ny0 * R.h,                         // dst pos
-      (nx1 - nx0) * R.w, (ny1 - ny0) * R.h                      // dst size
-    );
-  }
+  // Активное состояние теперь рисуется через второй <img> (bgActive) под canvas.
+  // Никаких canvas.drawImage — меняется весь кадр целиком по CSS opacity.
 
   // ── Свечение боковых грибов ─────────────────────────────────────────────
   // Каждый гриб пульсирует независимо (phase), цвет ореола = цвету шляпки.
-  // Рисуется тремя концентрическими квадратами с нарастающим alpha —
-  // тот же приём что для пульса сердца: дёшево, пиксельно, без shadowBlur.
-  ctx.globalCompositeOperation = 'lighter';   // аддитивное смешение — свечение на тёмном дереве
+  // Alpha'ы подняты (было 0.05/0.12/0.22 — едва видно на тёмном дереве,
+  // теперь 0.08/0.22/0.40) — свечение реально читается.
+  ctx.globalCompositeOperation = 'lighter';   // аддитивное смешение на тёмном дереве
   for (const m of MUSHROOMS) {
     const cx = Math.round(R.x + m.nx * R.w);
     const cy = Math.round(R.y + m.ny * R.h);
     const pulse = 0.65 + 0.35 * Math.sin(_tick * 0.032 + m.phase);
     const baseR = Math.round(Math.min(R.w, R.h) * m.r * pulse);
     ctx.fillStyle = m.col;
-    ctx.globalAlpha = pulse * 0.05;  ctx.fillRect(cx - baseR*3, cy - baseR*3, baseR*6, baseR*6);
-    ctx.globalAlpha = pulse * 0.12;  ctx.fillRect(cx - baseR*2, cy - baseR*2, baseR*4, baseR*4);
-    ctx.globalAlpha = pulse * 0.22;  ctx.fillRect(cx - baseR,   cy - baseR,   baseR*2, baseR*2);
+    ctx.globalAlpha = pulse * 0.08;  ctx.fillRect(cx - baseR*4, cy - baseR*4, baseR*8, baseR*8);
+    ctx.globalAlpha = pulse * 0.22;  ctx.fillRect(cx - baseR*2, cy - baseR*2, baseR*4, baseR*4);
+    ctx.globalAlpha = pulse * 0.40;  ctx.fillRect(cx - baseR,   cy - baseR,   baseR*2, baseR*2);
   }
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
@@ -213,6 +197,23 @@ function animate() {
 }
 
 // ── Применить гибискус к сердцу ────────────────────────────────────────────
+// Поднять opacity активного BG — синхронно с S.heartActivated.
+// Вызывается из _applyFlower и из openSceneInside (если уже активировано).
+function _showActiveBG(instant = false) {
+  if (!bgActive) return;
+  if (instant) {
+    // При переоткрытии сцены — показать сразу без transition, иначе каждый
+    // заход проигрывал бы 1.6с fade-in что выглядит тупо.
+    bgActive.style.transition = 'none';
+    bgActive.style.opacity = '1';
+    // Forced reflow чтобы отключение transition реально применилось
+    void bgActive.offsetWidth;
+    bgActive.style.transition = 'opacity 1.6s ease-in';
+  } else {
+    bgActive.style.opacity = '1';
+  }
+}
+
 function _applyFlower() {
   const slot = state.inventory.findIndex(i => i?.id === 'flower');
   if (slot === -1) return;
@@ -220,6 +221,7 @@ function _applyFlower() {
   renderHotbar();
   S.heartActivated = true;
   SaveManager.setScene('inside', S);
+  _showActiveBG();       // плавное появление активного фона
   AudioSystem.playBell?.();
   showMsg('Красный цветок касается кристалла. Сердце отзывается. Ты не знаешь чьё.', { story: true, dur: 5500 });
 }
@@ -258,9 +260,20 @@ function createEl() {
   el.id = 'inside';
   el.style.cssText = 'position:absolute;inset:0;display:none;z-index:60;overflow:hidden;';
 
+  // Два BG-слоя: базовый (кристалл) и активный (сердце с цветком).
+  // Раньше мы кропали меняющуюся область из второй картинки и клеили
+  // на canvas — пользователь справедливо жаловался на обрез. Теперь
+  // вторая картинка — полноразмерный <img> с opacity:0, и при активации
+  // поднимаем opacity до 1 через CSS transition. Меняется ВСЁ, без кропа.
   const bg = document.createElement('img');
   bg.src = 'assets/bg/inside.png';
   bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
+
+  bgActive = document.createElement('img');
+  bgActive.src = 'assets/bg/inside_heart.png';
+  bgActive.style.cssText =
+    'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;' +
+    'opacity:0;transition:opacity 1.6s ease-in;pointer-events:none;';
 
   canvas = document.createElement('canvas');
   canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
@@ -277,7 +290,8 @@ function createEl() {
   msgEl = document.createElement('div');
   msgEl.className = 'scene-msg';
 
-  el.appendChild(bg); el.appendChild(canvas); el.appendChild(back); el.appendChild(msgEl);
+  el.appendChild(bg); el.appendChild(bgActive);
+  el.appendChild(canvas); el.appendChild(back); el.appendChild(msgEl);
   document.getElementById('wrap').appendChild(el);
 
   canvas.addEventListener('click', e => {
@@ -305,22 +319,29 @@ function _iCacheRect() { if (canvas) _iRect = canvas.getBoundingClientRect(); }
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 export async function openSceneInside() {
   createEl();
-  el     = document.getElementById('inside');
-  canvas = el.querySelector('canvas');
-  ctx    = canvas.getContext('2d');
-  msgEl  = el.querySelector('.scene-msg');
+  el       = document.getElementById('inside');
+  canvas   = el.querySelector('canvas');
+  ctx      = canvas.getContext('2d');
+  msgEl    = el.querySelector('.scene-msg');
+  // Вторая картинка — активный BG. При переоткрытии сцены createEl()
+  // early-returns, и модульная `bgActive` может быть null → достаём из DOM.
+  const imgs = el.querySelectorAll('img');
+  bgActive = imgs[1] ?? bgActive;
 
   // Спрятать scene4 под нами — мы вошли через дверь в стволе
   const s4 = document.getElementById('scene4');
   if (s4) s4.style.display = 'none';
 
   showLoading('внутри');
-  const bgImg = el.querySelector('img');
+  const bgImg = imgs[0];      // базовый inside.png — его и ждём
 
   const _onReady = () => {
     hideLoading();
     state.activeScreen = SCREENS.INSIDE;
     el.style.display   = 'block';
+    // Если сердце уже активировано в прошлый заход — сразу показать активный BG
+    // без fade-in анимации (иначе каждое переоткрытие проигрывало бы 1.6с).
+    if (S.heartActivated) _showActiveBG(true);
     setCursor(false);
     if (AudioSystem.setMode) AudioSystem.setMode('sitting');
     requestAnimationFrame(() => {

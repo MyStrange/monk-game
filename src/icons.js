@@ -298,75 +298,38 @@ export function renderFireflowerIcon() {
   </svg>`;
 }
 
-// ── Red hibiscus — 5 flat overlapping petals + long staminate column
+// ── Red hibiscus — simple pixel-art, 5 petals + yellow column
 export function renderFlowerIcon() {
-  // Гибискус: 5 плоских, перекрывающих друг друга лепестков,
-  // тёмное горло, длинный тычиночный столбик с жёлтыми пыльниками,
-  // который торчит из центра (характерная черта гибискуса).
+  // Минимум деталей: 5 крупных красных лепестков, тёмное ядро,
+  // длинный жёлтый тычиночный столбик (характерная черта гибискуса), стебель.
   return `<svg width="48" height="48" viewBox="0 0 48 48"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <!-- stem (снизу-справа, не по центру — цветок смотрит чуть вверх) -->
-    <rect x="24" y="38" width="3" height="10" fill="#2a5a1a"/>
-    <rect x="26" y="40" width="8" height="3"  fill="#2a5a1a"/>
-    <rect x="26" y="42" width="8" height="2"  fill="#3a7a2a"/>
-    <rect x="18" y="41" width="8" height="3"  fill="#2a5a1a"/>
-    <rect x="18" y="43" width="8" height="2"  fill="#3a7a2a"/>
+    <!-- stem -->
+    <rect x="22" y="38" width="4" height="10" fill="#3a7a2e"/>
 
-    <!-- deep burgundy outer shadow (форма гибискуса — пять широких лепестков) -->
-    <rect x="18" y="4"  width="12" height="2"  fill="#50101a"/>
-    <rect x="14" y="6"  width="20" height="4"  fill="#50101a"/>
-    <rect x="8"  y="10" width="32" height="6"  fill="#50101a"/>
-    <rect x="4"  y="16" width="40" height="12" fill="#50101a"/>
-    <rect x="8"  y="28" width="32" height="6"  fill="#50101a"/>
-    <rect x="12" y="34" width="24" height="4"  fill="#50101a"/>
+    <!-- 5 petals (одноцветная красная заливка) -->
+    <rect x="18" y="4"  width="12" height="12" fill="#d02030"/>  <!-- top -->
+    <rect x="32" y="10" width="12" height="12" fill="#d02030"/>  <!-- top-right -->
+    <rect x="30" y="26" width="12" height="12" fill="#d02030"/>  <!-- bottom-right -->
+    <rect x="6"  y="26" width="12" height="12" fill="#d02030"/>  <!-- bottom-left -->
+    <rect x="4"  y="10" width="12" height="12" fill="#d02030"/>  <!-- top-left -->
 
-    <!-- main body (red, filling the 5-petal silhouette) -->
-    <rect x="18" y="6"  width="12" height="2"  fill="#c02028"/>
-    <rect x="14" y="8"  width="20" height="4"  fill="#c02028"/>
-    <rect x="10" y="12" width="28" height="4"  fill="#c02028"/>
-    <rect x="6"  y="16" width="36" height="12" fill="#c02028"/>
-    <rect x="10" y="28" width="28" height="4"  fill="#c02028"/>
-    <rect x="14" y="32" width="20" height="4"  fill="#c02028"/>
+    <!-- Тело цветка, которое соединяет лепестки -->
+    <rect x="14" y="12" width="20" height="20" fill="#d02030"/>
 
-    <!-- petal lobes (brighter red — чтобы видно было 5 лепестков) -->
-    <!-- top petal -->
-    <rect x="20" y="4"  width="8"  height="4"  fill="#dc303c"/>
-    <rect x="22" y="2"  width="4"  height="2"  fill="#dc303c"/>
-    <!-- upper-left petal -->
-    <rect x="6"  y="10" width="8"  height="6"  fill="#dc303c"/>
-    <rect x="4"  y="12" width="4"  height="4"  fill="#dc303c"/>
-    <!-- upper-right petal -->
-    <rect x="34" y="10" width="8"  height="6"  fill="#dc303c"/>
-    <rect x="40" y="12" width="4"  height="4"  fill="#dc303c"/>
-    <!-- lower-left petal -->
-    <rect x="8"  y="26" width="10" height="6"  fill="#dc303c"/>
-    <rect x="12" y="32" width="6"  height="2"  fill="#dc303c"/>
-    <!-- lower-right petal -->
-    <rect x="30" y="26" width="10" height="6"  fill="#dc303c"/>
-    <rect x="30" y="32" width="6"  height="2"  fill="#dc303c"/>
+    <!-- Блики на каждом лепестке -->
+    <rect x="22" y="6"  width="4" height="4" fill="#f05060"/>
+    <rect x="36" y="12" width="4" height="4" fill="#f05060"/>
+    <rect x="34" y="30" width="4" height="4" fill="#f05060"/>
+    <rect x="10" y="30" width="4" height="4" fill="#f05060"/>
+    <rect x="8"  y="12" width="4" height="4" fill="#f05060"/>
 
-    <!-- crinkled petal highlights (малые яркие блики на лепестках) -->
-    <rect x="22" y="6"  width="4"  height="2"  fill="#f06070"/>
-    <rect x="8"  y="14" width="4"  height="2"  fill="#f06070"/>
-    <rect x="36" y="14" width="4"  height="2"  fill="#f06070"/>
-    <rect x="12" y="28" width="4"  height="2"  fill="#f06070"/>
-    <rect x="32" y="28" width="4"  height="2"  fill="#f06070"/>
+    <!-- Dark throat -->
+    <rect x="20" y="20" width="8" height="8" fill="#4a0818"/>
 
-    <!-- dark throat (характерная тёмная воронка в центре гибискуса) -->
-    <rect x="18" y="18" width="12" height="8"  fill="#3a0810"/>
-    <rect x="20" y="16" width="8"  height="2"  fill="#3a0810"/>
-    <rect x="20" y="26" width="8"  height="2"  fill="#3a0810"/>
-
-    <!-- staminate column (длинный тычиночный столбик — главная черта гибискуса) -->
-    <!-- column сам — красно-коричневый, тянется вниз-вправо -->
-    <rect x="23" y="22" width="2"  height="14" fill="#7a2018"/>
-    <rect x="22" y="22" width="4"  height="2"  fill="#9a3020"/>
-    <!-- yellow anthers на конце столбика — россыпь пыльников -->
-    <rect x="21" y="36" width="6"  height="2"  fill="#f0c040"/>
-    <rect x="22" y="38" width="4"  height="2"  fill="#f8d860"/>
-    <rect x="20" y="37" width="2"  height="2"  fill="#f8d860"/>
-    <rect x="26" y="37" width="2"  height="2"  fill="#f8d860"/>
-    <rect x="23" y="39" width="2"  height="2"  fill="#ffffa0"/>
+    <!-- Yellow staminate column — торчит вниз из центра -->
+    <rect x="23" y="24" width="2" height="14" fill="#f5c832"/>
+    <rect x="22" y="36" width="4" height="2"  fill="#ffe060"/>
   </svg>`;
 }
 
