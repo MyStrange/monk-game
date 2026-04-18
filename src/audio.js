@@ -104,7 +104,9 @@ export const AudioSystem = {
       }
     };
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 0.18;
+    // Стартуем с правильного значения сразу — иначе при muted=true всё равно
+    // слышно 2.8с пока setMode() плавно гасит до 0.
+    this.masterGain.gain.value = this.muted ? 0 : 0.18;
     this.masterGain.connect(this.ctx.destination);
 
     this.ambientGain    = this.ctx.createGain();  this.ambientGain.gain.value    = 1.0;
