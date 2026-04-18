@@ -24,6 +24,7 @@ import { showLoading, hideLoading, showError,
          showMsgIn, showChoiceIn, isStoryActive,
          setCursor }                      from '../src/utils.js';
 import { leaveMain, resumeMain }          from './main.js';
+import { openScene }                      from '../src/nav.js';
 import { SaveManager }                    from '../src/save.js';
 import { trackZoneClick }                 from '../src/achievements.js';
 import { S4_CAT_MSGS, S4_MONK_MSGS,
@@ -112,14 +113,14 @@ function _peelLayer(which) {
 
 // ── Trunk click — flow с выбором ───────────────────────────────────────────
 const _Q1_RESP = {
-  'Корни':    'Корни помнят каждый год, что прошёл над ними.',
-  'Время':    'Время — возможно. Оно держит всё, не зная об этом.',
-  'Тишина':   'Тишина держит больше, чем кажется.',
+  'Снаружи':  'Снаружи — только отражения твоих же вопросов. Настоящее — глубже.',
+  'Внутри':   'Ты уже знаешь куда смотреть. Просто ещё не посмотрел.',
+  'Не знаю':  'Незнание — честный ответ. И первый шаг. Слои начинают расступаться.',
 };
 const _Q2_RESP = {
-  'Ответа':   'Ответы там есть. Но они задают новые вопросы.',
-  'Темноты':  'Темнота — это честно. Глаза привыкают.',
-  'Ничего':   'Ничего — это тоже что-то. Особенно здесь.',
+  'Темноту':  'В темноте глаза привыкают. А потом видят то, что было там всегда.',
+  'Себя':     'Встреча с собой — самое важное путешествие. Дверь это чувствует.',
+  'Боюсь':    'Страх указывает именно туда, куда нужно идти. Иди.',
 };
 
 function _onTrunkClick() {
@@ -128,10 +129,10 @@ function _onTrunkClick() {
   if (!S.layer3Removed) {
     // Фаза 1: вопрос про дерево
     showChoiceIn(msgEl,
-      'Что держит это дерево вместе?',
-      [{text: 'Корни'}, {text: 'Время'}, {text: 'Тишина'}],
+      'Где ты ищешь ответы?',
+      [{text: 'Снаружи'}, {text: 'Внутри'}, {text: 'Не знаю'}],
       val => {
-        const resp = _Q1_RESP[val] || 'Дерево слушает. Слои отступают.';
+        const resp = _Q1_RESP[val] || 'Слои начинают расступаться.';
         showMsgIn(msgEl, resp, {
           story: true, dur: 2800,
           onDismiss: () => {
@@ -144,10 +145,10 @@ function _onTrunkClick() {
   } else if (!S.layer2Removed) {
     // Фаза 2: вопрос про дверь
     showChoiceIn(msgEl,
-      'Что ты ждёшь по ту сторону?',
-      [{text: 'Ответа'}, {text: 'Темноты'}, {text: 'Ничего'}],
+      'Что ты найдёшь, если посмотришь внутрь?',
+      [{text: 'Темноту'}, {text: 'Себя'}, {text: 'Боюсь'}],
       val => {
-        const resp = _Q2_RESP[val] || 'Страшно только до порога.';
+        const resp = _Q2_RESP[val] || 'Дверь чувствует тебя.';
         showMsgIn(msgEl, resp, {
           story: true, dur: 2800,
           onDismiss: () => {
@@ -162,14 +163,10 @@ function _onTrunkClick() {
       }
     );
   } else {
-    // Фаза 3: войти
-    if (S.doorEntered) return;
+    // Фаза 3: войти → открывает сцену внутри дерева
     S.doorEntered = true;
     SaveManager.setScene('scene4', S);
-    showMsgIn(msgEl,
-      'Ты входишь. За дверью — лес. Другой лес.',
-      { story: true, dur: 5000 }
-    );
+    openScene('inside');
   }
 }
 

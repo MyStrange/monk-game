@@ -17,6 +17,7 @@ export const NAV_MAP = {
   scene4:  { open: 'scenes/scene4.js',         canLeave: ()  => true,   block: null },
   menu:    { open: 'scenes/menu.js',           canLeave: ()  => true,   block: null },
   prologue:{ open: 'scenes/prologue.js',       canLeave: ()  => true,   block: null },
+  inside:  { open: 'scenes/inside.js',         canLeave: ()  => true,   block: null },
   // new_scene: { open: 'scenes/new_scene.js', canLeave: () => true,    block: null },
 };
 

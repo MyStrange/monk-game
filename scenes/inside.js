@@ -1,0 +1,272 @@
+// scenes/inside.js — внутренность дерева: лестница, светящиеся грибы, хрустальное сердце
+// Открывается по клику по стволу в scene4 после снятия обоих слоёв.
+//
+// Зоны (нормализованные 0..1):
+//   HEART_ZONE   — кристалл-сердце в центре
+//   OPENING_ZONE — круглое отверстие наверху (лес снаружи)
+//   STAIRS_ZONE  — деревянная лестница слева
+//
+// Частицы: бирюзово-голубые споры дрейфуют вверх (без shadowBlur).
+// Пульс сердца: мягкий прямоугольный ореол вокруг кристалла.
+
+import { state }          from '../src/state.js';
+import { showMsgIn, showLoading, hideLoading, showError, setCursor } from '../src/utils.js';
+import { resumeMain }     from './main.js';
+import { SaveManager }    from '../src/save.js';
+import { AudioSystem }    from '../src/audio.js';
+import { trackZoneClick } from '../src/achievements.js';
+
+// ── BG aspect ratio ────────────────────────────────────────────────────────
+const BG_W = 1920, BG_H = 1080;   // 16:9, object-fit:cover адаптирует
+
+// ── Hit zones (0..1 relative to BG) ───────────────────────────────────────
+const HEART_ZONE   = { x0: 0.36, y0: 0.44, x1: 0.66, y1: 0.90 };
+const OPENING_ZONE = { x0: 0.28, y0: 0.00, x1: 0.72, y1: 0.24 };
+const STAIRS_ZONE  = { x0: 0.03, y0: 0.20, x1: 0.54, y1: 0.82 };
+
+// ── Scene state ────────────────────────────────────────────────────────────
+const S = SaveManager.getScene('inside');
+S.heartIdx   = S.heartIdx   ?? 0;
+S.stairsIdx  = S.stairsIdx  ?? 0;
+S.openingIdx = S.openingIdx ?? 0;
+
+const HEART_MSGS = [
+  'Это — ты. Всё, что искал снаружи, было здесь.',
+  'Хрусталь не отражает. Он помнит.',
+  'Сердце не бьётся. Оно светит.',
+  'Ты дотронулся. Ничего не изменилось. Изменилось всё.',
+];
+const STAIRS_MSGS = [
+  'Ступени ведут не вверх и не вниз. Просто — дальше.',
+  'Каждая ступень — вопрос, который ты уже задавал.',
+  'Дерево помнит каждого, кто поднимался. Теперь — и тебя.',
+  'Ты можешь идти вверх. Ты можешь стоять. Дерево подождёт.',
+];
+const OPENING_MSGS = [
+  'Там, откуда ты пришёл. Теперь ты знаешь путь.',
+  'Снаружи — лес. Внутри — тоже. Разница только в том, кто смотрит.',
+  'Свет приходит сверху. Но источник — здесь.',
+];
+
+// ── DOM refs ────────────────────────────────────────────────────────────────
+let el, canvas, ctx, msgEl;
+let W = 0, H = 0;
+let animId = null;
+
+const showMsg = (t, d) => showMsgIn(msgEl, t, d);
+
+// ── Cover math ─────────────────────────────────────────────────────────────
+function _bgRect() {
+  const ar  = BG_W / BG_H;
+  const cAr = W / H;
+  if (cAr > ar) {
+    const bh = W / ar;
+    return { x: 0, y: (H - bh) / 2, w: W, h: bh };
+  }
+  const bw = H * ar;
+  return { x: (W - bw) / 2, y: 0, w: bw, h: H };
+}
+
+function _inZone(cx, cy, z) {
+  const R  = _bgRect();
+  const nx = (cx - R.x) / R.w;
+  const ny = (cy - R.y) / R.h;
+  return nx >= z.x0 && nx <= z.x1 && ny >= z.y0 && ny <= z.y1;
+}
+
+function _hitZone(cx, cy) {
+  if (_inZone(cx, cy, HEART_ZONE))   return 'heart';
+  if (_inZone(cx, cy, OPENING_ZONE)) return 'opening';
+  if (_inZone(cx, cy, STAIRS_ZONE))  return 'stairs';
+  return null;
+}
+
+// ── Spore particles ────────────────────────────────────────────────────────
+const _SPORE_COLS = [
+  '#40e0d0','#20c8b8','#60ece4','#38d4c8',
+  '#80f4ec','#50dcd4','#c0fff8','#a0f0e8',
+];
+let _spores = [];
+
+function _spawnSpores() {
+  _spores = Array.from({ length: 50 }, () => ({
+    x:         Math.random(),
+    y:         Math.random(),
+    vy:        -(0.0005 + Math.random() * 0.0018),
+    swayAmp:   0.004 + Math.random() * 0.014,
+    swayFreq:  0.006 + Math.random() * 0.013,
+    swayPhase: Math.random() * Math.PI * 2,
+    phase:     Math.random() * Math.PI * 2,
+    phaseRate: 0.009 + Math.random() * 0.020,
+    sz:        1 + Math.floor(Math.random() * 3),
+    col:       _SPORE_COLS[Math.floor(Math.random() * _SPORE_COLS.length)],
+  }));
+}
+
+// ── Heart pulse центр (relative to BG) ────────────────────────────────────
+const HEART_CX = 0.50, HEART_CY = 0.65;
+
+let _tick = 0;
+
+function animate() {
+  if (state.activeScreen !== 'inside') { animId = null; return; }
+  ctx.clearRect(0, 0, W, H);
+  _tick++;
+
+  const R = _bgRect();
+
+  // Споры
+  for (const p of _spores) {
+    p.y        += p.vy;
+    p.swayPhase += p.swayFreq;
+    p.phase     += p.phaseRate;
+    if (p.y < -0.06) {
+      p.y = 1.0 + Math.random() * 0.20;
+      p.x = Math.random();
+      p.swayPhase = Math.random() * Math.PI * 2;
+    }
+    const sway = Math.sin(p.swayPhase) * p.swayAmp;
+    const br   = 0.42 + 0.58 * (0.5 + 0.5 * Math.sin(p.phase));
+    const px   = Math.round(R.x + (p.x + sway) * R.w);
+    const py   = Math.round(R.y + p.y * R.h);
+    const s    = p.sz;
+    ctx.fillStyle = p.col;
+    ctx.globalAlpha = br * 0.13;  ctx.fillRect(px - s*2, py - s*2, s*5, s*5);
+    ctx.globalAlpha = br * 0.35;  ctx.fillRect(px - s,   py - s,   s*3, s*3);
+    ctx.globalAlpha = br;         ctx.fillRect(px,        py,       s,   s);
+  }
+
+  // Пульс кристалла-сердца
+  const hx    = Math.round(R.x + HEART_CX * R.w);
+  const hy    = Math.round(R.y + HEART_CY * R.h);
+  const pulse = 0.55 + 0.45 * Math.sin(_tick * 0.038);
+  const baseR = Math.round(Math.min(R.w, R.h) * 0.07 * pulse);
+
+  ctx.fillStyle = '#60ffee';
+  ctx.globalAlpha = pulse * 0.06;  ctx.fillRect(hx - baseR*3, hy - baseR*3, baseR*6, baseR*6);
+  ctx.globalAlpha = pulse * 0.12;  ctx.fillRect(hx - baseR*2, hy - baseR*2, baseR*4, baseR*4);
+  ctx.globalAlpha = pulse * 0.22;  ctx.fillRect(hx - baseR,   hy - baseR,   baseR*2, baseR*2);
+
+  ctx.globalAlpha = 1;
+  animId = requestAnimationFrame(animate);
+}
+
+// ── onTap ──────────────────────────────────────────────────────────────────
+function onTap(cx, cy) {
+  if (state.activeScreen !== 'inside') return;
+  const zone = _hitZone(cx, cy);
+  if (!zone) return;
+  trackZoneClick(`inside_${zone}`);
+
+  if (zone === 'heart') {
+    showMsg(HEART_MSGS[S.heartIdx % HEART_MSGS.length]);
+    S.heartIdx++;
+  } else if (zone === 'stairs') {
+    showMsg(STAIRS_MSGS[S.stairsIdx % STAIRS_MSGS.length]);
+    S.stairsIdx++;
+  } else {
+    showMsg(OPENING_MSGS[S.openingIdx % OPENING_MSGS.length]);
+    S.openingIdx++;
+  }
+  SaveManager.setScene('inside', S);
+}
+
+// ── DOM creation ───────────────────────────────────────────────────────────
+function createEl() {
+  if (document.getElementById('inside')) return;
+
+  el = document.createElement('div');
+  el.id = 'inside';
+  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:60;overflow:hidden;';
+
+  const bg = document.createElement('img');
+  bg.src = 'assets/bg/inside.png';
+  bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
+
+  canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+  ctx = canvas.getContext('2d');
+
+  const back = document.createElement('button');
+  back.className = 'back-btn';
+  back.textContent = '←';
+  back.onclick = closeSceneInside;
+  back.addEventListener('touchend', e => {
+    e.stopPropagation(); e.preventDefault(); closeSceneInside();
+  }, { passive: false });
+
+  msgEl = document.createElement('div');
+  msgEl.className = 'scene-msg';
+
+  el.appendChild(bg); el.appendChild(canvas); el.appendChild(back); el.appendChild(msgEl);
+  document.getElementById('wrap').appendChild(el);
+
+  canvas.addEventListener('click', e => {
+    const r = canvas.getBoundingClientRect();
+    onTap(e.clientX - r.left, e.clientY - r.top);
+  });
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    const r = canvas.getBoundingClientRect();
+    onTap(t.clientX - r.left, t.clientY - r.top);
+  }, { passive: false });
+  canvas.addEventListener('mousemove', e => {
+    if (state.activeScreen !== 'inside') return;
+    const r = canvas.getBoundingClientRect();
+    setCursor(!!_hitZone(e.clientX - r.left, e.clientY - r.top));
+  });
+  canvas.addEventListener('mouseleave', () => setCursor(false));
+}
+
+// ── Lifecycle ──────────────────────────────────────────────────────────────
+export async function openSceneInside() {
+  createEl();
+  el     = document.getElementById('inside');
+  canvas = el.querySelector('canvas');
+  ctx    = canvas.getContext('2d');
+  msgEl  = el.querySelector('.scene-msg');
+
+  // Спрятать scene4 под нами — мы вошли через дверь в стволе
+  const s4 = document.getElementById('scene4');
+  if (s4) s4.style.display = 'none';
+
+  showLoading('внутри');
+  const bgImg = el.querySelector('img');
+
+  const _onReady = () => {
+    hideLoading();
+    state.activeScreen = 'inside';
+    el.style.display   = 'block';
+    setCursor(false);
+    if (AudioSystem.setMode) AudioSystem.setMode('sitting');
+    requestAnimationFrame(() => {
+      const r = el.getBoundingClientRect();
+      W = canvas.width  = Math.round(r.width);
+      H = canvas.height = Math.round(r.height);
+      _spawnSpores();
+      if (!animId) animate();
+    });
+    setTimeout(() => {
+      if (state.activeScreen !== 'inside') return;
+      showMsgIn(msgEl, 'Ты внутри. Тихо. Пахнет деревом и чем-то давно забытым.', { story: true });
+    }, 500);
+  };
+
+  const _onFail = () => { hideLoading(); showError('не удалось загрузить сцену'); };
+  bgImg.onerror = _onFail;
+  bgImg.onload  = _onReady;
+  if (bgImg.complete) {
+    if (bgImg.naturalWidth) _onReady(); else _onFail();
+  }
+}
+
+export function closeSceneInside() {
+  state.activeScreen = 'main';
+  if (el) el.style.display = 'none';
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  setCursor(false);
+  SaveManager.setScene('inside', S);
+  resumeMain();
+}
+window.closeSceneInside = closeSceneInside;
