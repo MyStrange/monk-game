@@ -282,8 +282,11 @@ function _buildFlyroom() {
     frCtx.globalAlpha = 1;
     flyroomAnimId = requestAnimationFrame(_frAnimateFn);
   };
-  bg.onload = () => { _frAnimateFn(); };
-  if (bg.complete && bg.naturalWidth) bg.onload();
+  // ВАЖНО: раньше и onload, и if(complete)onload() могли выстрелить ОБА
+  // (cached + real load) → два параллельных requestAnimationFrame-цикла,
+  // анимация шла в 2× скорости. Теперь строго один путь.
+  if (bg.complete && bg.naturalWidth) _frAnimateFn();
+  else bg.addEventListener('load', _frAnimateFn, { once: true });
 }
 
 function _stopTypewriter(showFull) {
@@ -767,7 +770,10 @@ export function closeSceneBuddha() {
               y:  Math.random() * bH,
               vx: (Math.random() - 0.5) * 1.2,
               vy: (Math.random() - 0.5) * 0.8,
-              sz: 14 + Math.random() * 14,
+              // Совпадает с обычным спавном (строка 63): маленькое ядро + свечение.
+              // Раньше здесь было 14+rand*14 → размер был 4× больше чем у родных,
+              // разлёт выглядел как шарики бурундука, а не светлячки.
+              sz: 3 + Math.random() * 4,
               br: Math.random(),
               bv: (Math.random() - 0.5) * 0.025,
               alive: true,

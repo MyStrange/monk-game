@@ -3,7 +3,7 @@
 import { state }        from '../src/state.js';
 import { showMsgIn, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
 import { leaveMain, resumeMain } from './main.js';
-import { getSelectedItem, addItem, removeItem } from '../src/inventory.js';
+import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { renderHotbar } from '../src/hotbar.js';
 import { SaveManager }  from '../src/save.js';
 import { AudioSystem }  from '../src/audio.js';
@@ -187,9 +187,9 @@ function onTap(cx, cy) {
       Math.abs(cx - s3W * 0.5) < 40 && Math.abs(cy - s3H * 0.58) < 40) {
     S.fireFlowerPicked = true;
     SaveManager.setScene('scene3', S);   // авто-сейв: иначе F5 после pickup вернёт цветок
-    const ff = { id: 'fireflower', name: 'огненный цветок', label: 'огнецвет',
-      description: 'Цветок, который светится изнутри. Тёплый на ощупь. Не горит.' };
-    addItem(ff);
+    // Через реестр ITEM_DEFS, а не литерал — иначе пропадает icon-рендер
+    // и описание рассинхронизируется с другими источниками (CLAUDE.md).
+    addItem(makeItem('fireflower'));
     AudioSystem.playPickup();
     renderHotbar();
     showMsg(fireflowerPickupMsg);

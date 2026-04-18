@@ -17,6 +17,7 @@ import { AudioSystem }    from '../src/audio.js';
 import { trackZoneClick } from '../src/achievements.js';
 import { getSelectedItem, removeItem } from '../src/inventory.js';
 import { renderHotbar }   from '../src/hotbar.js';
+import { coverRect, hitZone as _hitNormZone } from '../src/scene-base.js';
 
 // ── BG aspect ratio ────────────────────────────────────────────────────────
 const BG_W = 1920, BG_H = 1080;   // 16:9, object-fit:cover адаптирует
@@ -75,23 +76,9 @@ let animId = null;
 const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
 // ── Cover math ─────────────────────────────────────────────────────────────
-function _bgRect() {
-  const ar  = BG_W / BG_H;
-  const cAr = W / H;
-  if (cAr > ar) {
-    const bh = W / ar;
-    return { x: 0, y: (H - bh) / 2, w: W, h: bh };
-  }
-  const bw = H * ar;
-  return { x: (W - bw) / 2, y: 0, w: bw, h: H };
-}
-
-function _inZone(cx, cy, z) {
-  const R  = _bgRect();
-  const nx = (cx - R.x) / R.w;
-  const ny = (cy - R.y) / R.h;
-  return nx >= z.x0 && nx <= z.x1 && ny >= z.y0 && ny <= z.y1;
-}
+// Вынесено в src/scene-base.js (coverRect + hitZone).
+function _bgRect() { return coverRect(W, H, BG_W, BG_H, 'center'); }
+function _inZone(cx, cy, z) { return _hitNormZone(cx, cy, z, _bgRect()); }
 
 function _hitZone(cx, cy) {
   if (_inZone(cx, cy, HEART_ZONE))   return 'heart';
@@ -310,10 +297,14 @@ export async function openSceneInside() {
     const s4 = document.getElementById('scene4');
     if (s4) s4.style.display = 'block';
   };
-  bgImg.onerror = _onFail;
-  bgImg.onload  = _onReady;
+  // Тот же double-fire баг что был в buddha: если bg уже cached, И onload,
+  // И if(complete) ветка срабатывали одновременно → двойной _spawnSpores +
+  // два параллельных animate-цикла. Теперь строго один путь.
   if (bgImg.complete) {
     if (bgImg.naturalWidth) _onReady(); else _onFail();
+  } else {
+    bgImg.addEventListener('error', _onFail,  { once: true });
+    bgImg.addEventListener('load',  _onReady, { once: true });
   }
 }
 

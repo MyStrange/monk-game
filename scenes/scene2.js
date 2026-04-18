@@ -10,6 +10,7 @@ import { SaveManager }   from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
 import { trackZoneClick, trackEmptyClick, trackSpotClick } from '../src/achievements.js';
 import { BARE_ROCK_MSGS, ACTIVATED_ROCK_MSGS, JAR_ON_ROCK_MSGS } from '../src/dialogue.js';
+import { waitImg, coverRect, hitZone as _hitZone } from '../src/scene-base.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('scene2');
@@ -63,32 +64,15 @@ const ZONES = {
 };
 
 // ── object-fit: cover math ────────────────────────────────────────────────
-// BG-картинка в DOM отрисована с object-fit:cover → её фактический видимый
-// прямоугольник может быть МЕНЬШЕ canvas (часть обрезана по одной из осей).
-// Спрайты (bottle/rocks) и hit-зоны должны позиционироваться относительно
-// этого реального прямоугольника, а не размеров canvas, иначе при любом
-// экране с aspect ≠ BG_W/BG_H спрайты поедут от камней.
-function bgRect() {
-  const ar = BG_W / BG_H;          // 1376 / 768 ≈ 1.7917
-  const cAr = W / H;
-  if (cAr > ar) {
-    // контейнер шире bg: bg растянута по высоте, обрезана слева/справа
-    const bw = H * ar;
-    return { x: (W - bw) / 2, y: 0, w: bw, h: H };
-  } else {
-    // контейнер уже bg: bg растянута по ширине, обрезана сверху/снизу
-    const bh = W / ar;
-    return { x: 0, y: (H - bh) / 2, w: W, h: bh };
-  }
-}
+// Логика вынесена в src/scene-base.js (coverRect + hitZone). Здесь только
+// подгонка под локальные имена.
+function bgRect() { return coverRect(W, H, BG_W, BG_H, 'center'); }
 
 function hitZone(cx, cy) {
   const R = bgRect();
   for (const [name, z] of Object.entries(ZONES)) {
     if (name === 'bottle' && S.jarPickedUp) continue;
-    const zx = R.x + z.fx * R.w, zy = R.y + z.fy * R.h;
-    const zw = z.fw * R.w,       zh = z.fh * R.h;
-    if (cx >= zx && cx < zx + zw && cy >= zy && cy < zy + zh) return name;
+    if (_hitZone(cx, cy, z, R)) return name;
   }
   return null;
 }
@@ -475,14 +459,15 @@ function createEl() {
   });
   canvas.addEventListener('mouseleave', () => { setCursor(false); });
 
-  document.addEventListener('keydown', _onKey);
+  // keydown слушатель нужен только пока сцена открыта; подписываем на open,
+  // снимаем на close — иначе навеки висит и продолжает обрабатывать события
+  // уже закрытой сцены. Раньше было просто addEventListener без снятия.
 }
+function _bindKeydown()   { document.addEventListener('keydown', _onKey); }
+function _unbindKeydown() { document.removeEventListener('keydown', _onKey); }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
-const _waitImg = img => img.complete && img.naturalWidth
-  ? Promise.resolve()
-  : new Promise(r => { img.onload = r; img.onerror = r; });
-
+// _waitImg перенесён в src/scene-base.js (waitImg) — см. другие сцены.
 export async function openSceneScene2() {
   leaveMain();
   createEl();
@@ -491,12 +476,14 @@ export async function openSceneScene2() {
 
   const bgImg = el.querySelector('img');
   await Promise.all([
-    _waitImg(bgImg), _waitImg(bottleImg),
-    _waitImg(rock1Img), _waitImg(rock2Img), _waitImg(rock3Img),
+    waitImg(bgImg), waitImg(bottleImg),
+    waitImg(rock1Img), waitImg(rock2Img), waitImg(rock3Img),
   ]);
   if (!bgImg.naturalWidth) {
-    // Без этого игрок застревал в бесконечном loading-оверлее.
+    // Без resumeMain игрок был в лимбо: main скрыта (из-за leaveMain),
+    // сцена не показана, ошибка закрылась — пустой экран без кнопок.
     hideLoading();
+    resumeMain();
     showError('не удалось загрузить сцену');
     return;
   }
@@ -504,6 +491,7 @@ export async function openSceneScene2() {
   hideLoading();
   state.activeScreen = 'scene2';
   el.style.display   = 'block';
+  _bindKeydown();
   requestAnimationFrame(() => {
     const r = el.getBoundingClientRect();
     W = canvas.width  = Math.round(r.width);
@@ -517,6 +505,7 @@ export function closeSceneScene2() {
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   _cancelActivations();
+  _unbindKeydown();
   SaveManager.setScene('scene2', S);
   resumeMain();
 }

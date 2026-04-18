@@ -32,6 +32,7 @@ import { S4_CAT_MSGS, S4_MONK_MSGS,
          S4_STATUE_MSGS,
          SCENE4_OPEN_MSG3 }              from '../src/dialogue.js';
 import { getSelectedItem }                from '../src/inventory.js';
+import { waitImg, coverRect, hitZone }    from '../src/scene-base.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('scene4');
@@ -47,6 +48,7 @@ S.doorEntered    = S.doorEntered    ?? false;
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, bgEl, layer2El, layer3El, msgEl;
+let _onResize = null;
 
 // ── BG dims + layer sprite coords ─────────────────────────────────────────
 const BG_W = 2051, BG_H = 1154;
@@ -61,24 +63,13 @@ const CAT_ZONE    = { x0: 0.61, y0: 0.51, x1: 0.68, y1: 0.70 };
 const MONK_ZONE   = { x0: 0.48, y0: 0.70, x1: 0.61, y1: 0.84 };
 
 // ── Displayed-BG math (object-fit:cover + object-position:top) ────────────
-function _dispBG(vw, vh) {
-  const bgA = BG_W / BG_H, vA = vw / vh;
-  if (vA > bgA) {
-    const dW = vw, dH = vw / bgA;
-    return { x: 0, y: 0, w: dW, h: dH, scale: dW / BG_W };
-  } else {
-    const dH = vh, dW = vh * bgA;
-    return { x: (vw - dW) / 2, y: 0, w: dW, h: dH, scale: dH / BG_H };
-  }
-}
+// coverRect из scene-base берёт object-position:top через параметр 'top'.
+function _dispBG(vw, vh) { return coverRect(vw, vh, BG_W, BG_H, 'top'); }
 
 function _inZone(cx, cy, z) {
   if (!el) return false;
   const r = el.getBoundingClientRect();
-  const d = _dispBG(r.width, r.height);
-  const nx = (cx - d.x) / (d.scale * BG_W);
-  const ny = (cy - d.y) / (d.scale * BG_H);
-  return nx >= z.x0 && nx <= z.x1 && ny >= z.y0 && ny <= z.y1;
+  return hitZone(cx, cy, z, _dispBG(r.width, r.height));
 }
 
 function _layoutLayers() {
@@ -304,9 +295,10 @@ function createEl() {
   el.appendChild(msgEl);
   document.getElementById('wrap').appendChild(el);
 
-  window.addEventListener('resize', () => {
-    if (state.activeScreen === 'scene4') _layoutLayers();
-  });
+  // Сохраняем ссылку, чтобы снять listener в closeSceneScene4 —
+  // без этого он висел навсегда и тикал при каждом resize всю сессию.
+  _onResize = () => { if (state.activeScreen === 'scene4') _layoutLayers(); };
+  window.addEventListener('resize', _onResize);
 
   // Все зоны — capture-фаза на el (срабатывает ДО layer-хендлеров)
   el.addEventListener('click',    _onElCapture, true);
@@ -317,12 +309,8 @@ function createEl() {
   el.addEventListener('mouseleave', () => setCursor(false));
 }
 
-// ── Image wait helper ─────────────────────────────────────────────────────
-const _waitImg = img => img.complete && img.naturalWidth
-  ? Promise.resolve()
-  : new Promise(r => { img.onload = r; img.onerror = r; });
-
 // ── Lifecycle ──────────────────────────────────────────────────────────────
+// waitImg теперь из src/scene-base.js.
 export async function openSceneScene4() {
   leaveMain();
   createEl();
@@ -344,7 +332,7 @@ export async function openSceneScene4() {
 
   // Ждём ВСЕ три картинки: фон + оба слоя-спрайта.
   // Без этого игрок видел pop-in слоёв поверх уже открытой сцены.
-  await Promise.all([_waitImg(bgEl), _waitImg(layer2El), _waitImg(layer3El)]);
+  await Promise.all([waitImg(bgEl), waitImg(layer2El), waitImg(layer3El)]);
 
   if (!bgEl.naturalWidth) {
     hideLoading();
@@ -365,6 +353,7 @@ export function closeSceneScene4() {
   state.activeScreen = 'main';
   if (el) el.style.display = 'none';
   setCursor(false);
+  if (_onResize) { window.removeEventListener('resize', _onResize); _onResize = null; }
   SaveManager.setScene('scene4', S);
   resumeMain();
 }
