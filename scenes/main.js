@@ -26,6 +26,19 @@ let W = 0, H = 0;
 const bgImg = new Image();
 bgImg.src = 'assets/bg/main.png';
 
+// Надпись на постаменте Будды — видна только в медитации.
+// Две версии: dim (до активации), bright (после 5 доставок символов).
+// Спрайты вырезаны из referencing-картинок, позиция в BG-координатах
+// ниже через INSCRIPTION_OVERLAY.
+const inscriptionDimImg    = new Image();
+inscriptionDimImg.src      = 'assets/bg/inscription_dim.png';
+const inscriptionBrightImg = new Image();
+inscriptionBrightImg.src   = 'assets/bg/inscription_bright.png';
+
+// Оверлей в BG-координатах (BG_W=2000, BG_H=1116). Покрывает постамент
+// + его отражение в воде — именно там меняется картинка между state'ами.
+const INSCRIPTION_OVERLAY = { x: 537, y: 494, w: 479, h: 620 };
+
 // ── Sprites ────────────────────────────────────────────────────────────────
 // hero_left/right.png: 1376×348, 5 frames (275×348 each)
 // hero_sit.png:        1376×204, 5 frames (275×204 each)
@@ -484,6 +497,31 @@ function onDragStart(cx, cy) {
       return;
     }
   }
+  // Не зацепили символ — проверяем попадание по надписи. Если попали,
+  // запускаем «дёрганье» букв пока зажата кнопка.
+  if (_pointInInscription(cx, cy)) {
+    _inscriptionHeld = true;
+    _inscriptionTwitch = Math.min(1, _inscriptionTwitch + 0.6);  // мгновенный толчок
+  }
+}
+
+// ── Inscription hold → twitch летящих символов ────────────────────────────
+// Клик/касание по надписи заставляет символы, летящие от монаха,
+// чуть-чуть подёргиваться. Зажал — подёргивание усиливается.
+let _inscriptionHeld   = false;
+let _inscriptionTwitch = 0;   // 0..1 — текущая энергия дрожания
+
+function _pointInInscription(cx, cy) {
+  // Надпись видима только в медитации — иначе дёргать нечего
+  if (meditationPhase <= 0) return false;
+  const sx = W / BG_W, sy = H / BG_H;
+  const ox = INSCRIPTION_OVERLAY.x * sx;
+  const oy = INSCRIPTION_OVERLAY.y * sy;
+  const ow = INSCRIPTION_OVERLAY.w * sx;
+  const oh = INSCRIPTION_OVERLAY.h * sy;
+  // Ограничиваем по верхней половине сприта (где сами руны), чтобы
+  // водное отражение внизу не ловило клики.
+  return cx >= ox && cx < ox + ow && cy >= oy && cy < oy + oh * 0.6;
 }
 
 // Проверить, попадает ли точка по живому символу (для курсора)
@@ -600,6 +638,23 @@ function animate() {
 
   const sx = W / BG_W, sy = H / BG_H;
 
+  // ── Inscription overlay (видна только в медитации) ──────────────────────
+  // Dim (до активации) ↔ Bright (после 5 доставок). Fade по meditationPhase:
+  // когда герой встаёт, надпись тоже плавно уходит вместе с остальной
+  // медитативной визуалкой. Рисуется поверх BG, но под героем/символами.
+  if (meditationPhase > 0) {
+    const insImg = S.inscriptionReady ? inscriptionBrightImg : inscriptionDimImg;
+    if (insImg.complete && insImg.naturalWidth) {
+      const ox = INSCRIPTION_OVERLAY.x * sx;
+      const oy = INSCRIPTION_OVERLAY.y * sy;
+      const ow = INSCRIPTION_OVERLAY.w * sx;
+      const oh = INSCRIPTION_OVERLAY.h * sy;
+      ctx.globalAlpha = meditationPhase;
+      ctx.drawImage(insImg, ox, oy, ow, oh);
+      ctx.globalAlpha = 1;
+    }
+  }
+
   // ── Hero movement ─────────────────────────────────────────────────────────
   if (!hero.praying) {
     if (keysHeld['ArrowLeft']  || keysHeld['a'] || keysHeld['ф']) {
@@ -707,6 +762,15 @@ function animate() {
   if (hero.praying && meditationPhase < 1) meditationPhase = Math.min(meditationPhase + 0.015, 1);
   if (!hero.praying && meditationPhase > 0) meditationPhase = Math.max(meditationPhase - 0.015, 0);
 
+  // Обновление энергии дрожания надписи. Зажата — растёт до 1, отпущена —
+  // плавно затухает. Используется ниже как jitter для pSyms.
+  if (_inscriptionHeld && meditationPhase > 0) {
+    _inscriptionTwitch = Math.min(1, _inscriptionTwitch + 0.08);
+  } else {
+    _inscriptionTwitch *= 0.90;
+    if (_inscriptionTwitch < 0.01) _inscriptionTwitch = 0;
+  }
+
   if (meditationPhase > 0) {
     ctx.fillStyle = `rgba(20,10,40,${meditationPhase * 0.35})`;
     ctx.fillRect(0, 0, W, H);
@@ -716,6 +780,10 @@ function animate() {
       if (tick % 22 === 11 && Math.random() < 0.45) _spawnSym();
     }
     _symTick();
+
+    // Jitter для дрожания летящих символов при зажатом клике на надписи.
+    // До 10px отклонения в каждую сторону при максимальной энергии.
+    const jitterPx = _inscriptionTwitch * 10 * sx;
 
     // Symbols — purple/white palette, per-symbol colour + glow
     ctx.save();
@@ -727,7 +795,9 @@ function animate() {
       ctx.fillStyle   = s.color ?? '#c8aaff';
       ctx.font        = `${Math.round((s.size ?? 24) * sx)}px serif`;
       ctx.textAlign   = 'center';
-      ctx.fillText(s.ch, s.x, s.y);
+      const jx = jitterPx ? (Math.random() - 0.5) * jitterPx : 0;
+      const jy = jitterPx ? (Math.random() - 0.5) * jitterPx : 0;
+      ctx.fillText(s.ch, s.x + jx, s.y + jy);
     }
     ctx.restore();
 
@@ -879,6 +949,7 @@ export async function initMain() {
     setCursor(hitZoneBG(cx, cy) || _hitSym(cx, cy));
   });
   canvas.addEventListener('mouseup', e => {
+    _inscriptionHeld = false;   // отпустили «зажатие» надписи
     if (!draggedSym) return;
     const cx  = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
     const sym = draggedSym;
@@ -901,6 +972,7 @@ export async function initMain() {
   });
   canvas.addEventListener('mouseleave', () => {
     setCursor(false);
+    _inscriptionHeld = false;
   });
 
   // Touch events
@@ -938,6 +1010,7 @@ export async function initMain() {
     } else {
       onTap(cx, cy);
     }
+    _inscriptionHeld = false;   // touch release
   }, { passive: false });
 
   document.addEventListener('keydown', e => { keysHeld[e.key] = true; _onKey(e); });
