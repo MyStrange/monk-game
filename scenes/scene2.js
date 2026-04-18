@@ -117,17 +117,21 @@ const _PARTICLE_COLORS = [
 const _ambientParticles = {};   // { rockName: [particles] }
 
 function _spawnAmbientParticles() {
-  const N = 28;
+  // Пыль в воздухе: частицы плавно поднимаются вверх над камнем,
+  // покачиваясь в стороны, и гаснут по мере подъёма.
+  const N = 60;
   const arr = [];
   for (let i = 0; i < N; i++) {
-    const r = Math.random();
     arr.push({
-      angle:     (i / N) * Math.PI * 2 + Math.random() * 0.4,
-      speed:     (0.006 + Math.random() * 0.014) * (Math.random() < 0.5 ? 1 : -1),
-      radius:    0.10 + Math.random() * 0.32,   // доля от ширины камня
+      fx:        0.05 + Math.random() * 0.90,   // горизонтальная позиция (доля ширины камня)
+      fy:        Math.random() * 1.1,            // вертикальная (0=верх, 1=низ, <0=выше камня)
+      vy:        -(0.0007 + Math.random() * 0.0020),  // скорость подъёма (доля высоты/кадр)
+      swayAmp:   0.006 + Math.random() * 0.018,  // амплитуда покачивания
+      swayFreq:  0.006 + Math.random() * 0.014,
+      swayPhase: Math.random() * Math.PI * 2,
       phase:     Math.random() * Math.PI * 2,
-      phaseRate: 0.016 + Math.random() * 0.028,
-      sz:        r < 0.55 ? 1 : 2,              // 55% мелких, 45% средних
+      phaseRate: 0.008 + Math.random() * 0.018,
+      sz:        2 + Math.floor(Math.random() * 3),   // 2, 3 или 4 px
       col:       _PARTICLE_COLORS[Math.floor(Math.random() * _PARTICLE_COLORS.length)],
     });
   }
@@ -385,26 +389,42 @@ function animate() {
       ctx.globalAlpha = 1;
     }
 
-    // ── Бесконечные орбитальные частицы над активированным камнем ──────────
+    // ── Пыль в воздухе над активированным камнем (вертикальный дрейф) ──────
     if (!_ambientParticles[rock]) _ambientParticles[rock] = _spawnAmbientParticles();
-    const cx = rx + rw * 0.50;          // центр по горизонтали
-    const cy = ry + rh * 0.20;          // верхняя треть камня — там виден символ
-    const orbitW = rw * 0.40;           // полуось X эллипса
-    const orbitH = rw * 0.14;           // полуось Y (сплюснутая — вид сверху)
     for (const p of _ambientParticles[rock]) {
-      p.angle += p.speed;
-      p.phase += p.phaseRate;
-      const br = 0.40 + 0.60 * (0.5 + 0.5 * Math.sin(p.phase));
-      const px = Math.round(cx + Math.cos(p.angle) * p.radius * orbitW);
-      const py = Math.round(cy + Math.sin(p.angle) * p.radius * orbitH);
-      const s  = p.sz;
+      // Движение
+      p.fy        += p.vy;
+      p.swayPhase += p.swayFreq;
+      p.phase     += p.phaseRate;
+      const sway   = Math.sin(p.swayPhase) * p.swayAmp;
+
+      // Респавн: улетела выше камня на 80% его высоты → вернуть к низу
+      if (p.fy < -0.80) {
+        p.fy        = 0.85 + Math.random() * 0.40;
+        p.fx        = 0.05 + Math.random() * 0.90;
+        p.swayPhase = Math.random() * Math.PI * 2;
+      }
+
+      // Alpha: максимум в теле камня, гаснет над ним
+      const fadeFrac = p.fy < 0
+        ? Math.max(0, 1 + p.fy / 0.80)
+        : Math.min(1, 1 - p.fy * 0.25);
+      const br = fadeFrac * (0.42 + 0.58 * (0.5 + 0.5 * Math.sin(p.phase)));
+      if (br <= 0.01) continue;
+
+      const ppx = Math.round(rx + (p.fx + sway) * rw);
+      const ppy = Math.round(ry + p.fy * rh);
+      const s   = p.sz;
       ctx.fillStyle = p.col;
-      // halo
-      ctx.globalAlpha = br * 0.22;
-      ctx.fillRect(px - s, py - s, s * 3, s * 3);
-      // core
+      // halo — мягкое размытое свечение
+      ctx.globalAlpha = br * 0.20;
+      ctx.fillRect(ppx - s, ppy - s, s * 3, s * 3);
+      // mid ореол
+      ctx.globalAlpha = br * 0.52;
+      ctx.fillRect(ppx - Math.max(1, s >> 1), ppy - Math.max(1, s >> 1), s + Math.max(1, s >> 1) * 2, s + Math.max(1, s >> 1) * 2);
+      // core — яркий пиксель
       ctx.globalAlpha = br;
-      ctx.fillRect(px, py, s, s);
+      ctx.fillRect(ppx, ppy, s, s);
     }
     ctx.globalAlpha = 1;
   }

@@ -176,21 +176,67 @@ export function renderJarIcon(item) {
 export function renderDirtIcon() {
   return `<svg width="48" height="48" viewBox="0 0 48 48"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <!-- pile shape -->
-    <rect x="18" y="14" width="12" height="4"  fill="#6b3a1f"/>
-    <rect x="14" y="18" width="20" height="4"  fill="#7a4422"/>
-    <rect x="10" y="22" width="28" height="4"  fill="#8b5428"/>
-    <rect x="8"  y="26" width="32" height="4"  fill="#9a6030"/>
-    <rect x="10" y="30" width="28" height="4"  fill="#7a4422"/>
-    <rect x="14" y="34" width="20" height="2"  fill="#6b3a1f"/>
-    <!-- texture dots -->
-    <rect x="16" y="20" width="2" height="2"  fill="#5a2e14"/>
-    <rect x="28" y="24" width="2" height="2"  fill="#5a2e14"/>
-    <rect x="20" y="28" width="2" height="2"  fill="#4a2010"/>
-    <rect x="32" y="28" width="2" height="2"  fill="#5a2e14"/>
-    <!-- highlight -->
-    <rect x="20" y="16" width="4" height="2"  fill="#b07840"/>
-    <rect x="22" y="22" width="2" height="2"  fill="#a06830"/>
+    <!-- куча земли — основание -->
+    <rect x="16" y="22" width="16" height="2"  fill="#6b3a1f"/>
+    <rect x="10" y="24" width="28" height="4"  fill="#7a4422"/>
+    <rect x="8"  y="28" width="32" height="4"  fill="#8b5428"/>
+    <rect x="10" y="32" width="28" height="3"  fill="#7a4422"/>
+    <rect x="14" y="35" width="20" height="2"  fill="#6b3a1f"/>
+    <rect x="18" y="37" width="12" height="2"  fill="#4a2010"/>
+    <!-- текстура земли — тёмные крупинки -->
+    <rect x="14" y="26" width="2"  height="2"  fill="#4a2010"/>
+    <rect x="20" y="30" width="2"  height="2"  fill="#4a2010"/>
+    <rect x="32" y="28" width="2"  height="2"  fill="#5a2e14"/>
+    <rect x="26" y="33" width="2"  height="2"  fill="#4a2010"/>
+    <!-- верхний блик кучи -->
+    <rect x="20" y="24" width="8"  height="2"  fill="#9a6030"/>
+
+    <!-- палочка 1: наискосок слева направо -->
+    <rect x="8"  y="22" width="2"  height="2"  fill="#7a5020"/>
+    <rect x="10" y="24" width="2"  height="2"  fill="#7a5020"/>
+    <rect x="12" y="26" width="2"  height="2"  fill="#6b4518"/>
+    <rect x="14" y="28" width="2"  height="2"  fill="#7a5020"/>
+    <rect x="16" y="30" width="2"  height="2"  fill="#8a6028"/>
+    <rect x="18" y="32" width="2"  height="2"  fill="#7a5020"/>
+    <!-- сучок -->
+    <rect x="13" y="25" width="2"  height="2"  fill="#5a3810"/>
+
+    <!-- палочка 2: более горизонтальная, пересекается -->
+    <rect x="28" y="22" width="2"  height="2"  fill="#8a6028"/>
+    <rect x="30" y="24" width="2"  height="2"  fill="#7a5020"/>
+    <rect x="32" y="24" width="2"  height="2"  fill="#8a6028"/>
+    <rect x="34" y="26" width="2"  height="2"  fill="#7a5020"/>
+    <rect x="36" y="26" width="2"  height="2"  fill="#6b4518"/>
+    <rect x="38" y="28" width="2"  height="2"  fill="#7a5020"/>
+
+    <!-- листок 1: трёхлопастный, левее центра -->
+    <rect x="18" y="14" width="2"  height="2"  fill="#2e5a10"/>  <!-- черешок -->
+    <rect x="18" y="16" width="2"  height="4"  fill="#3a6e18"/>
+    <rect x="14" y="16" width="4"  height="2"  fill="#4a7a22"/>  <!-- левая лопасть -->
+    <rect x="12" y="18" width="4"  height="2"  fill="#3a6e18"/>
+    <rect x="20" y="16" width="4"  height="2"  fill="#4a8020"/>  <!-- правая лопасть -->
+    <rect x="22" y="18" width="4"  height="2"  fill="#3a6e18"/>
+    <!-- прожилка -->
+    <rect x="18" y="18" width="2"  height="2"  fill="#2a5410"/>
+
+    <!-- листок 2: маленький, правее -->
+    <rect x="32" y="18" width="2"  height="4"  fill="#2e5a10"/>  <!-- черешок -->
+    <rect x="30" y="18" width="4"  height="2"  fill="#4a7a22"/>
+    <rect x="34" y="20" width="4"  height="2"  fill="#3a6e18"/>
+
+    <!-- камушек 1: серо-голубой, слева внизу -->
+    <rect x="10" y="32" width="4"  height="2"  fill="#707888"/>
+    <rect x="8"  y="34" width="6"  height="2"  fill="#828898"/>
+    <rect x="10" y="36" width="4"  height="2"  fill="#606070"/>
+    <!-- блик камушка -->
+    <rect x="10" y="32" width="2"  height="2"  fill="#9098a8"/>
+
+    <!-- камушек 2: светлее, справа -->
+    <rect x="36" y="31" width="4"  height="2"  fill="#7a8898"/>
+    <rect x="34" y="33" width="6"  height="2"  fill="#8a98a8"/>
+    <rect x="36" y="35" width="4"  height="2"  fill="#686878"/>
+    <!-- блик -->
+    <rect x="36" y="31" width="2"  height="2"  fill="#98a8b8"/>
   </svg>`;
 }
 
