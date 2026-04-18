@@ -306,11 +306,9 @@ export async function openSceneInside() {
 
   const _onFail = () => {
     hideLoading();
-    // Восстановить scene4 — она была скрыта в начале openSceneInside.
-    // Без этого игрок застревал на пустом экране после ошибки загрузки.
+    // Тихо возвращаемся в scene4 — без fullscreen-ошибки
     const s4 = document.getElementById('scene4');
     if (s4) s4.style.display = 'block';
-    showError('Сохрани inside.png в assets/bg/ для этой сцены');
   };
   bgImg.onerror = _onFail;
   bgImg.onload  = _onReady;
