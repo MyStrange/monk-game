@@ -82,6 +82,7 @@ S.inscriptionCharge = S.inscriptionCharge ?? 0;
 S.inscriptionReady  = S.inscriptionReady  ?? false;
 S.monkDialogDone    = S.monkDialogDone    ?? false;
 S.wantMoreSounds    = S.wantMoreSounds    ?? false;
+S.statueSymDrops    = S.statueSymDrops    ?? 0;       // счётчик дропов на статую ПОСЛЕ активации входа
 
 function saveMain() { SaveManager.setScene('main', S); }
 
@@ -538,28 +539,32 @@ function _deliverSym() {
   saveMain();
 }
 
-// ── Символ брошен на статую — звук + предложение слышать больше ────────────
+// ── Символ брошен на статую — звук + скрытая подсказка ────────────────────
+// Подсказка всплывает ТОЛЬКО после активации входа в сцену (inscriptionReady)
+// и только после 5 подряд успешных дропов на статую. До этого — просто
+// проигрываем случайную ноту, ничего не говорим. Никакого y/n-вопроса:
+// награда тихо «сама открывается» — в духе игры.
 function _onSymDropStatue() {
   AudioSystem.playSymbolTone?.(Math.floor(Math.random() * PURPLE_PALETTE.length));
-  if (S.wantMoreSounds || _symDropStatueShown || isStoryActive(msgEl)) return;
+
+  // Если уже слышим — просто звук (обрабатывается в mouseup ниже, здесь return).
+  if (S.wantMoreSounds) return;
+  // До активации входа ничего не делаем — ни счётчика, ни подсказок.
+  if (!S.inscriptionReady)      return;
+  if (_symDropStatueShown || isStoryActive(msgEl)) return;
+
+  S.statueSymDrops = (S.statueSymDrops ?? 0) + 1;
+  saveMain();
+
+  if (S.statueSymDrops < 5) return;
+
+  // Пять дропов после активации — открываем «слух».
   _symDropStatueShown = true;
+  S.wantMoreSounds = true;
+  saveMain();
   showMsgIn(msgEl,
-    'Символ коснулся статуи. Ничего не произошло. Звук, правда, был очень даже.',
-    {
-      story: true, dur: 3800,
-      onDismiss: () => {
-        if (state.activeScreen !== SCREENS.MAIN || S.wantMoreSounds) return;
-        showChoiceIn(msgEl, 'Хочешь слышать больше?',
-          [{ text: 'Да' }, { text: 'Нет' }],
-          v => {
-            if (v !== 'Да') return;
-            S.wantMoreSounds = true;
-            saveMain();
-            showMsg('Теперь каждый символ звучит по-своему.');
-          }
-        );
-      },
-    }
+    'Ничего не происходит. Но звук — классный. Кажется, ты теперь слышишь больше.',
+    { story: true, dur: 4200 }
   );
 }
 

@@ -129,7 +129,9 @@ const MUSHROOMS = [
 ];
 
 // ── Heart pulse центр (relative to BG) ────────────────────────────────────
-const HEART_CX = 0.50, HEART_CY = 0.65;
+// Было (0.50, 0.65) — пульс светился по центру кадра, а не на сердце.
+// Центроид красной разницы между base и active даёт (0.584, 0.660).
+const HEART_CX = 0.584, HEART_CY = 0.660;
 
 let _tick = 0;
 
@@ -165,19 +167,28 @@ function animate() {
   // Никаких canvas.drawImage — меняется весь кадр целиком по CSS opacity.
 
   // ── Свечение боковых грибов ─────────────────────────────────────────────
-  // Каждый гриб пульсирует независимо (phase), цвет ореола = цвету шляпки.
-  // Alpha'ы подняты (было 0.05/0.12/0.22 — едва видно на тёмном дереве,
-  // теперь 0.08/0.22/0.40) — свечение реально читается.
-  ctx.globalCompositeOperation = 'lighter';   // аддитивное смешение на тёмном дереве
+  // Три слоя анимации, чтобы глаз читал «живое свечение»:
+  //   breath — медленное дыхание (slow sin, базовая пульсация)
+  //   shimmer — быстрая мелкая вибрация яркости (эффект мерцания)
+  //   flash — редкие короткие вспышки (sin-порог > 0.985 даёт ~1% кадров
+  //           в пиковом множителе, пики расходятся по фазам грибов).
+  // Радиус дышит сам по себе (breath), alpha дышит + мерцает + вспышка.
+  ctx.globalCompositeOperation = 'lighter';
   for (const m of MUSHROOMS) {
     const cx = Math.round(R.x + m.nx * R.w);
     const cy = Math.round(R.y + m.ny * R.h);
-    const pulse = 0.65 + 0.35 * Math.sin(_tick * 0.032 + m.phase);
-    const baseR = Math.round(Math.min(R.w, R.h) * m.r * pulse);
+
+    const breath  = 0.65 + 0.35 * Math.sin(_tick * 0.032 + m.phase);
+    const shimmer = 0.85 + 0.15 * Math.sin(_tick * 0.180 + m.phase * 5);
+    const fp      = Math.sin(_tick * 0.009 + m.phase * 7);
+    const flash   = fp > 0.985 ? 1.6 : 1.0;
+    const al      = breath * shimmer * flash;
+
+    const baseR = Math.round(Math.min(R.w, R.h) * m.r * breath);
     ctx.fillStyle = m.col;
-    ctx.globalAlpha = pulse * 0.08;  ctx.fillRect(cx - baseR*4, cy - baseR*4, baseR*8, baseR*8);
-    ctx.globalAlpha = pulse * 0.22;  ctx.fillRect(cx - baseR*2, cy - baseR*2, baseR*4, baseR*4);
-    ctx.globalAlpha = pulse * 0.40;  ctx.fillRect(cx - baseR,   cy - baseR,   baseR*2, baseR*2);
+    ctx.globalAlpha = Math.min(1, al * 0.08);  ctx.fillRect(cx - baseR*4, cy - baseR*4, baseR*8, baseR*8);
+    ctx.globalAlpha = Math.min(1, al * 0.22);  ctx.fillRect(cx - baseR*2, cy - baseR*2, baseR*4, baseR*4);
+    ctx.globalAlpha = Math.min(1, al * 0.40);  ctx.fillRect(cx - baseR,   cy - baseR,   baseR*2, baseR*2);
   }
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
