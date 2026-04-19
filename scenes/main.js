@@ -103,8 +103,6 @@ S.stickPickedUp     = S.stickPickedUp     ?? false;
 S.inscriptionCharge = S.inscriptionCharge ?? 0;
 S.inscriptionReady  = S.inscriptionReady  ?? false;
 S.monkDialogDone    = S.monkDialogDone    ?? false;
-S.wantMoreSounds    = S.wantMoreSounds    ?? false;
-S.statueSymDrops    = S.statueSymDrops    ?? 0;       // счётчик дропов на статую ПОСЛЕ активации входа
 S.monkHintShown     = S.monkHintShown     ?? false;   // story-подсказка про «ещё нет запроса» (один раз)
 
 function saveMain() { SaveManager.setScene('main', S); }
@@ -113,7 +111,6 @@ function saveMain() { SaveManager.setScene('main', S); }
 let catBurying   = false;
 let catBuryTimer = 0;
 let inscriptionGlow = 0;
-let _symDropStatueShown = false;  // подсказка показывается 1 раз за сессию
 
 // ── Hero ───────────────────────────────────────────────────────────────────
 const hero = {
@@ -472,10 +469,8 @@ function onTap(cx, cy) {
   trackSpotClick(cx, cy, 'main');
 
   if (draggedSym) {
-    const sym = draggedSym;
     if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
-      if (S.inscriptionReady) _absorbSymPostReady(sym);
-      else                    _deliverSym();
+      _deliverSym();
     }
     if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
     _dragMoved = false;
@@ -602,37 +597,17 @@ function _spawnDissolveFrom(px, py, color, count = 80) {
   }
 }
 
-// Разовая story-подсказка «слышишь больше» + включение wantMoreSounds.
-// Срабатывает на первом post-ready поглощении символа (тап ИЛИ дроп).
-function _maybeShowMoreSoundsHint() {
-  if (S.wantMoreSounds) return;
-  if (!S.inscriptionReady) return;
-  if (_symDropStatueShown || isStoryActive(msgEl)) {
-    // story занято прямо сейчас — просто включаем флаг без сообщения,
-    // чтобы звуки уже работали. Подсказка всё равно не нужна срочно.
-    S.wantMoreSounds = true;
-    saveMain();
-    return;
-  }
-  _symDropStatueShown = true;
-  S.wantMoreSounds = true;
-  saveMain();
-  showMsgIn(msgEl,
-    'Ничего не происходит. Но звук — классный. Кажется, ты теперь слышишь больше.',
-    { story: true, dur: 4200 }
-  );
-}
-
-// Post-ready: поглотить символ (тап или дроп) — тон по цвету + dissolve
-// + первый раз триггерит хинт.
-function _absorbSymPostReady(sym) {
-  if (!sym) return;
-  AudioSystem.playSymbolTone?.(PURPLE_PALETTE.indexOf(sym.color));
-  _spawnDissolveFrom(sym.x, sym.y, sym.color ?? '#c8aaff', 80);
-  pSyms = pSyms.filter(s => s !== sym);
-  _maybeShowMoreSoundsHint();
-}
-
+// Единственная точка доставки/поглощения символа на надписи.
+// Раньше было три функции с разным поведением (_deliverSym до активации,
+// _absorbSymPostReady после, _onSymDropStatue для зоны-статуи, плюс
+// wantMoreSounds/statueSymDrops счётчики и хинт-подсказка). Всё это
+// заменено одной простой логикой:
+//   • ВСЕГДА играет тон по цвету символа (разные голоса пентатоники)
+//   • ВСЕГДА спавнит dissolve-частицы
+//   • ВСЕГДА убирает символ из pSyms
+//   • Пока не активирована — инкрементит charge; на 5 → активация +
+//     мерцание сильнее + финальный burst.
+//   • После активации — только звук и анимация, без счётчиков и хинтов.
 function _deliverSym() {
   if (!draggedSym) return;
   const sym   = draggedSym;
@@ -641,67 +616,37 @@ function _deliverSym() {
 
   pSyms = pSyms.filter(s => s !== sym);
   draggedSym = null;
-  S.inscriptionCharge = Math.min(S.inscriptionCharge + 1, 5);
-  inscriptionGlow     = 1.0;
-  AudioSystem.playBell();
 
-  // Dissolve (через общий helper, 80 частиц).
+  AudioSystem.playSymbolTone?.(PURPLE_PALETTE.indexOf(symCol));
   _spawnDissolveFrom(symX, symY, symCol, 80);
 
-  if (S.inscriptionCharge >= 5 && !S.inscriptionReady) {
-    S.inscriptionReady = true;
-    inscriptionGlow    = 2.0;
-    // Финальный сфокусированный burst — из центра надписи наружу.
-    const tp2 = bgToCanvas(
-      INSCRIPTION_TARGET.x + INSCRIPTION_TARGET.w / 2,
-      INSCRIPTION_TARGET.y + INSCRIPTION_TARGET.h / 2);
-    const spd2 = Math.min(W / BG_W, H / BG_H);
-    for (let i = 0; i < 40; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const v     = (2.4 + Math.random() * 5) * spd2;
-      statueParticles.push({
-        x: tp2.x, y: tp2.y,
-        vx: Math.cos(angle) * v,
-        vy: Math.sin(angle) * v - 3 * spd2,
-        life: 1.0,
-        lv: 0.012 + Math.random() * 0.012,
-        sz: Math.max(1, Math.round((2 + Math.random() * 3) * spd2)),
-        color: i % 2 === 0 ? '#ffe080' : '#ffffff',
-      });
+  if (!S.inscriptionReady) {
+    S.inscriptionCharge = Math.min(S.inscriptionCharge + 1, 5);
+    inscriptionGlow     = 1.0;   // короткая вспышка поверх dim
+    if (S.inscriptionCharge >= 5) {
+      S.inscriptionReady = true;
+      inscriptionGlow    = 2.0;
+      // Финальный сфокусированный burst — из центра надписи наружу.
+      const tp2 = bgToCanvas(
+        INSCRIPTION_TARGET.x + INSCRIPTION_TARGET.w / 2,
+        INSCRIPTION_TARGET.y + INSCRIPTION_TARGET.h / 2);
+      const spd2 = Math.min(W / BG_W, H / BG_H);
+      for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const v     = (2.4 + Math.random() * 5) * spd2;
+        statueParticles.push({
+          x: tp2.x, y: tp2.y,
+          vx: Math.cos(angle) * v,
+          vy: Math.sin(angle) * v - 3 * spd2,
+          life: 1.0,
+          lv: 0.012 + Math.random() * 0.012,
+          sz: Math.max(1, Math.round((2 + Math.random() * 3) * spd2)),
+          color: i % 2 === 0 ? '#ffe080' : '#ffffff',
+        });
+      }
     }
+    saveMain();
   }
-  saveMain();
-}
-
-// ── Символ брошен на статую — звук + скрытая подсказка ────────────────────
-// Счётчик считается с САМОГО ПЕРВОГО дропа, независимо от чего-либо.
-// Прошлый баг: `isStoryActive` возвращался ПЕРЕД инкрементом, и если в момент
-// дропа на экране была story-подсказка (например, reflection после камней),
-// счётчик не рос — игрок мог сделать 10 дропов, а state.statueSymDrops=0.
-function _onSymDropStatue() {
-  AudioSystem.playSymbolTone?.(Math.floor(Math.random() * PURPLE_PALETTE.length));
-
-  // Уже открыли «слух» — просто звук, ничего не делаем.
-  if (S.wantMoreSounds)    return;
-  if (_symDropStatueShown) return;
-
-  // ВСЕГДА инкрементим — никаких гейтов ДО этой строки.
-  S.statueSymDrops = (S.statueSymDrops ?? 0) + 1;
-  saveMain();
-
-  // Подсказка срабатывает на ПЕРВОМ дропе после активации входа.
-  // До активации — просто увеличиваем счётчик, звук и всё.
-  if (!S.inscriptionReady) return;
-
-  _symDropStatueShown = true;
-  S.wantMoreSounds = true;
-  saveMain();
-  // story-месседжи сами вытесняют любой предыдущий story — isStoryActive
-  // не может нам помешать показать эту подсказку.
-  showMsgIn(msgEl,
-    'Ничего не происходит. Но звук — классный. Кажется, ты теперь слышишь больше.',
-    { story: true, dur: 4200 }
-  );
 }
 
 // ── Animation loop ─────────────────────────────────────────────────────────
@@ -1025,24 +970,10 @@ export async function initMain() {
     // Цель доставки — кусочек рун в спрайте (INSCRIPTION_TARGET),
     // а не старый радиус вокруг ZONES_BG.inscription.
     if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
-      if (S.inscriptionReady) {
-        // Post-ready дроп на надпись — поглощение с тоном + dissolve.
-        _absorbSymPostReady(sym);
-        _justDelivered = true;
-      } else {
-        _deliverSym();
-        _justDelivered = true;
-      }
-    } else if (_dragMoved) {
-      // Перетащили не к надписи — проверяем статую
-      const bx = cx * BG_W / W, by = cy * BG_H / H;
-      const sz = ZONES_BG.statue;
-      if (bx >= sz.x && bx < sz.x + sz.w && by >= sz.y && by < sz.y + sz.h) _onSymDropStatue();
-    } else if ((S.inscriptionReady || S.wantMoreSounds) && sym) {
-      // Post-ready тап по символу — то же самое что post-ready дроп:
-      // поглощение с тоном по цвету + dissolve + (впервые) хинт.
-      _absorbSymPostReady(sym);
+      _deliverSym();
+      _justDelivered = true;
     }
+    // Drop мимо надписи — символ просто отпускается и продолжает летать.
     if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
     _dragMoved = false;
   });
@@ -1071,14 +1002,7 @@ export async function initMain() {
       draggedSym.y = cy;
       const sym = draggedSym;
       if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
-        if (S.inscriptionReady) _absorbSymPostReady(sym);
-        else                    _deliverSym();
-      } else if (_dragMoved) {
-        const bx = cx * BG_W / W, by = cy * BG_H / H;
-        const sz = ZONES_BG.statue;
-        if (bx >= sz.x && bx < sz.x + sz.w && by >= sz.y && by < sz.y + sz.h) _onSymDropStatue();
-      } else if ((S.inscriptionReady || S.wantMoreSounds) && sym) {
-        _absorbSymPostReady(sym);
+        _deliverSym();
       }
       if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
       _dragMoved = false;
