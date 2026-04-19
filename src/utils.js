@@ -124,10 +124,19 @@ export function showMsgIn(el, text, durOrOpts = {}) {
     };
     s.storyDismiss = dismiss;
 
-    if (dur != null) timer = setTimeout(() => dismiss(), dur);
-    else {
-      // Закрывается по клику (любому). Задержка чтобы не поймать тот же event,
-      // который создал сообщение.
+    if (dur != null) {
+      timer = setTimeout(() => dismiss(), dur);
+      // Глобальное правило: пока story-сообщение с дюрацией висит,
+      // любой клик по странице ПОКАЧИВАЕТ окно (но не закрывает).
+      // Это даёт пользователю визуальный фидбек «подожди, я ещё читаю».
+      // Раньше такое было только в scene2 (камни), теперь везде.
+      setTimeout(() => {
+        capListener = () => _bounce(s.current);
+        document.addEventListener('click',    capListener, true);
+        document.addEventListener('touchend', capListener, true);
+      }, UI_TIMING.STORY_CAP_DELAY);
+    } else {
+      // Без дюрации — закрывается по ЛЮБОМУ клику (click-to-dismiss).
       setTimeout(() => {
         capListener = () => dismiss();
         document.addEventListener('click',    capListener, true);

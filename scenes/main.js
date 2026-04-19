@@ -16,6 +16,7 @@ import {
   catBuryMsg1, catBuryMsg2, catBuryDoneMsg,
   MONK_Q1_RESP, MONK_Q2_RESP, MONK_Q3_RESP, MONK_FINAL_MSG, FLOWER_GIVEN_MSG,
   MONK_NEED_ROCKS_MSG,
+  INSCRIPTION_MSGS, INSCRIPTION_ITEM_MSGS,
 } from '../src/dialogue.js';
 
 // ── DOM ────────────────────────────────────────────────────────────────────
@@ -379,12 +380,17 @@ function zoneClick(zone) {
     interactCounts[k] = (interactCounts[k] ?? 0) + 1;
     // Клик по коту — тот же мягкий чик-чик и в медитации тоже.
     if (zone === 'cat') AudioSystem.playCatChirp?.();
-    const arr = MEDITATE_MSGS[zone];
-    if (arr) { showMsg(arr[interactCounts[k] % arr.length]); return; }
+
+    // Надпись — специальная обработка ДО общего MEDITATE_MSGS.
     if (zone === 'inscription') {
       if (S.inscriptionReady) { openScene('scene4'); return; }
+      // До активации — циклический флейвор.
+      showMsg(INSCRIPTION_MSGS[interactCounts[k] % INSCRIPTION_MSGS.length]);
       return;
     }
+
+    const arr = MEDITATE_MSGS[zone];
+    if (arr) { showMsg(arr[interactCounts[k] % arr.length]); return; }
     return;
   }
 
@@ -449,6 +455,12 @@ function interactItem(itemId, zone) {
     return;
   }
 
+  // Item × надпись — отдельная таблица флейвора. Предмет не тратится.
+  if (zone === 'inscription') {
+    const msg = INSCRIPTION_ITEM_MSGS[itemId];
+    if (msg) { showMsg(msg); return; }
+  }
+
   const msg = getZoneMsg(itemId, zone, item);
   if (msg) showMsg(msg);
 }
@@ -502,10 +514,11 @@ function onDragStart(cx, cy) {
     }
   }
   // Не зацепили символ — проверяем попадание по надписи. Если попали,
-  // запускаем «дёрганье» букв пока зажата кнопка.
+  // запускаем «дёрганье» букв пока зажата кнопка. Мгновенный толчок
+  // 0.9 чтобы даже короткий клик заметно тряхнул символы.
   if (_pointInInscription(cx, cy)) {
     _inscriptionHeld = true;
-    _inscriptionTwitch = Math.min(1, _inscriptionTwitch + 0.6);  // мгновенный толчок
+    _inscriptionTwitch = Math.min(1, _inscriptionTwitch + 0.9);
   }
 }
 
@@ -845,12 +858,14 @@ function animate() {
   if (hero.praying && meditationPhase < 1) meditationPhase = Math.min(meditationPhase + 0.015, 1);
   if (!hero.praying && meditationPhase > 0) meditationPhase = Math.max(meditationPhase - 0.015, 0);
 
-  // Обновление энергии дрожания надписи. Зажата — растёт до 1, отпущена —
-  // плавно затухает. Используется ниже как jitter для pSyms.
+  // Обновление энергии дрожания надписи. Зажата — быстро растёт до 1,
+  // отпущена — затухает. Повышенные значения чтобы тряска была
+  // заметной, а не чуть-чуть: pump 0.15/кадр (было 0.08), decay 0.93
+  // (было 0.90 — чуть дольше держится).
   if (_inscriptionHeld && meditationPhase > 0) {
-    _inscriptionTwitch = Math.min(1, _inscriptionTwitch + 0.08);
+    _inscriptionTwitch = Math.min(1, _inscriptionTwitch + 0.15);
   } else {
-    _inscriptionTwitch *= 0.90;
+    _inscriptionTwitch *= 0.93;
     if (_inscriptionTwitch < 0.01) _inscriptionTwitch = 0;
   }
 
@@ -864,9 +879,12 @@ function animate() {
     }
     _symTick();
 
-    // Jitter для дрожания летящих символов при зажатом клике на надписи.
-    // До 10px отклонения в каждую сторону при максимальной энергии.
-    const jitterPx = _inscriptionTwitch * 10 * sx;
+    // Jitter для дрожания летящих символов. Амплитуда — до 24px в каждую
+    // сторону при максимальной энергии (было 10 — почти не заметно).
+    // Плюс отдельный медленный sway через sin(tick) даёт ощущение
+    // качания, а не чисто случайного тряса.
+    const jitterPx = _inscriptionTwitch * 24 * sx;
+    const swayPx   = _inscriptionTwitch * 8  * sx;
 
     // Symbols — purple/white palette, per-symbol colour + glow
     ctx.save();
@@ -878,8 +896,12 @@ function animate() {
       ctx.fillStyle   = s.color ?? '#c8aaff';
       ctx.font        = `${Math.round((s.size ?? 24) * sx)}px serif`;
       ctx.textAlign   = 'center';
-      const jx = jitterPx ? (Math.random() - 0.5) * jitterPx : 0;
-      const jy = jitterPx ? (Math.random() - 0.5) * jitterPx : 0;
+      const jx = jitterPx ? (Math.random() - 0.5) * jitterPx
+                             + Math.sin(tick * 0.35 + s.phase) * swayPx
+                          : 0;
+      const jy = jitterPx ? (Math.random() - 0.5) * jitterPx
+                             + Math.cos(tick * 0.28 + s.phase * 1.3) * swayPx * 0.6
+                          : 0;
       ctx.fillText(s.ch, s.x + jx, s.y + jy);
     }
     ctx.restore();
