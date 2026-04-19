@@ -111,6 +111,11 @@ function saveMain() { SaveManager.setScene('main', S); }
 let catBurying   = false;
 let catBuryTimer = 0;
 let inscriptionGlow = 0;
+// Кот временно скрыт после оскорбления (вода из банки). Сбрасывается при
+// выходе из main и возврате — игрок заходит в другую сцену и видит кота
+// снова. НЕ сохраняется в SaveManager: это тихая, безболезненная реакция
+// мира, а не постоянное наказание.
+let catHidden = false;
 
 // ── Hero ───────────────────────────────────────────────────────────────────
 const hero = {
@@ -168,17 +173,20 @@ function bgToCanvas(bgX, bgY) {
 function hitZoneBG(cx, cy) {
   const bx = cx * BG_W / W, by = cy * BG_H / H;
 
-  // Клик по надписи — только в медитации. Используем зону спрайта
-  // (INSCRIPTION_TARGET), а не старую узкую ZONES_BG.inscription,
-  // чтобы попадать именно по видимой полоске рун.
+  // Клик по надписи — только в медитации. До активации — узкая полоска
+  // рун (INSCRIPTION_TARGET), чтобы не мешать доставке символов на неё.
+  // После активации — вся область спрайта (без водного отражения), чтобы
+  // игроку легко было открыть scene4 одним кликом.
   if (hero.praying || meditationPhase > 0) {
-    const t = INSCRIPTION_TARGET;
-    if (bx >= t.x && bx < t.x + t.w && by >= t.y && by < t.y + t.h)
+    const t   = S.inscriptionReady ? INSCRIPTION_OVERLAY : INSCRIPTION_TARGET;
+    const ty1 = S.inscriptionReady ? t.y + t.h * 0.6     : t.y + t.h;
+    if (bx >= t.x && bx < t.x + t.w && by >= t.y && by < ty1)
       return 'inscription';
   }
   for (const [name, z] of Object.entries(ZONES_BG)) {
     if (name === 'inscription' || name === 'dirt') continue;
     if (name === 'bush' && S.stickPickedUp) continue;
+    if (name === 'cat'  && catHidden) continue;
     if (bx >= z.x && bx < z.x + z.w && by >= z.y && by < z.y + z.h) return name;
   }
   return null;
@@ -429,11 +437,26 @@ function interactItem(itemId, zone) {
   trackZoneClick(zone);
 
   if (itemId === 'durian' && zone === 'cat') {
+    // В медитации — кот не принимает. Это не момент для даров.
+    if (hero.praying || meditationPhase > 0) {
+      showMsg('Не сейчас. Кот чувствует тишину — и не принимает шумных даров.');
+      return;
+    }
     const slot = state.inventory.findIndex(i => i?.id === 'durian');
     removeItem(slot);
     renderHotbar();
     AudioSystem.playCatMeow();
     startBury();
+    return;
+  }
+
+  // Банка с водой на кота — кот шипит и исчезает. Появится при возвращении.
+  // Сама вода в банке при этом остаётся: ты не выплеснул всё, ты только
+  // плеснул — кот проворнее.
+  if ((itemId === 'jar' || itemId === 'jar_open') && item?.hasWater && zone === 'cat') {
+    AudioSystem.playCatHiss?.();
+    catHidden = true;
+    showMsg('Кота может обидеть каждый.');
     return;
   }
 
@@ -511,7 +534,9 @@ function onDragStart(cx, cy) {
   // Не зацепили символ — проверяем попадание по надписи. Если попали,
   // запускаем «дёрганье» букв пока зажата кнопка. Мгновенный толчок
   // 0.9 чтобы даже короткий клик заметно тряхнул символы.
-  if (_pointInInscription(cx, cy)) {
+  // ВАЖНО: после активации надпись — это кнопка в scene4, а не игрушка
+  // для тряски. Поэтому shake работает ТОЛЬКО пока !inscriptionReady.
+  if (_pointInInscription(cx, cy) && !S.inscriptionReady) {
     _inscriptionHeld = true;
     _inscriptionTwitch = Math.min(1, _inscriptionTwitch + 0.9);
   }
@@ -744,16 +769,19 @@ function animate() {
   }
 
   // ── Cat ───────────────────────────────────────────────────────────────────
-  const cp = bgToCanvas(CAT_X, GROUND_Y - CAT_H);
-  if (catSheet.complete && catSheet.naturalWidth) {
-    const frame  = catBurying ? Math.min(Math.floor(catBuryTimer / 10), HERO_FRAMES - 1)
-                              : Math.floor(tick / 12) % HERO_FRAMES;
-    const frameW = catSheet.naturalWidth / HERO_FRAMES;
-    ctx.drawImage(catSheet, frame * frameW, 0, frameW, catSheet.naturalHeight,
-      cp.x, cp.y, CAT_W * sx, CAT_H * sy);
-  } else {
-    ctx.fillStyle = '#f0c060';
-    ctx.fillRect(cp.x, cp.y, CAT_W * sx, CAT_H * sy);
+  // catHidden=true — кот ушёл после обиды. Вернётся при повторном входе в main.
+  if (!catHidden) {
+    const cp = bgToCanvas(CAT_X, GROUND_Y - CAT_H);
+    if (catSheet.complete && catSheet.naturalWidth) {
+      const frame  = catBurying ? Math.min(Math.floor(catBuryTimer / 10), HERO_FRAMES - 1)
+                                : Math.floor(tick / 12) % HERO_FRAMES;
+      const frameW = catSheet.naturalWidth / HERO_FRAMES;
+      ctx.drawImage(catSheet, frame * frameW, 0, frameW, catSheet.naturalHeight,
+        cp.x, cp.y, CAT_W * sx, CAT_H * sy);
+    } else {
+      ctx.fillStyle = '#f0c060';
+      ctx.fillRect(cp.x, cp.y, CAT_W * sx, CAT_H * sy);
+    }
   }
 
   // ── Monk ──────────────────────────────────────────────────────────────────
@@ -905,6 +933,8 @@ export function resumeMain() {
   // Фиксируем возврат на main: F5 теперь не будет бросать назад в закрытую сцену.
   SaveManager.global.lastScene = 'main';
   SaveManager.save();
+  // Кот возвращается при любом повторном входе — обида кота не постоянная.
+  catHidden = false;
   if (state.activeScreen === SCREENS.MAIN && !animId) animate();
 }
 

@@ -418,6 +418,44 @@ export const AudioSystem = {
     }
   },
 
+  // Шипение кота — когда его обижают (например, вода из банки).
+  // Короткий всплеск шума через bandpass-фильтр, чуть поднимающийся по
+  // частоте → знакомый «шшшш» с характерной кошачьей остротой.
+  playCatHiss() {
+    if (!this.ctx) return;
+    const ac  = this.ctx;
+    const out = this.sfxGain;
+    const now = ac.currentTime;
+    const DUR = 0.55;
+    // Шум-база
+    const bufLen = Math.floor(ac.sampleRate * DUR);
+    const buf = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) {
+      // envelope-shaped noise: быстрая атака + долгий спад
+      const env = i < bufLen * 0.08
+        ? i / (bufLen * 0.08)
+        : Math.pow(1 - (i - bufLen * 0.08) / (bufLen * 0.92), 1.4);
+      d[i] = (Math.random() * 2 - 1) * env;
+    }
+    const src = ac.createBufferSource(); src.buffer = buf;
+    // Bandpass с движением cutoff вверх — даёт характерное «шшш→сссс»
+    const bp = ac.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 3.5;
+    bp.frequency.setValueAtTime(2600, now);
+    bp.frequency.linearRampToValueAtTime(4200, now + DUR * 0.5);
+    bp.frequency.linearRampToValueAtTime(3400, now + DUR);
+    // High-shelf подчеркнуть «остроту»
+    const hs = ac.createBiquadFilter();
+    hs.type = 'highshelf'; hs.frequency.value = 3000; hs.gain.value = 6;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.38, now + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + DUR);
+    src.connect(bp); bp.connect(hs); hs.connect(g); g.connect(out);
+    src.start(now); src.stop(now + DUR + 0.02);
+  },
+
   playCatMeow() {
     if (!this.ctx) return;
     const ac  = this.ctx;

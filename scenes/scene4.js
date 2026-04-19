@@ -30,7 +30,7 @@ import { SaveManager }                    from '../src/save.js';
 import { trackZoneClick }                 from '../src/achievements.js';
 import { S4_CAT_MSGS, S4_MONK_MSGS,
          S4_DURIAN_CAT_MSGS, S4_DURIAN_MONK_MSGS,
-         S4_STATUE_MSGS,
+         S4_STATUE_MSGS, S4_ITEM_MSGS,
          SCENE4_OPEN_MSG3 }              from '../src/dialogue.js';
 import { getSelectedItem }                from '../src/inventory.js';
 import { waitImg, coverRect, hitZone }    from '../src/scene-base.js';
@@ -55,13 +55,21 @@ let _resizeObs = null;
 const BG_W = 2051, BG_H = 1154;
 const SP_X = 784, SP_Y = 0, SP_W = 509, SP_H = 854;
 
-// ── Hit-зоны (normalized 0..1 в BG natural) ───────────────────────────────
+// ── Hit-зоны (normalized 0..1 в BG natural 2051×1154) ────────────────────
 // Сверены по above_main.jpeg; CAT/MONK используют capture-фазу чтобы
 // перехватить клик даже если они под прямоугольником layer2/layer3 img.
+// Кот и монах расположены НИЖЕ статуи (в нижней трети кадра), справа и
+// слева-центр соответственно — предыдущие координаты были сдвинуты
+// вверх и клики не попадали.
 const TRUNK_ZONE  = { x0: 0.41, y0: 0.07, x1: 0.56, y1: 0.36 };
-const STATUE_ZONE = { x0: 0.39, y0: 0.42, x1: 0.60, y1: 0.78 };
-const CAT_ZONE    = { x0: 0.61, y0: 0.51, x1: 0.68, y1: 0.70 };
-const MONK_ZONE   = { x0: 0.48, y0: 0.70, x1: 0.61, y1: 0.84 };
+const STATUE_ZONE = { x0: 0.39, y0: 0.42, x1: 0.60, y1: 0.76 };
+const CAT_ZONE    = { x0: 0.62, y0: 0.78, x1: 0.76, y1: 0.94 };
+const MONK_ZONE   = { x0: 0.40, y0: 0.82, x1: 0.56, y1: 0.97 };
+
+// Dev-хелпер для точной настройки зон. Вызови в консоли
+// window.__s4zones = true — и каждый клик будет выводить нормализованные
+// координаты. После правки координат — window.__s4zones = false.
+if (typeof window !== 'undefined') window.__s4zones = window.__s4zones ?? false;
 
 // ── Displayed-BG math (object-fit:cover + object-position:top) ────────────
 // coverRect из scene-base берёт object-position:top через параметр 'top'.
@@ -71,6 +79,17 @@ function _inZone(cx, cy, z) {
   if (!el) return false;
   const r = el.getBoundingClientRect();
   return hitZone(cx, cy, z, _dispBG(r.width, r.height));
+}
+
+// Случайная строка или одна фраза из S4_ITEM_MSGS по ключу item:zone.
+// Возвращает null если нет записи — тогда вызывающий использует fallback.
+function _s4ItemMsg(sel, zone) {
+  if (!sel) return null;
+  const entry = S4_ITEM_MSGS[`${sel.id}:${zone}`];
+  if (!entry) return null;
+  return Array.isArray(entry)
+    ? entry[Math.floor(Math.random() * entry.length)]
+    : entry;
 }
 
 function _layoutLayers() {
@@ -173,10 +192,22 @@ function _onElCapture(e) {
   const cx = pt.clientX - r.left;
   const cy = pt.clientY - r.top;
 
-  // TRUNK — только ствол (верхний проём) активирует дверной флоу
+  // Dev-лог: нормализованные координаты для калибровки зон
+  if (window.__s4zones) {
+    const d = _dispBG(r.width, r.height);
+    const nx = ((cx - d.x) / d.scale / BG_W).toFixed(3);
+    const ny = ((cy - d.y) / d.scale / BG_H).toFixed(3);
+    console.log(`[scene4 click] nx=${nx}, ny=${ny}`);
+  }
+
+  const sel = getSelectedItem();
+
+  // TRUNK — ствол (верхний проём). С предметом — флейвор, без — дверной флоу.
   if (_inZone(cx, cy, TRUNK_ZONE)) {
     e.stopPropagation();
     e.preventDefault?.();
+    const im = _s4ItemMsg(sel, 'trunk');
+    if (im) { showMsgIn(msgEl, im); trackZoneClick('scene4_trunk'); return; }
     _onTrunkClick();
     trackZoneClick('scene4_trunk');
     return;
@@ -187,9 +218,9 @@ function _onElCapture(e) {
     if (isStoryActive(msgEl)) return;
     e.stopPropagation();
     e.preventDefault?.();
-    const msg = S4_STATUE_MSGS[S.statueIdx % S4_STATUE_MSGS.length];
-    S.statueIdx++;
-    SaveManager.setScene('scene4', S);
+    const im = _s4ItemMsg(sel, 'statue');
+    const msg = im ?? S4_STATUE_MSGS[S.statueIdx % S4_STATUE_MSGS.length];
+    if (!im) { S.statueIdx++; SaveManager.setScene('scene4', S); }
     showMsgIn(msgEl, msg);
     trackZoneClick('scene4_statue');
     return;
@@ -200,16 +231,19 @@ function _onElCapture(e) {
     if (isStoryActive(msgEl)) return;
     e.stopPropagation();
     e.preventDefault?.();
-    const sel = getSelectedItem();
     let msg;
-    if (sel?.id === 'durian') {
+    const im = _s4ItemMsg(sel, 'cat');
+    if (im) {
+      msg = im;
+    } else if (sel?.id === 'durian') {
       msg = S4_DURIAN_CAT_MSGS[S.durCatIdx % S4_DURIAN_CAT_MSGS.length];
       S.durCatIdx++;
+      SaveManager.setScene('scene4', S);
     } else {
       msg = S4_CAT_MSGS[S.catMsgIdx % S4_CAT_MSGS.length];
       S.catMsgIdx++;
+      SaveManager.setScene('scene4', S);
     }
-    SaveManager.setScene('scene4', S);
     showMsgIn(msgEl, msg);
     trackZoneClick('scene4_cat');
     return;
@@ -220,16 +254,19 @@ function _onElCapture(e) {
     if (isStoryActive(msgEl)) return;
     e.stopPropagation();
     e.preventDefault?.();
-    const sel = getSelectedItem();
     let msg;
-    if (sel?.id === 'durian') {
+    const im = _s4ItemMsg(sel, 'monk');
+    if (im) {
+      msg = im;
+    } else if (sel?.id === 'durian') {
       msg = S4_DURIAN_MONK_MSGS[S.durMonkIdx % S4_DURIAN_MONK_MSGS.length];
       S.durMonkIdx++;
+      SaveManager.setScene('scene4', S);
     } else {
       msg = S4_MONK_MSGS[S.monkMsgIdx % S4_MONK_MSGS.length];
       S.monkMsgIdx++;
+      SaveManager.setScene('scene4', S);
     }
-    SaveManager.setScene('scene4', S);
     showMsgIn(msgEl, msg);
     trackZoneClick('scene4_monk');
     return;
