@@ -263,13 +263,10 @@ function interactItem(itemId, zone) {
     return;
   }
 
-  // glowstick on rock — инструмент многоразовый, остаётся в инвентаре
-  if (itemId === 'glowstick' && isRock) {
-    if (S.rockStates[zone]) { showMsg('Этот камень уже впитал свет.'); return; }
-    AudioSystem.playRock();
-    _activateRock(zone, 'Свет из палки касается камня. Что-то начинает тихо светиться.');
-    return;
-  }
+  // glowstick on rock — НЕ активирует камень (раньше активировала, это было
+  // багом). Светящаяся палка нужна для другого — показать что-то невидимое
+  // в ухе Будды. Здесь — просто флейвор через getZoneMsg (см. zone-msgs.js
+  // ключ 'glowstick:rock').
 
   // stick on bottle zone (light from jar)
   if (itemId === 'stick' && zone === 'bottle') {
