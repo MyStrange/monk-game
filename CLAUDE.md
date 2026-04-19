@@ -164,21 +164,18 @@ const _waitImg = img => img.complete && img.naturalWidth
 ```
 4. **Если загрузка провалилась** (`!bgImg.naturalWidth`): `hideLoading()`, восстановить предыдущую сцену (`resumeMain()` или `s4.style.display='block'`), затем `showError(...)`.
 
-**Паттерн сцены с картинкой** (используй utility-классы из style.css,
-НЕ inline style.cssText):
-```js
-el.className = 'scene-root';
-el.style.zIndex = '55';            // или '60' если нужно выше scene4
+**Паттерн сцены с картинкой** — эталон в `scenes/_TEMPLATE.js`.
+Для новых сцен бери его и меняй SCENEID. Он использует:
+- `buildSceneDOM({id, bgSrc, zIndex, onClose})` — собирает каркас
+  (div.scene-root + img.scene-bg + canvas.scene-canvas + back + msgEl).
+- `bindSceneInput(canvas, {onTap, onHover, onLeave, activeCheck})` —
+  все click/touch/move с кэшированием rect (не вызывается getBoundingClientRect
+  каждый кадр).
+- `ASSET('bg/name')` из `src/assets.js` — путь из единого реестра ассетов.
+- `waitImg(bgImg)` + `coverRect` + `hitZone` из `src/scene-base.js`.
 
-const bg = document.createElement('img');
-bg.src = 'assets/bg/X.jpeg';
-bg.className = 'scene-bg';         // +'scene-bg--top' для object-position:top
-
-const canvas = document.createElement('canvas');
-canvas.className = 'scene-canvas';
-
-el.appendChild(bg); el.appendChild(canvas); // bg ПЕРВЫМ
-```
+Существующие сцены (scene2/3/4/inside/buddha/menu/prologue) сохранены в
+старом стиле для стабильности, но новые — через factory.
 Загрузка (async/await, обязательно!):
 ```js
 showLoading('название');
@@ -246,6 +243,21 @@ const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 ### state.js — не расширять
 Только 3 поля навсегда: `inventory`, `selectedSlot`, `activeScreen`.
 Флаги сцены → в файле сцены через `SaveManager.getScene(id)`.
+
+### Save versioning
+`src/save.js` хранит `SCHEMA_VERSION`. При изменении схемы save:
+1. Увеличить `SCHEMA_VERSION` на 1.
+2. Добавить функцию в `MIGRATIONS[N]` — она принимает save версии N-1
+   и превращает его в версию N (delete убранные поля, переименовать
+   структуры, долить дефолты).
+3. НЕ удалять старые миграции — игроки могут быть на любой версии.
+
+### Asset manifest
+`src/assets.js` — единый реестр картинок. Добавление ассета:
+1. Запись в `ASSETS = { 'bg/name': { path, preload: 'critical' } }`.
+2. В коде: `bg.src = ASSET('bg/name')`.
+3. Если `preload:'critical'` — добавить `<link rel="preload">` в index.html.
+4. Проверить `window.__validateAssets()` в dev-console.
 
 ---
 

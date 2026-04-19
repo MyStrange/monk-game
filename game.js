@@ -10,6 +10,7 @@ import { toggleFullscreen, initHoverAnim, initRotateOverlay } from './src/utils.
 import { openAchievements, closeAchievements, loadAchievements } from './src/achievements.js';
 import { initMain, leaveMain }              from './scenes/main.js';
 import { openScene }                        from './src/nav.js';
+import './src/assets.js';   // регистрирует window.__validateAssets() для dev-console
 
 // ── window.* для HTML onclick= ─────────────────────────────────────────────
 // closeSceneXXX экспортируется и присваивается window.* в каждом файле сцены.
