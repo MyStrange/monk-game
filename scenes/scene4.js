@@ -48,7 +48,7 @@ S.durMonkIdx     = S.durMonkIdx     ?? 0;
 S.doorEntered    = S.doorEntered    ?? false;
 
 // ── DOM ────────────────────────────────────────────────────────────────────
-let el, bgEl, layer2El, layer3El, msgEl;
+let el, bgEl, layer2El, layer3El, msgEl, debugCv;
 let _resizeObs = null;
 
 // ── BG dims + layer sprite coords ─────────────────────────────────────────
@@ -66,10 +66,13 @@ const STATUE_ZONE = { x0: 0.39, y0: 0.42, x1: 0.60, y1: 0.76 };
 const CAT_ZONE    = { x0: 0.62, y0: 0.78, x1: 0.76, y1: 0.94 };
 const MONK_ZONE   = { x0: 0.40, y0: 0.82, x1: 0.56, y1: 0.97 };
 
-// Dev-хелпер для точной настройки зон. Вызови в консоли
-// window.__s4zones = true — и каждый клик будет выводить нормализованные
-// координаты. После правки координат — window.__s4zones = false.
-if (typeof window !== 'undefined') window.__s4zones = window.__s4zones ?? false;
+// Dev-хелпер для настройки зон. По умолчанию ВКЛЮЧЁН — пока координаты
+// не отжаты по реальной картинке. Рисует цветные прямоугольники поверх
+// сцены (cat — красный, monk — синий, statue — зелёный, trunk — жёлтый)
+// и логирует клики в консоль как nx/ny.
+// Выключить: в консоли браузера `window.__s4zones = false`, затем клик
+// по сцене (overlay перерисуется).
+if (typeof window !== 'undefined') window.__s4zones = window.__s4zones ?? true;
 
 // ── Displayed-BG math (object-fit:cover + object-position:top) ────────────
 // coverRect из scene-base берёт object-position:top через параметр 'top'.
@@ -107,6 +110,41 @@ function _layoutLayers() {
     node.style.width  = sw + 'px';
     node.style.height = sh + 'px';
   }
+  _drawDebugZones();
+}
+
+// Отрисовка debug-зон: полупрозрачные прямоугольники поверх сцены.
+// Вызывается при layout и при каждом клике (чтобы реагировало на
+// `window.__s4zones = true/false` в рантайме без перезагрузки).
+function _drawDebugZones() {
+  if (!debugCv || !el) return;
+  const r = el.getBoundingClientRect();
+  debugCv.width  = r.width;
+  debugCv.height = r.height;
+  const ctx = debugCv.getContext('2d');
+  ctx.clearRect(0, 0, r.width, r.height);
+  if (!window.__s4zones) { debugCv.style.display = 'none'; return; }
+  debugCv.style.display = 'block';
+
+  const d = _dispBG(r.width, r.height);
+  const paint = (z, fill, label) => {
+    const x = d.x + z.x0 * BG_W * d.scale;
+    const y = d.y + z.y0 * BG_H * d.scale;
+    const w = (z.x1 - z.x0) * BG_W * d.scale;
+    const h = (z.y1 - z.y0) * BG_H * d.scale;
+    ctx.fillStyle   = fill;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = fill.replace(/[\d.]+\)$/, '1)');
+    ctx.lineWidth   = 2;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle   = '#fff';
+    ctx.font        = 'bold 14px monospace';
+    ctx.fillText(label, x + 6, y + 18);
+  };
+  paint(TRUNK_ZONE,  'rgba(240,200,60,0.35)',  'TRUNK');
+  paint(STATUE_ZONE, 'rgba(80,200,120,0.35)', 'STATUE');
+  paint(CAT_ZONE,    'rgba(230,80,80,0.45)',  'CAT');
+  paint(MONK_ZONE,   'rgba(80,120,230,0.45)', 'MONK');
 }
 
 // ── Layer peel ────────────────────────────────────────────────────────────
@@ -199,6 +237,8 @@ function _onElCapture(e) {
     const ny = ((cy - d.y) / d.scale / BG_H).toFixed(3);
     console.log(`[scene4 click] nx=${nx}, ny=${ny}`);
   }
+  // Перерисовать debug-overlay (если тоггл менялся в рантайме)
+  _drawDebugZones();
 
   const sel = getSelectedItem();
 
@@ -328,9 +368,16 @@ function createEl() {
   msgEl = document.createElement('div');
   msgEl.className = 'scene-msg';
 
+  // Debug-canvas для визуализации зон (видим когда window.__s4zones=true).
+  // zIndex 70 — выше слоёв 60/61, но НИЖЕ back-btn (который имеет свой z).
+  // pointer-events:none — клики проходят сквозь к capture-handler на el.
+  debugCv = document.createElement('canvas');
+  debugCv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:70;pointer-events:none;display:none;';
+
   el.appendChild(bgEl);
   el.appendChild(layer2El);
   el.appendChild(layer3El);
+  el.appendChild(debugCv);
   el.appendChild(back);
   el.appendChild(msgEl);
   document.getElementById('wrap').appendChild(el);
