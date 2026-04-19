@@ -460,9 +460,9 @@ function onTap(cx, cy) {
   trackSpotClick(cx, cy, 'main');
 
   if (draggedSym) {
-    // Доставка только при реальном перетаскивании на полоску рун в спрайте.
+    const sym = draggedSym;
     if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
-      if (S.inscriptionReady) _onSymDropStatue();
+      if (S.inscriptionReady) _absorbSymPostReady(sym);
       else                    _deliverSym();
     }
     if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
@@ -559,10 +559,69 @@ function onDragMove(cx, cy) {
   }
 }
 
+// Spawn dissolve-частицы: стартуют у точки (px,py), летят с homing'ом
+// к центру полоски рун, по пути затухают. Используется и доставкой, и
+// post-ready тапом/дропом — одна визуальная идиома для «символ впитался».
+function _spawnDissolveFrom(px, py, color, count = 80) {
+  const tx  = INSCRIPTION_TARGET.x + INSCRIPTION_TARGET.w / 2;
+  const ty  = INSCRIPTION_TARGET.y + INSCRIPTION_TARGET.h / 2;
+  const tp  = bgToCanvas(tx, ty);
+  const csx = W / BG_W, csy = H / BG_H;
+  const spd = Math.min(csx, csy);
+  for (let i = 0; i < count; i++) {
+    const sxPx = px + (Math.random() - 0.5) * 30;
+    const syPx = py + (Math.random() - 0.5) * 30;
+    const dx = tp.x - sxPx;
+    const dy = tp.y - syPx;
+    const flight = 24 + Math.random() * 18;
+    const col = i % 3 === 0 ? '#ffe080' : (i % 3 === 1 ? color : '#ffffff');
+    statueParticles.push({
+      x: sxPx, y: syPx,
+      vx: (dx / flight) * (0.6 + Math.random() * 0.6) + (Math.random() - 0.5) * 1.4,
+      vy: (dy / flight) * (0.6 + Math.random() * 0.6) + (Math.random() - 0.5) * 1.4,
+      life: 1.0,
+      lv: 1 / flight,
+      sz: Math.max(1, Math.round((1 + Math.random() * 2) * spd)),
+      color: col,
+      tx: tp.x, ty: tp.y,
+      homing: 0.06 + Math.random() * 0.04,
+    });
+  }
+}
+
+// Разовая story-подсказка «слышишь больше» + включение wantMoreSounds.
+// Срабатывает на первом post-ready поглощении символа (тап ИЛИ дроп).
+function _maybeShowMoreSoundsHint() {
+  if (S.wantMoreSounds) return;
+  if (!S.inscriptionReady) return;
+  if (_symDropStatueShown || isStoryActive(msgEl)) {
+    // story занято прямо сейчас — просто включаем флаг без сообщения,
+    // чтобы звуки уже работали. Подсказка всё равно не нужна срочно.
+    S.wantMoreSounds = true;
+    saveMain();
+    return;
+  }
+  _symDropStatueShown = true;
+  S.wantMoreSounds = true;
+  saveMain();
+  showMsgIn(msgEl,
+    'Ничего не происходит. Но звук — классный. Кажется, ты теперь слышишь больше.',
+    { story: true, dur: 4200 }
+  );
+}
+
+// Post-ready: поглотить символ (тап или дроп) — тон по цвету + dissolve
+// + первый раз триггерит хинт.
+function _absorbSymPostReady(sym) {
+  if (!sym) return;
+  AudioSystem.playSymbolTone?.(PURPLE_PALETTE.indexOf(sym.color));
+  _spawnDissolveFrom(sym.x, sym.y, sym.color ?? '#c8aaff', 80);
+  pSyms = pSyms.filter(s => s !== sym);
+  _maybeShowMoreSoundsHint();
+}
+
 function _deliverSym() {
   if (!draggedSym) return;
-  // Сохраняем позицию и цвет символа ПЕРЕД тем как его убрать из pSyms.
-  // Нужно для dissolve-анимации — частицы стартуют отсюда.
   const sym   = draggedSym;
   const symX  = sym.x, symY = sym.y;
   const symCol = sym.color ?? '#c8aaff';
@@ -570,56 +629,30 @@ function _deliverSym() {
   pSyms = pSyms.filter(s => s !== sym);
   draggedSym = null;
   S.inscriptionCharge = Math.min(S.inscriptionCharge + 1, 5);
-  inscriptionGlow     = 1.0;    // вспышка → bright-over-dim мерцание
+  inscriptionGlow     = 1.0;
   AudioSystem.playBell();
 
-  // Цель — центр полоски рун на спрайте.
-  const tx  = INSCRIPTION_TARGET.x + INSCRIPTION_TARGET.w / 2;
-  const ty  = INSCRIPTION_TARGET.y + INSCRIPTION_TARGET.h / 2;
-  const tp  = bgToCanvas(tx, ty);
-  const csx = W / BG_W, csy = H / BG_H;
-  const spd = Math.min(csx, csy);
-
-  // Dissolve: 40 частиц стартуют у СИМВОЛА и летят К надписи,
-  // гомингом подтягиваясь к цели. По пути распадаются (life↓).
-  // Цвет — mix из цвета символа + золотого + белого.
-  for (let i = 0; i < 40; i++) {
-    const sxPx = symX + (Math.random() - 0.5) * 26;
-    const syPx = symY + (Math.random() - 0.5) * 26;
-    const dx = tp.x - sxPx;
-    const dy = tp.y - syPx;
-    const flight = 24 + Math.random() * 16;  // кадров
-    const col = i % 3 === 0 ? '#ffe080' : (i % 3 === 1 ? symCol : '#ffffff');
-    statueParticles.push({
-      x: sxPx, y: syPx,
-      // Начальный вектор в общем направлении цели + лёгкий рандом
-      vx: (dx / flight) * (0.6 + Math.random() * 0.6) + (Math.random() - 0.5) * 1.2,
-      vy: (dy / flight) * (0.6 + Math.random() * 0.6) + (Math.random() - 0.5) * 1.2,
-      life: 1.0,
-      lv: 1 / flight,
-      sz: Math.max(1, Math.round((1 + Math.random() * 2) * spd)),
-      color: col,
-      // Homing-поля: render-loop доворачивает частицу к цели, имитируя
-      // впитывание в надпись.
-      tx: tp.x, ty: tp.y,
-      homing: 0.06 + Math.random() * 0.04,
-    });
-  }
+  // Dissolve (через общий helper, 80 частиц).
+  _spawnDissolveFrom(symX, symY, symCol, 80);
 
   if (S.inscriptionCharge >= 5 && !S.inscriptionReady) {
     S.inscriptionReady = true;
     inscriptionGlow    = 2.0;
     // Финальный сфокусированный burst — из центра надписи наружу.
-    for (let i = 0; i < 28; i++) {
+    const tp2 = bgToCanvas(
+      INSCRIPTION_TARGET.x + INSCRIPTION_TARGET.w / 2,
+      INSCRIPTION_TARGET.y + INSCRIPTION_TARGET.h / 2);
+    const spd2 = Math.min(W / BG_W, H / BG_H);
+    for (let i = 0; i < 40; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const v     = (2.4 + Math.random() * 5) * spd;
+      const v     = (2.4 + Math.random() * 5) * spd2;
       statueParticles.push({
-        x: tp.x, y: tp.y,
+        x: tp2.x, y: tp2.y,
         vx: Math.cos(angle) * v,
-        vy: Math.sin(angle) * v - 3 * spd,
+        vy: Math.sin(angle) * v - 3 * spd2,
         life: 1.0,
         lv: 0.012 + Math.random() * 0.012,
-        sz: Math.max(1, Math.round((2 + Math.random() * 3) * spd)),
+        sz: Math.max(1, Math.round((2 + Math.random() * 3) * spd2)),
         color: i % 2 === 0 ? '#ffe080' : '#ffffff',
       });
     }
@@ -674,28 +707,35 @@ function animate() {
   const sx = W / BG_W, sy = H / BG_H;
 
   // ── Inscription overlay (видна только в медитации) ──────────────────────
-  // Dim (до активации) ↔ Bright (после 5 доставок). Fade по meditationPhase.
-  // До активации на каждую доставку накладывается bright поверх dim с
-  // alpha=inscriptionGlow — эффект мерцания («вспыхнула и потухла»).
-  if (meditationPhase > 0) {
-    const base = S.inscriptionReady ? inscriptionBrightImg : inscriptionDimImg;
-    if (base.complete && base.naturalWidth) {
-      const ox = INSCRIPTION_OVERLAY.x * sx;
-      const oy = INSCRIPTION_OVERLAY.y * sy;
-      const ow = INSCRIPTION_OVERLAY.w * sx;
-      const oh = INSCRIPTION_OVERLAY.h * sy;
-      ctx.globalAlpha = meditationPhase;
-      ctx.drawImage(base, ox, oy, ow, oh);
-      // Мерцание: bright поверх dim на короткое время после доставки.
-      // После 5 доставок inscriptionReady=true и base уже = bright,
-      // так что эта ветка пропускается.
-      if (!S.inscriptionReady && inscriptionGlow > 0.01 &&
-          inscriptionBrightImg.complete && inscriptionBrightImg.naturalWidth) {
-        ctx.globalAlpha = meditationPhase * inscriptionGlow;
+  // Базовый слой — ВСЕГДА dim. Сверху — bright с модулированной alpha:
+  //   • до активации: inscriptionGlow вспыхивает на каждой доставке
+  //     и затухает к 0 → эффект короткого мерцания.
+  //   • после активации (inscriptionReady): синусоидальный непрерывный
+  //     пульс 0.55..1.0 → надпись «дышит», никогда не гаснет полностью.
+  if (meditationPhase > 0 && inscriptionDimImg.complete && inscriptionDimImg.naturalWidth) {
+    const ox = INSCRIPTION_OVERLAY.x * sx;
+    const oy = INSCRIPTION_OVERLAY.y * sy;
+    const ow = INSCRIPTION_OVERLAY.w * sx;
+    const oh = INSCRIPTION_OVERLAY.h * sy;
+    ctx.globalAlpha = meditationPhase;
+    ctx.drawImage(inscriptionDimImg, ox, oy, ow, oh);
+
+    if (inscriptionBrightImg.complete && inscriptionBrightImg.naturalWidth) {
+      let brightAlpha;
+      if (S.inscriptionReady) {
+        // Постоянное мерцание: пульс 0.55..1.0 — зажигается и затухает,
+        // но не полностью (min 0.55 → дно пульса всё ещё ярко).
+        brightAlpha = 0.775 + 0.225 * Math.sin(tick * 0.045);
+      } else {
+        // До активации — вспышка только на доставке.
+        brightAlpha = inscriptionGlow;
+      }
+      if (brightAlpha > 0.01) {
+        ctx.globalAlpha = meditationPhase * brightAlpha;
         ctx.drawImage(inscriptionBrightImg, ox, oy, ow, oh);
       }
-      ctx.globalAlpha = 1;
     }
+    ctx.globalAlpha = 1;
   }
 
   // ── Hero movement ─────────────────────────────────────────────────────────
@@ -964,9 +1004,8 @@ export async function initMain() {
     // а не старый радиус вокруг ZONES_BG.inscription.
     if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
       if (S.inscriptionReady) {
-        // Надпись активирована — дальнейшие дропы считаются в
-        // statueSymDrops (ветка «слышишь больше»).
-        _onSymDropStatue();
+        // Post-ready дроп на надпись — поглощение с тоном + dissolve.
+        _absorbSymPostReady(sym);
         _justDelivered = true;
       } else {
         _deliverSym();
@@ -977,9 +1016,10 @@ export async function initMain() {
       const bx = cx * BG_W / W, by = cy * BG_H / H;
       const sz = ZONES_BG.statue;
       if (bx >= sz.x && bx < sz.x + sz.w && by >= sz.y && by < sz.y + sz.h) _onSymDropStatue();
-    } else if (S.wantMoreSounds && sym) {
-      // Простой тап по символу → кристальный тон по цвету
-      AudioSystem.playSymbolTone?.(PURPLE_PALETTE.indexOf(sym.col));
+    } else if ((S.inscriptionReady || S.wantMoreSounds) && sym) {
+      // Post-ready тап по символу — то же самое что post-ready дроп:
+      // поглощение с тоном по цвету + dissolve + (впервые) хинт.
+      _absorbSymPostReady(sym);
     }
     if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
     _dragMoved = false;
@@ -1009,14 +1049,14 @@ export async function initMain() {
       draggedSym.y = cy;
       const sym = draggedSym;
       if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
-        if (S.inscriptionReady) _onSymDropStatue();
+        if (S.inscriptionReady) _absorbSymPostReady(sym);
         else                    _deliverSym();
       } else if (_dragMoved) {
         const bx = cx * BG_W / W, by = cy * BG_H / H;
         const sz = ZONES_BG.statue;
         if (bx >= sz.x && bx < sz.x + sz.w && by >= sz.y && by < sz.y + sz.h) _onSymDropStatue();
-      } else if (S.wantMoreSounds && sym) {
-        AudioSystem.playSymbolTone?.(PURPLE_PALETTE.indexOf(sym.col));
+      } else if ((S.inscriptionReady || S.wantMoreSounds) && sym) {
+        _absorbSymPostReady(sym);
       }
       if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
       _dragMoved = false;
