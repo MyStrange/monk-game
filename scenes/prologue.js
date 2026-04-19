@@ -84,10 +84,12 @@ function createEl() {
 
   el = document.createElement('div');
   el.id = 'prologue-scene';
-  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:60;background:#000;';
+  el.className = 'scene-root';
+  el.style.cssText = 'z-index:60;background:#000;';
 
   canvas = document.createElement('canvas');
-  canvas.style.cssText = 'display:block;width:100%;height:100%;cursor:pointer;';
+  canvas.className = 'scene-canvas';
+  canvas.style.cursor = 'pointer';
   ctx = canvas.getContext('2d');
 
   el.appendChild(canvas);

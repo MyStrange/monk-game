@@ -164,13 +164,19 @@ const _waitImg = img => img.complete && img.naturalWidth
 ```
 4. **Если загрузка провалилась** (`!bgImg.naturalWidth`): `hideLoading()`, восстановить предыдущую сцену (`resumeMain()` или `s4.style.display='block'`), затем `showError(...)`.
 
-**Паттерн сцены с картинкой:**
+**Паттерн сцены с картинкой** (используй utility-классы из style.css,
+НЕ inline style.cssText):
 ```js
+el.className = 'scene-root';
+el.style.zIndex = '55';            // или '60' если нужно выше scene4
+
 const bg = document.createElement('img');
 bg.src = 'assets/bg/X.jpeg';
-bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
+bg.className = 'scene-bg';         // +'scene-bg--top' для object-position:top
+
 const canvas = document.createElement('canvas');
-canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+canvas.className = 'scene-canvas';
+
 el.appendChild(bg); el.appendChild(canvas); // bg ПЕРВЫМ
 ```
 Загрузка (async/await, обязательно!):

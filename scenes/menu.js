@@ -97,10 +97,12 @@ function createEl() {
 
   el = document.createElement('div');
   el.id = 'menu-scene';
-  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:60;';
+  el.className = 'scene-root';
+  el.style.zIndex = '60';
 
   canvas = document.createElement('canvas');
-  canvas.style.cssText = 'display:block;width:100%;height:100%;cursor:default;';
+  canvas.className = 'scene-canvas';
+  canvas.style.cursor = 'default';
   ctx = canvas.getContext('2d');
 
   el.appendChild(canvas);

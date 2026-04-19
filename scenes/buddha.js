@@ -818,9 +818,10 @@ function _closeNow() {
   state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
-  // Снимаем глобальные слушатели resize/scroll — без этого они висели всю сессию.
-  window.removeEventListener('resize', _bCacheRect);
-  window.removeEventListener('scroll', _bCacheRect);
+  // window resize/scroll listeners ОСТАЮТСЯ живыми на всю сессию (как и
+  // canvas в DOM'е). Раньше их снимали здесь, но createEl early-returns
+  // при повторном открытии — listeners не возвращались, _bRect оставался
+  // stale при resize между сессиями сцены.
   SaveManager.setScene('buddha', S);
   resumeMain();
 }

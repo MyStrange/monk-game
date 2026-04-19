@@ -112,6 +112,28 @@ html,body{
 /* ── Main canvas ── */
 #main-canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;}
 
+/* ══════════════════════════════════════════════════════
+   SCENE LAYOUT PRIMITIVES
+   Было: каждая сцена делала el.style.cssText = 'position:absolute;
+   inset:0;display:none;z-index:XX;overflow:hidden;' +
+   bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;'
+   + canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;'
+   — 7 мест с почти идентичным кодом. Теперь один класс на каждую роль.
+
+   Z-index выставляется inline в JS через el.style.zIndex — он
+   специфичен для каждой сцены (scene2/3/4=55, inside=60, menu=60).
+   ══════════════════════════════════════════════════════ */
+.scene-root{
+  position:absolute;inset:0;overflow:hidden;display:none;
+}
+.scene-bg{
+  display:block;width:100%;height:100%;object-fit:cover;
+}
+.scene-bg--top{object-position:top;}
+.scene-canvas{
+  position:absolute;inset:0;width:100%;height:100%;
+}
+
 /* Все canvas ── */
 canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;}
 

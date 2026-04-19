@@ -259,12 +259,14 @@ function createEl() {
 
   el = document.createElement('div');
   el.id = 'scene4';
-  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:55;overflow:hidden;';
+  el.className = 'scene-root';
+  el.style.zIndex = '55';
 
   bgEl = document.createElement('img');
   bgEl.src = 'assets/bg/above_main.jpeg';
-  bgEl.className = 's4-bg';
-  bgEl.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;object-position:top;';
+  // s4-bg оставлен — layout.js использует класс, плюс добавляем общий
+  // scene-bg (object-fit:cover) + модификатор --top (object-position:top).
+  bgEl.className = 's4-bg scene-bg scene-bg--top';
 
   layer2El = document.createElement('img');
   layer2El.src = 'assets/bg/above2.png';

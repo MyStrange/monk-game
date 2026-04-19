@@ -207,10 +207,12 @@ function createEl() {
 
   el = document.createElement('div');
   el.id = 'scene3';
-  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:55;overflow:hidden;';
+  el.className = 'scene-root';
+  el.style.zIndex = '55';
 
   canvas = document.createElement('canvas');
-  canvas.style.cssText = 'display:block;width:100%;height:100%;';
+  // scene3 — полностью процедурный рендер, без bg-img. Каркас — canvas-root.
+  canvas.className = 'scene-canvas';
   ctx = canvas.getContext('2d');
 
   const back = document.createElement('button');

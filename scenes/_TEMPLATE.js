@@ -85,14 +85,16 @@ function createEl() {
 
   el = document.createElement('div');
   el.id = 'SCENEID';
-  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:55;overflow:hidden;';
+  el.className = 'scene-root';
+  el.style.zIndex = '55';
 
   const bg = document.createElement('img');
   bg.src = 'assets/bg/SCENEID.jpeg';
-  bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
+  bg.className = 'scene-bg';
 
   canvas = document.createElement('canvas');
-  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:default;';
+  canvas.className = 'scene-canvas';
+  canvas.style.cursor = 'default';
   ctx = canvas.getContext('2d');
 
   const back = document.createElement('button');

@@ -464,14 +464,15 @@ function createEl() {
 
   el = document.createElement('div');
   el.id = 'scene2';
-  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:55;overflow:hidden;';
+  el.className = 'scene-root';
+  el.style.zIndex = '55';
 
   const bg = document.createElement('img');
   bg.src = 'assets/bg/tree.png';
-  bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
+  bg.className = 'scene-bg';
 
   canvas = document.createElement('canvas');
-  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+  canvas.className = 'scene-canvas';
   ctx = canvas.getContext('2d');
 
   const back = document.createElement('button');
@@ -561,8 +562,8 @@ export function closeSceneScene2() {
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   _cancelActivations();
   _unbindKeydown();
-  window.removeEventListener('resize', _s2CacheRect);
-  window.removeEventListener('scroll', _s2CacheRect);
+  // window resize/scroll listeners ОСТАЮТСЯ — добавлены в createEl один раз,
+  // canvas живёт всю сессию. _s2Rect обновится при следующем открытии.
   SaveManager.setScene('scene2', S);
   resumeMain();
 }

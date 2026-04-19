@@ -298,25 +298,23 @@ function createEl() {
 
   el = document.createElement('div');
   el.id = 'inside';
-  el.style.cssText = 'position:absolute;inset:0;display:none;z-index:60;overflow:hidden;';
+  el.className = 'scene-root';
+  el.style.zIndex = '60';
 
   // Два BG-слоя: базовый (кристалл) и активный (сердце с цветком).
-  // Раньше мы кропали меняющуюся область из второй картинки и клеили
-  // на canvas — пользователь справедливо жаловался на обрез. Теперь
-  // вторая картинка — полноразмерный <img> с opacity:0, и при активации
-  // поднимаем opacity до 1 через CSS transition. Меняется ВСЁ, без кропа.
+  // Активный — поверх базового, fade opacity 0→1 при доставке цветка.
   const bg = document.createElement('img');
   bg.src = 'assets/bg/inside.png';
-  bg.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
+  bg.className = 'scene-bg';
 
   bgActive = document.createElement('img');
   bgActive.src = 'assets/bg/inside_heart.png';
-  bgActive.style.cssText =
-    'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;' +
-    'opacity:0;transition:opacity 1.6s ease-in;pointer-events:none;';
+  bgActive.className = 'scene-canvas';   // те же inset/size что у канваса
+  // Opacity/transition/pointer-events специфичны, остаются inline.
+  bgActive.style.cssText = 'opacity:0;transition:opacity 1.6s ease-in;pointer-events:none;object-fit:cover;';
 
   canvas = document.createElement('canvas');
-  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+  canvas.className = 'scene-canvas';
   ctx = canvas.getContext('2d');
 
   const back = document.createElement('button');
@@ -419,8 +417,6 @@ export async function openSceneInside() {
 function _tearDownInside() {
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
-  window.removeEventListener('resize', _iCacheRect);
-  window.removeEventListener('scroll', _iCacheRect);
   setCursor(false);
   SaveManager.setScene('inside', S);
 }
