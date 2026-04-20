@@ -8,7 +8,7 @@ import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../
 import { renderHotbar }  from '../src/hotbar.js';
 import { SaveManager }   from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
-import { trackZoneClick, trackSpotClick, trackFlyCaught, trackFliesReleased } from '../src/achievements.js';
+import { trackZoneClick, trackSpotClick, trackFlyCaught, trackFliesReleased, trackFlyScared } from '../src/achievements.js';
 import {
   wishDoneMsg,
   earMsg, durianAfterDialog, DIALOG,
@@ -159,7 +159,7 @@ function _buildFlyroom() {
 
   flyroomEl = document.createElement('div');
   flyroomEl.id = 'flyroom';
-  flyroomEl.style.cssText = 'position:absolute;inset:0;display:none;z-index:65;overflow:hidden;cursor:pointer;';
+  flyroomEl.style.cssText = 'position:absolute;inset:0;display:none;z-index:65;overflow:hidden;cursor:inherit;';
 
   const bg = document.createElement('img');
   bg.src = 'assets/bg/flyroom.jpeg';
@@ -462,6 +462,7 @@ function onTap(cx, cy) {
         f.escapeVy  = Math.sin(angle) * (5 + Math.random() * 4);
         f.escapeA   = 1.0;
         AudioSystem.playFlyCatch?.();      // bell (тот же звук что при поимке)
+        trackFlyScared();
         return;
       }
     }

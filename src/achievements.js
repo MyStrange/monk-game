@@ -170,6 +170,18 @@ export const ACHIEVEMENT_DEFS = [
     desc:      'Ты открыл банку. Свет ушёл, загадка осталась.',
     condition: s => s.fliesReleased,
   },
+  {
+    id:        'fly_scare_1', iconKey: 'release',
+    title:     'Пустая рука',
+    desc:      'Ты щёлкнул по светлячку без банки. Он сбежал и простил.',
+    condition: s => s.fliesScared >= 1,
+  },
+  {
+    id:        'fly_scare_many', iconKey: 'release',
+    title:     'Разгонщик света',
+    desc:      'Десять светлячков ты распугал голыми руками. Звон и пустота.',
+    condition: s => s.fliesScared >= 10,
+  },
 
   // ── Крафт ────────────────────────────────────────────────────────────
   {
@@ -277,6 +289,7 @@ function _freshStats() {
 
     // светлячки
     fliesCaught:       0,
+    fliesScared:       0,     // клики по светлячкам без банки
     fliesReleased:     false,
 
     // крафт
@@ -313,7 +326,7 @@ export function loadAchievements() {
       for (const k of [
         'maxZoneClicks','emptyClickCount','maxSpotClicks',
         'sitCount','maxSitSeconds','symbolsDelivered','rocksActivated',
-        'fliesCaught',
+        'fliesCaught','fliesScared',
       ]) if (typeof raw[k] === 'number') fresh[k] = raw[k];
       for (const k of [
         'monkDialogDone','fliesReleased','glowstickMade','waterJarMade',
@@ -353,6 +366,7 @@ function _saveStats() {
       rocksActivated:   _stats.rocksActivated,
       monkDialogDone:   _stats.monkDialogDone,
       fliesCaught:      _stats.fliesCaught,
+      fliesScared:      _stats.fliesScared,
       fliesReleased:    _stats.fliesReleased,
       glowstickMade:    _stats.glowstickMade,
       waterJarMade:     _stats.waterJarMade,
@@ -431,6 +445,11 @@ export function trackMonkDialogDone() {
 
 export function trackFlyCaught() {
   _stats.fliesCaught++;
+  _after();
+}
+
+export function trackFlyScared() {
+  _stats.fliesScared++;
   _after();
 }
 

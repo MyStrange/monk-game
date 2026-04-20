@@ -204,7 +204,7 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   color:var(--c-gold);
   padding:11px 22px;
   font-family:var(--font);font-size:var(--sz-base);
-  letter-spacing:0.04em;cursor:pointer;
+  letter-spacing:0.04em;
   border-radius:var(--r);
   transition:border-color .15s,background .15s,color .15s;
 }
@@ -244,7 +244,7 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   background:var(--c-panel);color:var(--c-text);
   border:var(--b-gold);
   font-family:var(--font);font-size:var(--sz-lg);
-  padding:var(--pad-btn);cursor:pointer;border-radius:var(--r);
+  padding:var(--pad-btn);border-radius:var(--r);
   z-index:200;min-width:56px;min-height:56px;
   display:flex;align-items:center;justify-content:center;
   touch-action:manipulation;-webkit-tap-highlight-color:transparent;
@@ -332,7 +332,7 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
 /* ── UI buttons ── */
 .ui-btn{
   position:fixed;background:transparent;border:none;
-  color:var(--c-gold-dim);width:36px;height:36px;cursor:pointer;z-index:300;
+  color:var(--c-gold-dim);width:36px;height:36px;z-index:300;
   -webkit-tap-highlight-color:transparent;touch-action:manipulation;
   display:flex;align-items:center;justify-content:center;
   padding:0;font-size:18px;transition:color .2s;
@@ -417,11 +417,20 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   position:fixed;inset:0;z-index:400;
   background:rgba(8,6,16,0.97);display:none;
   align-items:center;justify-content:center;
+  padding:16px;
 }
 .ach-screen-inner{
-  max-width:440px;width:92%;border:var(--b-gold-lo);padding:20px 16px;
+  max-width:760px;width:96%;max-height:90vh;
+  border:var(--b-gold-lo);padding:18px 14px 14px;
+  display:flex;flex-direction:column;
+  background:rgba(8,6,16,0.6);
 }
-.ach-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+/* Шапка фиксирована — кнопка закрытия всегда видна */
+.ach-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;flex-shrink:0;
+  padding-bottom:10px;border-bottom:var(--b-gold-lo);
+}
 .ach-title{color:var(--c-gold);font-family:var(--font);font-size:var(--sz-sm);letter-spacing:4px;}
 .ach-count{color:var(--c-text-dim);font-family:var(--font);font-size:var(--sz-xs);letter-spacing:2px;}
 .ach-close{
@@ -430,7 +439,19 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   display:flex;align-items:center;justify-content:center;transition:color .2s;
 }
 .ach-close:hover{color:var(--c-gold);}
-.ach-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+/* Скроллится только список — заголовок и счётчик статичны */
+.ach-list{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  overflow-y:auto;overflow-x:hidden;
+  padding-right:4px;
+  flex:1 1 auto;min-height:0;
+  /* Тонкий золотой скроллбар, вписан в стиль */
+  scrollbar-width:thin;
+  scrollbar-color:var(--c-gold-dim) transparent;
+}
+.ach-list::-webkit-scrollbar{width:6px;}
+.ach-list::-webkit-scrollbar-thumb{background:var(--c-gold-dim);border-radius:0;}
+.ach-list::-webkit-scrollbar-track{background:transparent;}
 .ach-item{
   border:var(--b-gold-lo);padding:10px 6px 8px;text-align:center;
   background:var(--c-gold-trace);
@@ -442,6 +463,10 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
 .ach-item-body strong{color:var(--c-gold);font-family:var(--font);font-size:var(--sz-xs);line-height:1.35;}
 .ach-item-body span{color:var(--c-text-dim);font-family:var(--font);font-size:var(--sz-xs);line-height:1.4;}
 .ach-item.locked .ach-item-body strong{color:rgba(255,255,255,0.18);}
+/* Адаптация для узких экранов — 2 колонки */
+@media (max-width:560px){
+  .ach-list{grid-template-columns:repeat(2,1fr);}
+}
 
 /* ══════════════════════════════════════════════════════
    FLYROOM BUBBLES — диалог светлячков
