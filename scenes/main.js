@@ -177,14 +177,14 @@ function bgToCanvas(bgX, bgY) {
 function hitZoneBG(cx, cy) {
   const bx = cx * BG_W / W, by = cy * BG_H / H;
 
-  // Клик по надписи — только в медитации. До активации — узкая полоска
-  // рун (INSCRIPTION_TARGET), чтобы не мешать доставке символов на неё.
-  // После активации — вся область спрайта (без водного отражения), чтобы
-  // игроку легко было открыть scene4 одним кликом.
+  // Клик по надписи — только в медитации. ВСЕГДА узкая полоска рун
+  // (INSCRIPTION_TARGET), и до и после активации. Раньше после активации
+  // хит-зона расширялась на весь спрайт (~24% × 33% экрана) — и любой
+  // случайный тап по статуе/воде/мимо символа открывал scene4. Теперь
+  // зона ровно там, где сама надпись: бьёшь по рунам — открывается.
   if (hero.praying || meditationPhase > 0) {
-    const t   = S.inscriptionReady ? INSCRIPTION_OVERLAY : INSCRIPTION_TARGET;
-    const ty1 = S.inscriptionReady ? t.y + t.h * 0.6     : t.y + t.h;
-    if (bx >= t.x && bx < t.x + t.w && by >= t.y && by < ty1)
+    const t = INSCRIPTION_TARGET;
+    if (bx >= t.x && bx < t.x + t.w && by >= t.y && by < t.y + t.h)
       return 'inscription';
   }
   for (const [name, z] of Object.entries(ZONES_BG)) {
