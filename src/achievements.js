@@ -159,12 +159,6 @@ export const ACHIEVEMENT_DEFS = [
     condition: s => s.fliesCaught >= 1,
   },
   {
-    id:        'fly_full', iconKey: 'jarGlow',
-    title:     'Полная банка',
-    desc:      'Девять огоньков. Дальше — только отпустить.',
-    condition: s => s.fliesCaught >= 9,
-  },
-  {
     id:        'fly_free', iconKey: 'release',
     title:     'Отпустить',
     desc:      'Ты открыл банку. Свет ушёл, загадка осталась.',
