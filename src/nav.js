@@ -1,8 +1,9 @@
 // src/nav.js — NAV_MAP: граф сцен, openScene(id), canLeave()
 // Добавить новую сцену: одна строка в NAV_MAP, больше ничего не менять.
 
-import { state }       from './state.js';
-import { SaveManager } from './save.js';
+import { state }           from './state.js';
+import { SaveManager }     from './save.js';
+import { trackSceneVisit } from './achievements.js';
 
 function toPascal(id) {
   return id.split(/[_-]/).map(s => s[0].toUpperCase() + s.slice(1)).join('');
@@ -31,6 +32,7 @@ export async function openScene(id) {
   // Сохраняем текущую сцену ДО открытия — чтобы F5 внутри неё вернул сюда.
   SaveManager.global.lastScene = id;
   SaveManager.save();
+  trackSceneVisit(id);
   fn();
 }
 

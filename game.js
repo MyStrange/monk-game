@@ -7,7 +7,7 @@ import { state }                            from './src/state.js';
 import { AudioSystem, toggleMusic, toggleSfx } from './src/audio.js';
 import { renderHotbar }                     from './src/hotbar.js';
 import { toggleFullscreen, initHoverAnim, initRotateOverlay } from './src/utils.js';
-import { openAchievements, closeAchievements, loadAchievements } from './src/achievements.js';
+import { openAchievements, closeAchievements, loadAchievements, resetAchievementStats } from './src/achievements.js';
 import { initMain, leaveMain }              from './scenes/main.js';
 import { openScene }                        from './src/nav.js';
 import './src/assets.js';   // регистрирует window.__validateAssets() для dev-console
@@ -92,6 +92,7 @@ initRotateOverlay();
     _closeMenu();
     if (confirm('Начать игру заново? Весь прогресс будет удалён.')) {
       SaveManager.reset();
+      resetAchievementStats();
       location.reload();
     }
   });

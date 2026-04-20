@@ -6,9 +6,10 @@
 //   false   = успех (apply сработал), снять выбор
 //   null    = комбо нет (переключить выбор на b)
 
-import { state }      from './state.js';
-import { makeItem }   from './inventory.js';
-import { renderHotbar } from './hotbar.js';
+import { state }             from './state.js';
+import { makeItem }          from './inventory.js';
+import { renderHotbar }      from './hotbar.js';
+import { trackGlowstickMade } from './achievements.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function _key(a, b) {
@@ -35,6 +36,7 @@ const ITEM_COMBO = {
 
       // Палка → светопалка
       state.inventory[stickIdx] = makeItem('glowstick');
+      trackGlowstickMade();
 
       // Банка → jar_open, пустая
       const oldJar = state.inventory[jarIdx];

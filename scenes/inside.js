@@ -15,7 +15,7 @@ import { showMsgIn, showLoading, hideLoading, showError, setCursor } from '../sr
 import { resumeMain, setMeditating } from './main.js';
 import { SaveManager }    from '../src/save.js';
 import { AudioSystem }    from '../src/audio.js';
-import { trackZoneClick } from '../src/achievements.js';
+import { trackZoneClick, trackSceneVisit } from '../src/achievements.js';
 import { getSelectedItem, removeItem } from '../src/inventory.js';
 import { renderHotbar }   from '../src/hotbar.js';
 import { coverRect, hitZone as _hitNormZone } from '../src/scene-base.js';
@@ -252,6 +252,7 @@ function _applyFlower() {
   renderHotbar();
   S.heartActivated = true;
   SaveManager.setScene('inside', S);
+  trackSceneVisit('inside_heart');
   _showActiveBG();       // плавное появление активного фона
   AudioSystem.playBell?.();
   showMsg('Красный цветок касается кристалла. Сердце отзывается. Ты не знаешь чьё.', { story: true, dur: 5500 });

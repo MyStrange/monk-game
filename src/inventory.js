@@ -1,8 +1,9 @@
 // src/inventory.js — ITEM_DEFS, makeItem, addItem, getSelectedItem
 // Новый предмет: добавить сюда + icons.js + zone-msgs.js
 
-import { state }       from './state.js';
-import { SaveManager } from './save.js';
+import { state }             from './state.js';
+import { SaveManager }       from './save.js';
+import { trackItemPickup }   from './achievements.js';
 
 function _saveInv() {
   SaveManager.global.inventory = state.inventory.map(i => i ? { ...i } : null);
@@ -79,6 +80,7 @@ export function addItem(item) {
   if (idx === -1) return false;  // инвентарь полон
   state.inventory[idx] = item;
   _saveInv();
+  trackItemPickup(item?.id);
   return true;
 }
 

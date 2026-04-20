@@ -9,7 +9,7 @@ import { getZoneMsg }    from '../src/zone-msgs.js';
 import { renderHotbar }  from '../src/hotbar.js';
 import { SaveManager }   from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
-import { trackZoneClick, trackEmptyClick, trackSpotClick } from '../src/achievements.js';
+import { trackZoneClick, trackEmptyClick, trackSpotClick, trackRockActivated, trackSceneVisit } from '../src/achievements.js';
 import { BARE_ROCK_MSGS, ACTIVATED_ROCK_MSGS, JAR_ON_ROCK_MSGS,
          ROCK1_REFLECT, ROCK2_REFLECT } from '../src/dialogue.js';
 import { waitImg, coverRect, hitZone as _hitZone } from '../src/scene-base.js';
@@ -181,6 +181,7 @@ function _activateRock(zone, msg) {
   if (S.rockStates[zone]) return;
   S.rockStates[zone] = true;
   _saveS();
+  trackRockActivated();
 
   const n = _activatedCount();
 

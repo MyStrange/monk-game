@@ -8,7 +8,7 @@ import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../
 import { renderHotbar }  from '../src/hotbar.js';
 import { SaveManager }   from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
-import { trackZoneClick, trackSpotClick } from '../src/achievements.js';
+import { trackZoneClick, trackSpotClick, trackFlyCaught, trackFliesReleased } from '../src/achievements.js';
 import {
   wishDoneMsg,
   earMsg, durianAfterDialog, DIALOG,
@@ -122,6 +122,7 @@ function _startWish(jar) {
     jar.glowing        = true;
     jar.released       = true;
     jar.caught         = 0;
+    trackFliesReleased();
     jar.label          = 'банка';
     jar.description    = 'Светляковая жижка. Внутри мерцает тихий свет — след от десяти светлячков.';
     state.selectedSlot = -1;  // снять с руки после завершения желания
@@ -477,6 +478,7 @@ function onTap(cx, cy) {
         f.alive = false;
         item.caught = (item.caught ?? 0) + 1;
         AudioSystem.playFlyCatch();
+        trackFlyCaught();
 
         // Оставляем банку в руке — обновляем только иконку (caught увеличился)
         renderHotbar();

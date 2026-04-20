@@ -9,7 +9,11 @@ import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
 import { AudioSystem }     from '../src/audio.js';
 import { openScene }       from '../src/nav.js';
-import { trackZoneClick, trackEmptyClick, trackSpotClick } from '../src/achievements.js';
+import { trackZoneClick, trackEmptyClick, trackSpotClick,
+         trackSitDown, trackStandUp, trackSymbolDelivered,
+         trackWaterJar, trackCatHiss, trackCatBury,
+         trackMonkDialogDone, trackInscriptionReady,
+         trackSceneVisit } from '../src/achievements.js';
 import { SaveManager }     from '../src/save.js';
 import {
   catMsgs, monkMsgs, MEDITATE_MSGS,
@@ -221,6 +225,7 @@ function startBury() {
 
 // ── Meditation ─────────────────────────────────────────────────────────────
 export function standUp() {
+  if (hero.praying) trackStandUp();
   hero.praying      = false;
   meditationPhase   = 0;
   pSyms             = [];
@@ -235,6 +240,7 @@ function sitDown() {
   hero.praying = true;
   AudioSystem.playPrayerSound();
   AudioSystem.setMode('sitting');
+  trackSitDown();
 }
 
 // Принудительно включить/выключить медитацию извне (вызывается из inside.js,
@@ -333,6 +339,7 @@ function _startMonkDialog() {
                             onDismiss: () => {
                               if (state.activeScreen !== SCREENS.MAIN) return;
                               S.monkDialogDone = true;
+                              trackMonkDialogDone();
                               saveMain();
                               if (!addItem(makeItem('flower'))) {
                                 showMsg('Инвентарь полон. Освободи место — гибискус ждёт.');
@@ -456,6 +463,7 @@ function interactItem(itemId, zone) {
   if ((itemId === 'jar' || itemId === 'jar_open') && item?.hasWater && zone === 'cat') {
     AudioSystem.playCatHiss?.();
     catHidden = true;
+    trackCatHiss();
     showMsg('Кота может обидеть каждый.');
     return;
   }
@@ -471,6 +479,7 @@ function interactItem(itemId, zone) {
     state.selectedSlot = -1;
     renderHotbar();
     AudioSystem.playWater();
+    trackWaterJar();
     showMsg('Ты зачерпнул воды. Банка стала тяжелее.');
     return;
   }
@@ -644,12 +653,14 @@ function _deliverSym() {
 
   AudioSystem.playSymbolTone?.(PURPLE_PALETTE.indexOf(symCol));
   _spawnDissolveFrom(symX, symY, symCol, 80);
+  trackSymbolDelivered();
 
   if (!S.inscriptionReady) {
     S.inscriptionCharge = Math.min(S.inscriptionCharge + 1, 5);
     inscriptionGlow     = 1.0;   // короткая вспышка поверх dim
     if (S.inscriptionCharge >= 5) {
       S.inscriptionReady = true;
+      trackInscriptionReady();
       inscriptionGlow    = 2.0;
       // Финальный сфокусированный burst — из центра надписи наружу.
       const tp2 = bgToCanvas(
@@ -822,6 +833,7 @@ function animate() {
       addItem(makeItem('dirt'));
       AudioSystem.playPickup();
       renderHotbar();
+      trackCatBury();
       showMsg(catBuryDoneMsg);
       saveMain();
     }

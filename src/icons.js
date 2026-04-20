@@ -384,6 +384,471 @@ export function renderVoidIcon() {
   </svg>`;
 }
 
+// ── Locked placeholder — пиксельный знак вопроса ─────────────────────────
+// Показывается на экране ачивок для незаработанных. Мягкий серо-синий,
+// чтобы не отвлекал от открытых.
+export function renderQuestionIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="8"  y="4"  width="16" height="4" fill="#4a5060"/>
+    <rect x="6"  y="6"  width="20" height="4" fill="#5a6070"/>
+    <rect x="20" y="10" width="6"  height="6" fill="#4a5060"/>
+    <rect x="6"  y="10" width="6"  height="4" fill="#4a5060"/>
+    <rect x="14" y="14" width="8"  height="4" fill="#5a6070"/>
+    <rect x="12" y="18" width="8"  height="4" fill="#4a5060"/>
+    <rect x="12" y="24" width="8"  height="4" fill="#5a6070"/>
+    <!-- highlight -->
+    <rect x="10" y="6"  width="4"  height="2" fill="#7a8090"/>
+  </svg>`;
+}
+
+// ── Lotus — сидение/медитация ─────────────────────────────────────────────
+export function renderLotusIcon(bright = false) {
+  const petal = bright ? '#f0a0c8' : '#c06090';
+  const petalLt = bright ? '#ffc0e0' : '#e088b0';
+  const core = bright ? '#fff8d0' : '#e8d080';
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- outer petals -->
+    <rect x="4"  y="14" width="6" height="8" fill="${petal}"/>
+    <rect x="22" y="14" width="6" height="8" fill="${petal}"/>
+    <rect x="12" y="6"  width="8" height="8" fill="${petal}"/>
+    <rect x="6"  y="10" width="6" height="6" fill="${petalLt}"/>
+    <rect x="20" y="10" width="6" height="6" fill="${petalLt}"/>
+    <!-- core -->
+    <rect x="12" y="14" width="8" height="6" fill="${core}"/>
+    <rect x="14" y="16" width="4" height="2" fill="#ffffff"/>
+    <!-- water base -->
+    <rect x="2"  y="22" width="28" height="2" fill="#4880b0"/>
+    <rect x="0"  y="24" width="32" height="4" fill="#3a6ea0"/>
+    <rect x="2"  y="28" width="28" height="2" fill="#2a5080"/>
+  </svg>`;
+}
+
+// ── Hand — подбор предмета ───────────────────────────────────────────────
+export function renderHandIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="10" y="4"  width="4" height="14" fill="#d8a070"/>
+    <rect x="14" y="2"  width="4" height="16" fill="#e0a878"/>
+    <rect x="18" y="4"  width="4" height="14" fill="#d8a070"/>
+    <rect x="6"  y="10" width="4" height="10" fill="#d09068"/>
+    <rect x="22" y="10" width="4" height="8"  fill="#d09068"/>
+    <rect x="6"  y="18" width="20" height="10" fill="#d8a070"/>
+    <rect x="6"  y="26" width="20" height="2"  fill="#a06840"/>
+    <rect x="10" y="20" width="12" height="2"  fill="#e8b888"/>
+  </svg>`;
+}
+
+// ── Pouch — много предметов ──────────────────────────────────────────────
+export function renderPouchIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="6"  y="8"  width="20" height="2"  fill="#6a4a20"/>
+    <rect x="4"  y="10" width="24" height="16" fill="#8a6028"/>
+    <rect x="6"  y="26" width="20" height="2"  fill="#5a3a18"/>
+    <rect x="8"  y="12" width="16" height="10" fill="#a07838"/>
+    <!-- tie -->
+    <rect x="10" y="6"  width="4"  height="4"  fill="#c89040"/>
+    <rect x="18" y="6"  width="4"  height="4"  fill="#c89040"/>
+    <rect x="14" y="4"  width="4"  height="4"  fill="#e0a858"/>
+    <!-- texture dots -->
+    <rect x="12" y="16" width="2"  height="2"  fill="#6a4818"/>
+    <rect x="18" y="18" width="2"  height="2"  fill="#6a4818"/>
+  </svg>`;
+}
+
+// ── Rune — символ доставлен на надпись ───────────────────────────────────
+export function renderRuneIcon(glowing = false) {
+  const c = glowing ? '#ffe080' : '#b080e0';
+  const cb = glowing ? '#fff4b0' : '#d0a0ff';
+  const bg = '#2a1830';
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="4"  y="4"  width="24" height="24" fill="${bg}"/>
+    <rect x="6"  y="6"  width="20" height="2"  fill="#3a2844"/>
+    <rect x="6"  y="24" width="20" height="2"  fill="#3a2844"/>
+    <!-- rune shape: ᚱ-like -->
+    <rect x="10" y="8"  width="3"  height="16" fill="${c}"/>
+    <rect x="13" y="8"  width="6"  height="3"  fill="${c}"/>
+    <rect x="19" y="10" width="3"  height="4"  fill="${c}"/>
+    <rect x="13" y="14" width="6"  height="3"  fill="${c}"/>
+    <rect x="16" y="17" width="5"  height="3"  fill="${c}"/>
+    <rect x="19" y="20" width="3"  height="4"  fill="${c}"/>
+    <!-- highlight -->
+    <rect x="10" y="8"  width="2"  height="4"  fill="${cb}"/>
+  </svg>`;
+}
+
+// ── Stone — активация камня ──────────────────────────────────────────────
+export function renderStoneIcon(lit = false) {
+  const stone = '#6a707a';
+  const dark = '#4a4e56';
+  const crack = lit ? '#ffb060' : '#2a2e36';
+  const glow = lit ? '#ffe080' : null;
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    ${lit ? `<rect x="2" y="8" width="28" height="18" fill="${glow}" opacity="0.2"/>` : ''}
+    <rect x="8"  y="8"  width="16" height="4"  fill="${stone}"/>
+    <rect x="4"  y="12" width="24" height="12" fill="${stone}"/>
+    <rect x="6"  y="24" width="20" height="2"  fill="${dark}"/>
+    <rect x="8"  y="10" width="4"  height="2"  fill="#808690"/>
+    <!-- crack/glow line -->
+    <rect x="12" y="14" width="2"  height="4"  fill="${crack}"/>
+    <rect x="14" y="18" width="4"  height="2"  fill="${crack}"/>
+    <rect x="18" y="16" width="2"  height="4"  fill="${crack}"/>
+    <rect x="6"  y="22" width="3"  height="2"  fill="${dark}"/>
+    <rect x="22" y="20" width="4"  height="3"  fill="${dark}"/>
+  </svg>`;
+}
+
+// ── Speech bubble — диалог с монахом ─────────────────────────────────────
+export function renderSpeechIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="4"  y="4"  width="24" height="2"  fill="#c8a060"/>
+    <rect x="2"  y="6"  width="28" height="14" fill="#e8c880"/>
+    <rect x="4"  y="20" width="24" height="2"  fill="#c8a060"/>
+    <!-- tail -->
+    <rect x="8"  y="22" width="4"  height="2"  fill="#c8a060"/>
+    <rect x="10" y="24" width="2"  height="2"  fill="#a88040"/>
+    <!-- dots (3 text dots) -->
+    <rect x="8"  y="12" width="3"  height="3"  fill="#4a3010"/>
+    <rect x="14" y="12" width="3"  height="3"  fill="#4a3010"/>
+    <rect x="20" y="12" width="3"  height="3"  fill="#4a3010"/>
+  </svg>`;
+}
+
+// ── Hibiscus mini — получил цветок от монаха ─────────────────────────────
+export function renderFlowerMiniIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="12" y="4"  width="8"  height="8"  fill="#d02030"/>
+    <rect x="20" y="8"  width="8"  height="8"  fill="#d02030"/>
+    <rect x="20" y="16" width="8"  height="8"  fill="#d02030"/>
+    <rect x="4"  y="16" width="8"  height="8"  fill="#d02030"/>
+    <rect x="4"  y="8"  width="8"  height="8"  fill="#d02030"/>
+    <rect x="10" y="10" width="12" height="12" fill="#d02030"/>
+    <!-- hilites -->
+    <rect x="14" y="6"  width="2"  height="2"  fill="#f05060"/>
+    <rect x="22" y="10" width="2"  height="2"  fill="#f05060"/>
+    <!-- dark throat -->
+    <rect x="14" y="14" width="4"  height="4"  fill="#4a0818"/>
+    <!-- yellow column -->
+    <rect x="15" y="16" width="2"  height="8"  fill="#f5c832"/>
+    <rect x="14" y="22" width="4"  height="2"  fill="#ffe060"/>
+  </svg>`;
+}
+
+// ── Firefly — поймал светлячков ──────────────────────────────────────────
+export function renderFireflyIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- glow aura -->
+    <rect x="8"  y="8"  width="16" height="16" fill="#fff080" opacity="0.18"/>
+    <rect x="10" y="10" width="12" height="12" fill="#fff080" opacity="0.28"/>
+    <!-- body -->
+    <rect x="13" y="14" width="6"  height="4"  fill="#6a4818"/>
+    <rect x="14" y="12" width="4"  height="2"  fill="#4a3010"/>
+    <!-- tail -->
+    <rect x="15" y="18" width="2"  height="4"  fill="#ffe060"/>
+    <rect x="14" y="20" width="4"  height="2"  fill="#fff4a0"/>
+    <!-- wings -->
+    <rect x="8"  y="12" width="5"  height="3"  fill="#c8d0e0" opacity="0.55"/>
+    <rect x="19" y="12" width="5"  height="3"  fill="#c8d0e0" opacity="0.55"/>
+    <!-- sparkle points -->
+    <rect x="6"  y="6"  width="2"  height="2"  fill="#fff8a0"/>
+    <rect x="24" y="8"  width="2"  height="2"  fill="#fff8a0"/>
+    <rect x="4"  y="22" width="2"  height="2"  fill="#fff8a0"/>
+    <rect x="26" y="24" width="2"  height="2"  fill="#fff8a0"/>
+  </svg>`;
+}
+
+// ── Fly release — открытая банка с уходящими светлячками ─────────────────
+export function renderReleaseIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- jar silhouette (tipped) -->
+    <rect x="4"  y="18" width="14" height="10" fill="#6a7888"/>
+    <rect x="4"  y="16" width="14" height="2"  fill="#4a5868"/>
+    <rect x="6"  y="20" width="10" height="6"  fill="#3a4048"/>
+    <!-- flies leaving -->
+    <rect x="18" y="14" width="2"  height="2"  fill="#ffe060"/>
+    <rect x="22" y="10" width="2"  height="2"  fill="#ffe060"/>
+    <rect x="26" y="6"  width="2"  height="2"  fill="#ffe060"/>
+    <rect x="20" y="8"  width="2"  height="2"  fill="#fff8a0"/>
+    <rect x="24" y="14" width="2"  height="2"  fill="#fff8a0"/>
+    <!-- trails -->
+    <rect x="20" y="14" width="2"  height="1"  fill="#ffe060" opacity="0.5"/>
+    <rect x="24" y="10" width="2"  height="1"  fill="#ffe060" opacity="0.5"/>
+  </svg>`;
+}
+
+// ── Glowing jar — craft glowstick ────────────────────────────────────────
+export function renderJarGlowIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="6"  y="6"  width="20" height="22" fill="#ffe060" opacity="0.18"/>
+    <!-- cap -->
+    <rect x="10" y="4"  width="12" height="3"  fill="#d4a840"/>
+    <rect x="8"  y="7"  width="16" height="2"  fill="#8a6010"/>
+    <!-- jar -->
+    <rect x="8"  y="9"  width="16" height="18" fill="#d8e8f0" opacity="0.28"/>
+    <rect x="8"  y="9"  width="16" height="2"  fill="#688090"/>
+    <rect x="8"  y="25" width="16" height="2"  fill="#688090"/>
+    <!-- glowing contents -->
+    <rect x="10" y="14" width="12" height="10" fill="#ffd040" opacity="0.75"/>
+    <rect x="12" y="16" width="8"  height="6"  fill="#fff080"/>
+    <rect x="14" y="18" width="4"  height="2"  fill="#ffffff"/>
+    <!-- glass highlight -->
+    <rect x="10" y="11" width="2"  height="8"  fill="#ffffff" opacity="0.35"/>
+  </svg>`;
+}
+
+// ── Water drop — набрал воды ─────────────────────────────────────────────
+export function renderDropIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="14" y="4"  width="4"  height="4"  fill="#80c0f0"/>
+    <rect x="12" y="8"  width="8"  height="4"  fill="#5090d0"/>
+    <rect x="10" y="12" width="12" height="6"  fill="#3070b0"/>
+    <rect x="8"  y="18" width="16" height="6"  fill="#2060a0"/>
+    <rect x="10" y="24" width="12" height="2"  fill="#184880"/>
+    <!-- highlight -->
+    <rect x="14" y="6"  width="2"  height="4"  fill="#c0e0ff"/>
+    <rect x="12" y="14" width="2"  height="4"  fill="#a0d0f0"/>
+    <!-- splash -->
+    <rect x="4"  y="26" width="4"  height="2"  fill="#5090d0" opacity="0.6"/>
+    <rect x="24" y="26" width="4"  height="2"  fill="#5090d0" opacity="0.6"/>
+  </svg>`;
+}
+
+// ── Sad cat — обидел кота ─────────────────────────────────────────────────
+export function renderCatSadIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- head -->
+    <rect x="8"  y="10" width="16" height="12" fill="#d8a040"/>
+    <!-- ears -->
+    <rect x="6"  y="6"  width="4"  height="6"  fill="#d8a040"/>
+    <rect x="22" y="6"  width="4"  height="6"  fill="#d8a040"/>
+    <rect x="8"  y="8"  width="2"  height="2"  fill="#a07828"/>
+    <rect x="22" y="8"  width="2"  height="2"  fill="#a07828"/>
+    <!-- eyes (closed/sad) -->
+    <rect x="10" y="14" width="4"  height="2"  fill="#2a1808"/>
+    <rect x="18" y="14" width="4"  height="2"  fill="#2a1808"/>
+    <!-- tear -->
+    <rect x="11" y="17" width="2"  height="2"  fill="#80c0f0"/>
+    <rect x="11" y="19" width="2"  height="2"  fill="#a0d0f0"/>
+    <!-- nose/mouth frown -->
+    <rect x="14" y="17" width="4"  height="2"  fill="#a04040"/>
+    <rect x="12" y="19" width="3"  height="1"  fill="#4a2010"/>
+    <rect x="17" y="19" width="3"  height="1"  fill="#4a2010"/>
+    <!-- droopy whiskers -->
+    <rect x="4"  y="18" width="4"  height="1"  fill="#808080"/>
+    <rect x="24" y="18" width="4"  height="1"  fill="#808080"/>
+  </svg>`;
+}
+
+// ── Paw print — кот закопал дуриан ───────────────────────────────────────
+export function renderPawIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- 4 toes -->
+    <rect x="4"  y="8"  width="4"  height="6"  fill="#4a2a10"/>
+    <rect x="10" y="4"  width="4"  height="6"  fill="#4a2a10"/>
+    <rect x="18" y="4"  width="4"  height="6"  fill="#4a2a10"/>
+    <rect x="24" y="8"  width="4"  height="6"  fill="#4a2a10"/>
+    <!-- main pad -->
+    <rect x="8"  y="16" width="16" height="10" fill="#6a3a18"/>
+    <rect x="10" y="14" width="12" height="2"  fill="#6a3a18"/>
+    <rect x="6"  y="18" width="20" height="6"  fill="#7a4822"/>
+    <!-- hilite -->
+    <rect x="10" y="18" width="4"  height="2"  fill="#9a6030"/>
+  </svg>`;
+}
+
+// ── Tree top — сцена сверху ──────────────────────────────────────────────
+export function renderTreeTopIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- leaves (top-down ring) -->
+    <rect x="8"  y="4"  width="16" height="4"  fill="#2e6020"/>
+    <rect x="4"  y="8"  width="24" height="4"  fill="#3a7028"/>
+    <rect x="2"  y="12" width="28" height="8"  fill="#4a8030"/>
+    <rect x="4"  y="20" width="24" height="4"  fill="#3a7028"/>
+    <rect x="8"  y="24" width="16" height="4"  fill="#2e6020"/>
+    <!-- lighter highlights -->
+    <rect x="6"  y="10" width="4"  height="4"  fill="#5a9838"/>
+    <rect x="20" y="14" width="4"  height="4"  fill="#5a9838"/>
+    <!-- center dark (trunk hollow) -->
+    <rect x="12" y="12" width="8"  height="8"  fill="#1a3410"/>
+    <rect x="14" y="14" width="4"  height="4"  fill="#0a1408"/>
+  </svg>`;
+}
+
+// ── Door — вошёл внутрь дерева ───────────────────────────────────────────
+export function renderDoorIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- frame (tree bark) -->
+    <rect x="4"  y="2"  width="24" height="28" fill="#6a4818"/>
+    <!-- door -->
+    <rect x="8"  y="4"  width="16" height="2"  fill="#3a2810"/>
+    <rect x="6"  y="6"  width="20" height="24" fill="#4a3014"/>
+    <rect x="8"  y="8"  width="16" height="20" fill="#2a1a08"/>
+    <!-- hint of light from inside -->
+    <rect x="12" y="10" width="8"  height="8"  fill="#ffb040" opacity="0.4"/>
+    <rect x="14" y="12" width="4"  height="4"  fill="#ffe080" opacity="0.6"/>
+    <!-- handle -->
+    <rect x="20" y="18" width="2"  height="3"  fill="#c8a040"/>
+    <!-- wood grain -->
+    <rect x="10" y="22" width="12" height="1"  fill="#1a1008"/>
+    <rect x="10" y="25" width="12" height="1"  fill="#1a1008"/>
+  </svg>`;
+}
+
+// ── Flame — огненный цветок собран ───────────────────────────────────────
+export function renderFlameIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- outer glow -->
+    <rect x="10" y="4"  width="12" height="4"  fill="#ff8820" opacity="0.4"/>
+    <rect x="6"  y="6"  width="20" height="4"  fill="#ff8820" opacity="0.3"/>
+    <!-- flame -->
+    <rect x="12" y="6"  width="8"  height="4"  fill="#ffaa00"/>
+    <rect x="10" y="10" width="12" height="6"  fill="#ff7700"/>
+    <rect x="8"  y="16" width="16" height="6"  fill="#ff5500"/>
+    <rect x="10" y="22" width="12" height="4"  fill="#d02000"/>
+    <rect x="12" y="26" width="8"  height="2"  fill="#800000"/>
+    <!-- inner hot core -->
+    <rect x="13" y="12" width="6"  height="6"  fill="#ffe060"/>
+    <rect x="14" y="14" width="4"  height="4"  fill="#ffffff"/>
+    <rect x="15" y="20" width="2"  height="3"  fill="#ffe060"/>
+  </svg>`;
+}
+
+// ── Heart — сцена внутри (сердце-огонь) ──────────────────────────────────
+export function renderHeartIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="6"  y="8"  width="8"  height="6"  fill="#d02030"/>
+    <rect x="18" y="8"  width="8"  height="6"  fill="#d02030"/>
+    <rect x="4"  y="10" width="24" height="8"  fill="#d02030"/>
+    <rect x="6"  y="18" width="20" height="4"  fill="#b01828"/>
+    <rect x="10" y="22" width="12" height="3"  fill="#801020"/>
+    <rect x="14" y="25" width="4"  height="3"  fill="#500818"/>
+    <!-- hilites -->
+    <rect x="8"  y="10" width="4"  height="2"  fill="#f05060"/>
+    <rect x="22" y="10" width="2"  height="2"  fill="#f05060"/>
+    <!-- inner flame hint -->
+    <rect x="13" y="12" width="6"  height="4"  fill="#ffe060" opacity="0.55"/>
+    <rect x="14" y="14" width="4"  height="2"  fill="#fffcc0" opacity="0.75"/>
+  </svg>`;
+}
+
+// ── Moon — провёл много времени в медитации / ночной игрок ───────────────
+export function renderMoonIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="10" y="4"  width="12" height="2"  fill="#e8e0c0"/>
+    <rect x="6"  y="6"  width="18" height="4"  fill="#e8e0c0"/>
+    <rect x="4"  y="10" width="20" height="14" fill="#e8e0c0"/>
+    <rect x="6"  y="24" width="18" height="4"  fill="#e8e0c0"/>
+    <rect x="10" y="28" width="12" height="2"  fill="#e8e0c0"/>
+    <!-- crescent shadow -->
+    <rect x="14" y="8"  width="14" height="2"  fill="#1a1830"/>
+    <rect x="12" y="10" width="18" height="14" fill="#1a1830"/>
+    <rect x="14" y="24" width="14" height="2"  fill="#1a1830"/>
+    <!-- craters -->
+    <rect x="6"  y="12" width="2"  height="2"  fill="#b0a888"/>
+    <rect x="8"  y="18" width="3"  height="2"  fill="#b0a888"/>
+    <!-- star -->
+    <rect x="26" y="4"  width="2"  height="2"  fill="#ffe060"/>
+  </svg>`;
+}
+
+// ── Cycle — вернулся на главную много раз (колесо) ───────────────────────
+export function renderCycleIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- outer ring -->
+    <rect x="8"  y="2"  width="16" height="4"  fill="#c89040"/>
+    <rect x="4"  y="6"  width="24" height="2"  fill="#c89040"/>
+    <rect x="2"  y="8"  width="4"  height="16" fill="#c89040"/>
+    <rect x="26" y="8"  width="4"  height="16" fill="#c89040"/>
+    <rect x="4"  y="24" width="24" height="2"  fill="#c89040"/>
+    <rect x="8"  y="26" width="16" height="4"  fill="#c89040"/>
+    <!-- inner dark -->
+    <rect x="8"  y="8"  width="16" height="16" fill="#2a1a08"/>
+    <!-- spokes -->
+    <rect x="14" y="8"  width="4"  height="16" fill="#c89040"/>
+    <rect x="8"  y="14" width="16" height="4"  fill="#c89040"/>
+    <!-- hub -->
+    <rect x="12" y="12" width="8"  height="8"  fill="#ffe060"/>
+    <rect x="14" y="14" width="4"  height="4"  fill="#fff4a0"/>
+  </svg>`;
+}
+
+// ── Leaf — природный (много зон леса) ────────────────────────────────────
+export function renderLeafIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="14" y="4"  width="4"  height="4"  fill="#3a7028"/>
+    <rect x="10" y="8"  width="12" height="4"  fill="#4a8030"/>
+    <rect x="6"  y="12" width="20" height="6"  fill="#5a9838"/>
+    <rect x="8"  y="18" width="16" height="4"  fill="#4a8030"/>
+    <rect x="12" y="22" width="8"  height="2"  fill="#3a7028"/>
+    <!-- vein -->
+    <rect x="15" y="6"  width="2"  height="18" fill="#2a5018"/>
+    <rect x="11" y="12" width="4"  height="1"  fill="#2a5018"/>
+    <rect x="17" y="12" width="4"  height="1"  fill="#2a5018"/>
+    <rect x="9"  y="15" width="6"  height="1"  fill="#2a5018"/>
+    <rect x="17" y="15" width="6"  height="1"  fill="#2a5018"/>
+    <!-- stem -->
+    <rect x="15" y="24" width="2"  height="4"  fill="#6a4018"/>
+    <!-- highlights -->
+    <rect x="8"  y="13" width="3"  height="2"  fill="#7ab050"/>
+  </svg>`;
+}
+
+// ── Achievement icon dispatch (id → function) ────────────────────────────
+// Хелпер для ачивок — сопоставляет id ачивки с функцией рендера.
+const ACH_ICON_MAP = {
+  eye:        renderEyeIcon,
+  compass:    renderCompassIcon,
+  void:       renderVoidIcon,
+  question:   renderQuestionIcon,
+  lotus:      () => renderLotusIcon(false),
+  lotusBr:    () => renderLotusIcon(true),
+  hand:       renderHandIcon,
+  pouch:      renderPouchIcon,
+  rune:       () => renderRuneIcon(false),
+  runeBr:     () => renderRuneIcon(true),
+  stone:      () => renderStoneIcon(false),
+  stoneLit:   () => renderStoneIcon(true),
+  speech:     renderSpeechIcon,
+  flower:     renderFlowerMiniIcon,
+  firefly:    renderFireflyIcon,
+  release:    renderReleaseIcon,
+  jarGlow:    renderJarGlowIcon,
+  drop:       renderDropIcon,
+  catSad:     renderCatSadIcon,
+  paw:        renderPawIcon,
+  treeTop:    renderTreeTopIcon,
+  door:       renderDoorIcon,
+  flame:      renderFlameIcon,
+  heart:      renderHeartIcon,
+  moon:       renderMoonIcon,
+  cycle:      renderCycleIcon,
+  leaf:       renderLeafIcon,
+};
+
+export function renderAchIconByKey(key) {
+  const fn = ACH_ICON_MAP[key];
+  return fn ? fn() : renderQuestionIcon();
+}
+
 // ── Icon dispatch map (для hotbar/cursor) ─────────────────────────────────
 // Возвращает SVG-строку для предмета или null если нет рендерера.
 export function renderItemIcon(item) {
