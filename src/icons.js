@@ -974,6 +974,75 @@ export function renderDurianGiftIcon() {
   </svg>`;
 }
 
+// ── Cat sit — медитация на коте ──────────────────────────────────────────
+// Приплюснутый кот + мини-лотос сверху (намёк на задницу монаха).
+export function renderCatSitIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- small lotus on top (монах сел) -->
+    <rect x="12" y="2"  width="8"  height="3"  fill="#c06090"/>
+    <rect x="10" y="4"  width="12" height="3"  fill="#e088b0"/>
+    <rect x="14" y="6"  width="4"  height="2"  fill="#fff8d0"/>
+    <!-- pressure lines — кот сплющен -->
+    <rect x="4"  y="9"  width="2"  height="1"  fill="#808080"/>
+    <rect x="26" y="9"  width="2"  height="1"  fill="#808080"/>
+    <!-- cat ears (squashed, spread sideways) -->
+    <rect x="4"  y="12" width="4"  height="3"  fill="#d8a040"/>
+    <rect x="24" y="12" width="4"  height="3"  fill="#d8a040"/>
+    <!-- cat body (flattened, wider) -->
+    <rect x="6"  y="14" width="20" height="6"  fill="#d8a040"/>
+    <rect x="4"  y="16" width="24" height="4"  fill="#c09030"/>
+    <!-- eyes (X_X) -->
+    <rect x="10" y="15" width="2"  height="1"  fill="#2a1808"/>
+    <rect x="10" y="17" width="2"  height="1"  fill="#2a1808"/>
+    <rect x="11" y="16" width="1"  height="1"  fill="#2a1808"/>
+    <rect x="20" y="15" width="2"  height="1"  fill="#2a1808"/>
+    <rect x="20" y="17" width="2"  height="1"  fill="#2a1808"/>
+    <rect x="21" y="16" width="1"  height="1"  fill="#2a1808"/>
+    <!-- mouth (grimace) -->
+    <rect x="14" y="18" width="4"  height="1"  fill="#4a2010"/>
+    <!-- paws sticking out -->
+    <rect x="4"  y="20" width="3"  height="2"  fill="#c09030"/>
+    <rect x="25" y="20" width="3"  height="2"  fill="#c09030"/>
+    <!-- tail -->
+    <rect x="26" y="22" width="4"  height="2"  fill="#d8a040"/>
+    <rect x="28" y="20" width="2"  height="2"  fill="#d8a040"/>
+    <!-- ground shadow -->
+    <rect x="6"  y="24" width="20" height="2"  fill="#2a2a2a" opacity="0.5"/>
+  </svg>`;
+}
+
+// ── Durian drop — дуриан с траекторией падения на голову ────────────────
+export function renderDurianDropIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- motion trail (падает сверху) -->
+    <rect x="14" y="2"  width="4"  height="1"  fill="#8ea04a" opacity="0.3"/>
+    <rect x="14" y="4"  width="4"  height="1"  fill="#8ea04a" opacity="0.5"/>
+    <rect x="14" y="6"  width="4"  height="1"  fill="#8ea04a" opacity="0.7"/>
+    <!-- durian (летящий) -->
+    <rect x="10" y="8"  width="12" height="10" fill="#8ea04a"/>
+    <rect x="12" y="7"  width="8"  height="1"  fill="#7a9038"/>
+    <rect x="8"  y="10" width="2"  height="6"  fill="#7a9038"/>
+    <rect x="22" y="10" width="2"  height="6"  fill="#7a9038"/>
+    <rect x="12" y="18" width="8"  height="1"  fill="#607828"/>
+    <!-- spikes -->
+    <rect x="10" y="10" width="2"  height="2"  fill="#5a6e18"/>
+    <rect x="14" y="9"  width="2"  height="2"  fill="#5a6e18"/>
+    <rect x="18" y="11" width="2"  height="2"  fill="#5a6e18"/>
+    <rect x="14" y="15" width="2"  height="2"  fill="#5a6e18"/>
+    <!-- monk head target (red dome внизу) -->
+    <rect x="12" y="22" width="8"  height="4"  fill="#c02040"/>
+    <rect x="10" y="24" width="12" height="4"  fill="#c02040"/>
+    <rect x="8"  y="26" width="16" height="2"  fill="#8a1830"/>
+    <!-- impact stars -->
+    <rect x="6"  y="20" width="2"  height="2"  fill="#ffe060"/>
+    <rect x="24" y="20" width="2"  height="2"  fill="#ffe060"/>
+    <rect x="4"  y="22" width="1"  height="1"  fill="#ffe060"/>
+    <rect x="27" y="22" width="1"  height="1"  fill="#ffe060"/>
+  </svg>`;
+}
+
 // ── Achievement icon dispatch (id → function) ────────────────────────────
 // Хелпер для ачивок — сопоставляет id ачивки с функцией рендера.
 const ACH_ICON_MAP = {
@@ -1012,6 +1081,8 @@ const ACH_ICON_MAP = {
   splash:       renderSplashIcon,
   stickDrink:   renderStickDrinkIcon,
   durianGift:   renderDurianGiftIcon,
+  catSit:       renderCatSitIcon,
+  durianDrop:   renderDurianDropIcon,
   jar:          () => renderJarIcon({ id:'jar' }),
 };
 

@@ -13,7 +13,7 @@ import { trackZoneClick, trackEmptyClick, trackSpotClick,
          trackSitDown, trackStandUp, trackSymbolDelivered,
          trackWaterJar, trackCatHiss, trackCatBury,
          trackMonkDialogDone, trackInscriptionReady,
-         trackSceneVisit } from '../src/achievements.js';
+         trackSceneVisit, trackSitOnCat } from '../src/achievements.js';
 import { SaveManager }     from '../src/save.js';
 import {
   catMsgs, monkMsgs, MEDITATE_MSGS,
@@ -241,6 +241,14 @@ function sitDown() {
   AudioSystem.playPrayerSound();
   AudioSystem.setMode('sitting');
   trackSitDown();
+  // Off-script: сел прямо на кота (кот виден и x-боксы пересекаются)
+  if (!catHidden) {
+    const heroLeft  = hero.x - HERO_STAND_W / 2;
+    const heroRight = hero.x + HERO_STAND_W / 2;
+    const catLeft   = CAT_X;
+    const catRight  = CAT_X + CAT_W;
+    if (heroRight > catLeft && heroLeft < catRight) trackSitOnCat();
+  }
 }
 
 // Принудительно включить/выключить медитацию извне (вызывается из inside.js,

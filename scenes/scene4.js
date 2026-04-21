@@ -27,7 +27,7 @@ import { showLoading, hideLoading, showError,
 import { leaveMain, resumeMain }          from './main.js';
 import { openScene }                      from '../src/nav.js';
 import { SaveManager }                    from '../src/save.js';
-import { trackZoneClick }                 from '../src/achievements.js';
+import { trackZoneClick, trackDurianOnMonkHead } from '../src/achievements.js';
 import { S4_CAT_MSGS, S4_MONK_MSGS,
          S4_DURIAN_CAT_MSGS, S4_DURIAN_MONK_MSGS,
          S4_STATUE_MSGS, S4_ITEM_MSGS,
@@ -299,6 +299,7 @@ function _onElCapture(e) {
       msg = S4_DURIAN_MONK_MSGS[S.durMonkIdx % S4_DURIAN_MONK_MSGS.length];
       S.durMonkIdx++;
       SaveManager.setScene('scene4', S);
+      trackDurianOnMonkHead();
     } else {
       msg = S4_MONK_MSGS[S.monkMsgIdx % S4_MONK_MSGS.length];
       S.monkMsgIdx++;

@@ -107,6 +107,12 @@ export const ACHIEVEMENT_DEFS = [
   { id:'cat_hiss', iconKey:'catSad',
     title:'Кота может обидеть каждый', desc:'Плеснул в кота водой. Он зашипел и ушёл.',
     condition: s => s.catHissed },
+  { id:'sit_on_cat', iconKey:'catSit',
+    title:'Йога с котом', desc:'Сел медитировать прямо на кота. Кот не согласился, но и не ушёл.',
+    condition: s => s.satOnCat },
+  { id:'durian_drop', iconKey:'durianDrop',
+    title:'Каша сверху', desc:'Уронил дуриан монаху на макушку с высоты птичьего полёта.',
+    condition: s => s.durianOnMonkHead },
   { id:'fly_scare_1', iconKey:'release',
     title:'Мечтатель-светлолов', desc:'Щёлкнул по светлячку без банки. Сбежал.',
     condition: s => s.fliesScared >= 1 },
@@ -168,7 +174,11 @@ function _freshStats() {
 
     // кот / светлячки
     catHissed:           false,
+    satOnCat:            false,
     fliesScared:         0,
+
+    // scene4 (вид сверху)
+    durianOnMonkHead:    false,
 
     // финал
     inscriptionReady:    false,
@@ -197,7 +207,8 @@ export function loadAchievements() {
       ]) if (typeof raw[k] === 'number') fresh[k] = raw[k];
       for (const k of [
         'impatientSit','waterWasted','stickDrinkTried',
-        'fireWatered','durianGiftTried','catHissed','inscriptionReady',
+        'fireWatered','durianGiftTried','catHissed',
+        'satOnCat','durianOnMonkHead','inscriptionReady',
       ]) if (typeof raw[k] === 'boolean') fresh[k] = raw[k];
       if (raw.zoneClickCounts && typeof raw.zoneClickCounts === 'object') fresh.zoneClickCounts = raw.zoneClickCounts;
       if (raw.spotCounts      && typeof raw.spotCounts      === 'object') fresh.spotCounts      = raw.spotCounts;
@@ -240,7 +251,9 @@ function _saveStats() {
       fireWatered:         _stats.fireWatered,
       durianGiftTried:     _stats.durianGiftTried,
       catHissed:           _stats.catHissed,
+      satOnCat:            _stats.satOnCat,
       fliesScared:         _stats.fliesScared,
+      durianOnMonkHead:    _stats.durianOnMonkHead,
       inscriptionReady:    _stats.inscriptionReady,
     }));
   } catch {}
@@ -358,8 +371,18 @@ export function trackCatHiss() {
   _after();
 }
 
+export function trackSitOnCat() {
+  _stats.satOnCat = true;
+  _after();
+}
+
 export function trackFlyScared() {
   _stats.fliesScared++;
+  _after();
+}
+
+export function trackDurianOnMonkHead() {
+  _stats.durianOnMonkHead = true;
   _after();
 }
 
