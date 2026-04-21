@@ -5,6 +5,7 @@ import { isMobile }       from './utils.js';
 import { renderItemIcon } from './icons.js';
 import { itemOnItem }     from './combos.js';
 import { showMsgIn }      from './utils.js';
+import { trackSlotSelect } from './achievements.js';
 
 const SLOTS = 5;
 
@@ -80,6 +81,7 @@ export function renderHotbar() {
 export function deselectItem() {
   if (state.selectedSlot < 0) return false;
   state.selectedSlot = -1;
+  trackSlotSelect(-1);
   renderHotbar();
   return true;
 }
@@ -107,6 +109,7 @@ function _onSlotClick(idx) {
   if (prev === idx) {
     // Снять выбор
     state.selectedSlot = -1;
+    trackSlotSelect(-1);
     renderHotbar();
     return;
   }
@@ -117,6 +120,7 @@ function _onSlotClick(idx) {
     if (result === null) {
       // Нет комбо — переключить выбор
       state.selectedSlot = idx;
+      trackSlotSelect(idx);
     } else if (typeof result === 'string') {
       // Ошибка — показать сообщение, оставить выбор
       if (msgEl) showMsgIn(msgEl, result);
@@ -128,6 +132,7 @@ function _onSlotClick(idx) {
 
   // Выбрать слот
   state.selectedSlot = idx;
+  trackSlotSelect(idx);
   renderHotbar();
 }
 

@@ -9,6 +9,7 @@
 //   - rock1/rock2/rock3 без специфичного ключа → fallback 'jar:rock' / 'stick:rock' / 'rock:_'
 
 import { state } from './state.js';
+import { trackItemOnZone } from './achievements.js';
 
 // ── ZONE_MSGS ──────────────────────────────────────────────────────────────
 const ZONE_MSGS = {
@@ -189,6 +190,10 @@ export function getZoneMsg(itemId, zone, item = null) {
     }
     return null;
   }
+
+  // Off-script ачивки — считаем любую попытку применения предмета к зоне.
+  // Конкретные флаги (водой-не-на-кота, дуриан-не-коту и т.д.) решаются внутри трекера.
+  trackItemOnZone(itemId, zone);
 
   // Glowing jar overrides
   if ((itemId === 'jar' || itemId === 'jar_open') && item?.glowing) {

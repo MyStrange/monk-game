@@ -9,7 +9,7 @@
 import { state }             from './state.js';
 import { makeItem }          from './inventory.js';
 import { renderHotbar }      from './hotbar.js';
-import { trackGlowstickMade } from './achievements.js';
+import { trackComboSuccess, trackComboFail } from './achievements.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function _key(a, b) {
@@ -36,7 +36,6 @@ const ITEM_COMBO = {
 
       // Палка → светопалка
       state.inventory[stickIdx] = makeItem('glowstick');
-      trackGlowstickMade();
 
       // Банка → jar_open, пустая
       const oldJar = state.inventory[jarIdx];
@@ -74,15 +73,18 @@ export function itemOnItem(aIdx, bIdx) {
     _comboFallbackCounts[key] = (_comboFallbackCounts[key] ?? 0);
     const msg = _COMBO_FALLBACK[Math.min(_comboFallbackCounts[key], _COMBO_FALLBACK.length - 1)];
     _comboFallbackCounts[key]++;
+    trackComboFail();
     return msg;  // string → показать сообщение, оставить выбор
   }
 
   if (!combo.condition(a, b)) {
+    trackComboFail();
     return combo.failMsg;   // string → показать сообщение
   }
 
   combo.apply(aIdx, bIdx);
   state.selectedSlot = -1;  // верхнеуровневое правило: после крафта убрать из руки
   renderHotbar();
+  trackComboSuccess();
   return false;             // false → успех, снять выбор
 }

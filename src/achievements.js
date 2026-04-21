@@ -6,244 +6,118 @@
 import { renderAchIconByKey, renderQuestionIcon } from './icons.js';
 
 // ── Definitions ────────────────────────────────────────────────────────────
-// Каждая ачивка — iconKey (строка из ACH_ICON_MAP) + condition(stats).
-// Иконки рендерятся через renderAchIconByKey(iconKey).
+// Все ачивки — про off-script поведение: клики, перебор, случайные открытия.
+// Сюжетные вехи (медитация, руны на камень, светлячки, сцены) намеренно
+// ачивками НЕ отмечаются — их и так делает каждый игрок.
 export const ACHIEVEMENT_DEFS = [
   // ── Повторение (stub) ────────────────────────────────────────────────
-  {
-    id:        'stub_1', iconKey: 'eye',
-    title:     'Путь паломника',
-    desc:      'Пять раз в одну точку. Место запомнило тебя.',
-    condition: s => s.maxSpotClicks >= 5,
-  },
-  {
-    id:        'stub_2', iconKey: 'eye',
-    title:     'Колесо сансары',
-    desc:      'Десять раз в одно и то же место. Ты и есть колесо.',
-    condition: s => s.maxSpotClicks >= 10,
-  },
-  {
-    id:        'stub_3', iconKey: 'cycle',
-    title:     'Просветление повторением',
-    desc:      'Пятнадцать. Точка стала частью тебя. Или ты — её.',
-    condition: s => s.maxSpotClicks >= 15,
-  },
+  { id:'stub_1', iconKey:'eye',
+    title:'Путь паломника', desc:'Пять раз в одну точку. Зачем-то.',
+    condition: s => s.maxSpotClicks >= 5 },
+  { id:'stub_2', iconKey:'eye',
+    title:'Колесо сансары', desc:'Десять раз в одно место. Уже интересно.',
+    condition: s => s.maxSpotClicks >= 10 },
+  { id:'stub_3', iconKey:'cycle',
+    title:'Просветление повторением', desc:'Пятнадцать раз в то же место. Ну всё, хватит.',
+    condition: s => s.maxSpotClicks >= 15 },
 
   // ── Исследование (exp) ───────────────────────────────────────────────
-  {
-    id:        'exp_1', iconKey: 'compass',
-    title:     'Первые шаги',
-    desc:      'Три разных места. Лес запомнил.',
-    condition: s => s.zonesVisited.size >= 3,
-  },
-  {
-    id:        'exp_2', iconKey: 'compass',
-    title:     'Любопытный ум',
-    desc:      'Пять мест. Всё разное, но одно и то же.',
-    condition: s => s.zonesVisited.size >= 5,
-  },
-  {
-    id:        'exp_3', iconKey: 'compass',
-    title:     'Знаток пустоты',
-    desc:      'Десять мест. Ты обошёл всё. Теперь можно начинать сначала.',
-    condition: s => s.zonesVisited.size >= 10,
-  },
+  { id:'exp_1', iconKey:'compass',
+    title:'Первые шаги', desc:'Потыкал в три разных места.',
+    condition: s => s.zonesVisited.size >= 3 },
+  { id:'exp_2', iconKey:'compass',
+    title:'Любопытный ум', desc:'Пять мест. Уже есть любимое.',
+    condition: s => s.zonesVisited.size >= 5 },
+  { id:'exp_3', iconKey:'compass',
+    title:'Знаток пустоты', desc:'Десять мест. Почти всё обошёл.',
+    condition: s => s.zonesVisited.size >= 10 },
 
-  // ── Пустота (void) ───────────────────────────────────────────────────
-  {
-    id:        'void_1', iconKey: 'void',
-    title:     'Зов пустоты',
-    desc:      'Ты нажал туда, где ничего нет. Три раза.',
-    condition: s => s.emptyClickCount >= 3,
-  },
-  {
-    id:        'void_2', iconKey: 'void',
-    title:     'Мастер ничто',
-    desc:      'Десять кликов в пустоту. Пустота благодарна.',
-    condition: s => s.emptyClickCount >= 10,
-  },
-  {
-    id:        'void_3', iconKey: 'void',
-    title:     'Дзен пустого клика',
-    desc:      'Двадцать пять раз. Это и есть путь без пути.',
-    condition: s => s.emptyClickCount >= 25,
-  },
+  // ── Пустота ──────────────────────────────────────────────────────────
+  { id:'void_1', iconKey:'void',
+    title:'Зов пустоты', desc:'Три клика мимо всего. Бывает.',
+    condition: s => s.emptyClickCount >= 3 },
+  { id:'void_2', iconKey:'void',
+    title:'Мастер ничто', desc:'Десять раз мимо. Упорно.',
+    condition: s => s.emptyClickCount >= 10 },
+  { id:'void_3', iconKey:'void',
+    title:'Дзен пустого клика', desc:'Двадцать пять кликов в никуда.',
+    condition: s => s.emptyClickCount >= 25 },
 
-  // ── Медитация (lotus / moon) ─────────────────────────────────────────
-  {
-    id:        'sit_1', iconKey: 'lotus',
-    title:     'Первый вдох',
-    desc:      'Ты сел. Мир не заметил. И это хорошо.',
-    condition: s => s.sitCount >= 1,
-  },
-  {
-    id:        'sit_many', iconKey: 'lotusBr',
-    title:     'Привычка сидеть',
-    desc:      'Десять раз садился. Колени понимают.',
-    condition: s => s.sitCount >= 10,
-  },
-  {
-    id:        'sit_long', iconKey: 'moon',
-    title:     'Длинный вечер',
-    desc:      'Пять минут без движения. Время стало гостем.',
-    condition: s => s.maxSitSeconds >= 300,
-  },
+  // ── Медитация ────────────────────────────────────────────────────────
+  { id:'sit_many', iconKey:'lotusBr',
+    title:'Привычка сидеть', desc:'Садишься уже десятый раз. Привык.',
+    condition: s => s.sitCount >= 10 },
+  { id:'sit_long', iconKey:'moon',
+    title:'Длинный вечер', desc:'Пять минут без движения.',
+    condition: s => s.maxSitSeconds >= 300 },
+  { id:'sit_impatient', iconKey:'hourglass',
+    title:'Нетерпеливый', desc:'Сел помедитировать и встал через три секунды.',
+    condition: s => s.impatientSit },
 
-  // ── Символы / руны ───────────────────────────────────────────────────
-  {
-    id:        'sym_1', iconKey: 'rune',
-    title:     'Первый знак',
-    desc:      'Одна руна дошла до камня. Камень промолчал.',
-    condition: s => s.symbolsDelivered >= 1,
-  },
-  {
-    id:        'sym_5', iconKey: 'runeBr',
-    title:     'Пять имён',
-    desc:      'Пять рун. Надпись стала ярче.',
-    condition: s => s.symbolsDelivered >= 5,
-  },
-  {
-    id:        'sym_20', iconKey: 'runeBr',
-    title:     'Голос тишины',
-    desc:      'Двадцать знаков. Ты говоришь с тем, чего нет.',
-    condition: s => s.symbolsDelivered >= 20,
-  },
+  // ── Символы (перебор) ────────────────────────────────────────────────
+  { id:'sym_20', iconKey:'runeBr',
+    title:'Голос тишины', desc:'Двадцать рун. Хотя хватило бы пяти.',
+    condition: s => s.symbolsDelivered >= 20 },
 
-  // ── Инвентарь ────────────────────────────────────────────────────────
-  {
-    id:        'pick_1', iconKey: 'hand',
-    title:     'Что-то в руках',
-    desc:      'Ты подобрал первую вещь. Теперь она твоя. Или ты — её.',
-    condition: s => s.itemsPickedUp.size >= 1,
-  },
-  {
-    id:        'pick_all', iconKey: 'pouch',
-    title:     'Всё на месте',
-    desc:      'Ты подержал каждый предмет хотя бы раз. Коллекционер покоя.',
-    condition: s => s.itemsPickedUp.size >= 7,
-  },
+  // ── Инвентарь / крафт ────────────────────────────────────────────────
+  { id:'jar_found', iconKey:'jar',
+    title:'Что-то в руках', desc:'Нашёл банку. Теперь куда её?',
+    condition: s => s.itemsPickedUp.has('jar') },
+  { id:'pick_all', iconKey:'pouch',
+    title:'Всё на месте', desc:'В руках побывало всё.',
+    condition: s => s.itemsPickedUp.size >= 7 },
+  { id:'first_combo', iconKey:'jarGlow',
+    title:'Впервые вместе', desc:'Соединил два предмета — получилось.',
+    condition: s => s.combosMade >= 1 },
 
-  // ── Камни-руны ───────────────────────────────────────────────────────
-  {
-    id:        'rock_1', iconKey: 'stoneLit',
-    title:     'Камень ожил',
-    desc:      'Один рунный камень вспыхнул. Другие ждут.',
-    condition: s => s.rocksActivated >= 1,
-  },
-  {
-    id:        'rock_all', iconKey: 'stoneLit',
-    title:     'Три огня',
-    desc:      'Все три камня горят. Корни слушают.',
-    condition: s => s.rocksActivated >= 3,
-  },
+  // ── Off-script: неудачные комбы ──────────────────────────────────────
+  { id:'combo_fail_5', iconKey:'alchemyFail',
+    title:'Алхимик-любитель', desc:'Пять раз пробовал соединить несоединимое.',
+    condition: s => s.comboFails >= 5 },
+  { id:'combo_fail_20', iconKey:'alchemyFail',
+    title:'Упрямый алхимик', desc:'Двадцать раз. Всё ещё не выходит.',
+    condition: s => s.comboFails >= 20 },
 
-  // ── Диалог с монахом ─────────────────────────────────────────────────
-  {
-    id:        'monk_talk', iconKey: 'speech',
-    title:     'Разговор с красным',
-    desc:      'Ты всё-таки заговорил с монахом. И он — с тобой.',
-    condition: s => s.monkDialogDone,
-  },
-  {
-    id:        'flower_given', iconKey: 'flower',
-    title:     'Цветок в ладонях',
-    desc:      'Ты взял цветок. Не сорвал — получил.',
-    condition: s => s.itemsPickedUp.has('flower'),
-  },
+  // ── Off-script: выбор слота ──────────────────────────────────────────
+  { id:'slot_toggle', iconKey:'toggle',
+    title:'Сомневающийся', desc:'Десять раз подряд выбрал и отменил предмет.',
+    condition: s => s.maxSlotToggleStreak >= 10 },
 
-  // ── Светлячки ────────────────────────────────────────────────────────
-  {
-    id:        'fly_catch', iconKey: 'firefly',
-    title:     'Горстка света',
-    desc:      'Первый светлячок в банке. Банка теплеет.',
-    condition: s => s.fliesCaught >= 1,
-  },
-  {
-    id:        'fly_free', iconKey: 'release',
-    title:     'Отпустить',
-    desc:      'Ты открыл банку. Свет ушёл, загадка осталась.',
-    condition: s => s.fliesReleased,
-  },
-  {
-    id:        'fly_scare_1', iconKey: 'release',
-    title:     'Пустая рука',
-    desc:      'Ты щёлкнул по светлячку без банки. Он сбежал и простил.',
-    condition: s => s.fliesScared >= 1,
-  },
-  {
-    id:        'fly_scare_many', iconKey: 'release',
-    title:     'Разгонщик света',
-    desc:      'Десять светлячков ты распугал голыми руками. Звон и пустота.',
-    condition: s => s.fliesScared >= 10,
-  },
+  // ── Off-script: предмет × зона ──────────────────────────────────────
+  { id:'monk_poke', iconKey:'speech',
+    title:'Бестолковый разговор', desc:'Ткнул в монаха тремя разными предметами.',
+    condition: s => s.monkPokeCount >= 3 },
+  { id:'statue_poke', iconKey:'eye',
+    title:'Кощунство', desc:'Пять раз применил предмет к статуе.',
+    condition: s => s.statuePokeCount >= 5 },
+  { id:'water_waste', iconKey:'splash',
+    title:'Разбрызгиватель', desc:'Вылил воду куда попало.',
+    condition: s => s.waterWasted },
+  { id:'stick_drink', iconKey:'stickDrink',
+    title:'Палка не пьёт', desc:'Попробовал напоить палку водой. Зачем.',
+    condition: s => s.stickDrinkTried },
+  { id:'fire_water', iconKey:'fizz',
+    title:'Пшик', desc:'Полил огненный цветок водой. Пар и разочарование.',
+    condition: s => s.fireWatered },
+  { id:'durian_gift', iconKey:'durianGift',
+    title:'Подарок, от которого не отказываются', desc:'Пытался всучить дуриан кому попало.',
+    condition: s => s.durianGiftTried },
 
-  // ── Крафт ────────────────────────────────────────────────────────────
-  {
-    id:        'glowstick_make', iconKey: 'flame',
-    title:     'Палка и свет',
-    desc:      'Палка в светящейся жиже. Почти факел, почти нет.',
-    condition: s => s.glowstickMade,
-  },
-  {
-    id:        'water_jar', iconKey: 'drop',
-    title:     'Банка воды',
-    desc:      'Ты набрал воды. Простой поступок. Тяжёлая банка.',
-    condition: s => s.waterJarMade,
-  },
+  // ── Off-script: кот и светлячки ──────────────────────────────────────
+  { id:'cat_hiss', iconKey:'catSad',
+    title:'Кота может обидеть каждый', desc:'Плеснул в кота водой. Он зашипел и ушёл.',
+    condition: s => s.catHissed },
+  { id:'fly_scare_1', iconKey:'release',
+    title:'Мечтатель-светлолов', desc:'Щёлкнул по светлячку без банки. Сбежал.',
+    condition: s => s.fliesScared >= 1 },
+  { id:'fly_scare_many', iconKey:'release',
+    title:'Разгонщик света', desc:'Десять светлячков распугано без толку.',
+    condition: s => s.fliesScared >= 10 },
 
-  // ── Кот ──────────────────────────────────────────────────────────────
-  {
-    id:        'cat_hiss', iconKey: 'catSad',
-    title:     'Кота может обидеть каждый',
-    desc:      'Ты плеснул в кота водой. Он долго будет помнить.',
-    condition: s => s.catHissed,
-  },
-  {
-    id:        'cat_bury', iconKey: 'paw',
-    title:     'Земля и кот',
-    desc:      'Ты похоронил кота. Ритуал тихий, но важный.',
-    condition: s => s.catBuryDone,
-  },
-
-  // ── Сцены ────────────────────────────────────────────────────────────
-  {
-    id:        'see_tree', iconKey: 'treeTop',
-    title:     'С высоты',
-    desc:      'Ты увидел сцену сверху. Лес оказался меньше, чем думал.',
-    condition: s => s.scenesVisited.has('scene4'),
-  },
-  {
-    id:        'enter_inside', iconKey: 'door',
-    title:     'Внутрь',
-    desc:      'Ты вошёл в дупло. Снаружи остался кто-то другой.',
-    condition: s => s.scenesVisited.has('inside'),
-  },
-  {
-    id:        'heart_seen', iconKey: 'heart',
-    title:     'Сердце огня',
-    desc:      'Ты стоял перед ним. Оно стояло перед тобой.',
-    condition: s => s.scenesVisited.has('inside_heart'),
-  },
-  {
-    id:        'fireflower_got', iconKey: 'flame',
-    title:     'Огненный цветок',
-    desc:      'Ты держишь огонь в ладонях. Он не жжётся — пока.',
-    condition: s => s.itemsPickedUp.has('fireflower'),
-  },
-
-  // ── Финальное / общее ────────────────────────────────────────────────
-  {
-    id:        'nature', iconKey: 'leaf',
-    title:     'Лес слушает',
-    desc:      'Ты собрал всё природное: землю, листья, цветы.',
-    condition: s => s.itemsPickedUp.has('dirt') && s.itemsPickedUp.has('flower') && s.itemsPickedUp.has('durian'),
-  },
-  {
-    id:        'wheel', iconKey: 'cycle',
-    title:     'Колесо повернулось',
-    desc:      'Ты закончил круг. Следующая жизнь — твоя.',
-    condition: s => s.inscriptionReady,
-  },
+  // ── Финал ────────────────────────────────────────────────────────────
+  { id:'wheel', iconKey:'cycle',
+    title:'Колесо повернулось', desc:'Надпись засветилась целиком.',
+    condition: s => s.inscriptionReady },
 ];
 
 // ── Runtime state ──────────────────────────────────────────────────────────
@@ -256,49 +130,48 @@ let _unlocked = new Set();
 // Начальное состояние stats; Set'ы/структуры не-JSON восстанавливаем при load
 function _freshStats() {
   return {
-    // повторение / зоны / пустота
-    maxZoneClicks:     0,
-    zoneClickCounts:   {},
-    zonesVisited:      new Set(),
-    emptyClickCount:   0,
-    maxSpotClicks:     0,
-    spotCounts:        {},
+    // зоны / пустота / стаб
+    maxZoneClicks:       0,
+    zoneClickCounts:     {},
+    zonesVisited:        new Set(),
+    emptyClickCount:     0,
+    maxSpotClicks:       0,
+    spotCounts:          {},
 
     // медитация
-    sitCount:          0,
-    maxSitSeconds:     0,
-    _sitStartMs:       0,
+    sitCount:            0,
+    maxSitSeconds:       0,
+    _sitStartMs:         0,
+    impatientSit:        false,
 
-    // символы
-    symbolsDelivered:  0,
+    // символы (перебор)
+    symbolsDelivered:    0,
 
-    // инвентарь
-    itemsPickedUp:     new Set(),
+    // инвентарь / крафт
+    itemsPickedUp:       new Set(),
+    combosMade:          0,
+    comboFails:          0,
 
-    // камни
-    rocksActivated:    0,
+    // слот (toggle)
+    _slotToggleStreak:   0,
+    maxSlotToggleStreak: 0,
+    _lastSlotIdx:        -1,
 
-    // диалог с монахом
-    monkDialogDone:    false,
+    // off-script: предмет × зона
+    monkPokeItems:       new Set(),
+    monkPokeCount:       0,
+    statuePokeCount:     0,
+    waterWasted:         false,
+    stickDrinkTried:     false,
+    fireWatered:         false,
+    durianGiftTried:     false,
 
-    // светлячки
-    fliesCaught:       0,
-    fliesScared:       0,     // клики по светлячкам без банки
-    fliesReleased:     false,
+    // кот / светлячки
+    catHissed:           false,
+    fliesScared:         0,
 
-    // крафт
-    glowstickMade:     false,
-    waterJarMade:      false,
-
-    // кот
-    catHissed:         false,
-    catBuryDone:       false,
-
-    // сцены
-    scenesVisited:     new Set(),
-
-    // активация надписи
-    inscriptionReady:  false,
+    // финал
+    inscriptionReady:    false,
   };
 }
 
@@ -316,23 +189,21 @@ export function loadAchievements() {
     const raw = JSON.parse(localStorage.getItem(STATS_KEY) || 'null');
     if (raw && typeof raw === 'object') {
       const fresh = _freshStats();
-      // числа / булевы поля
       for (const k of [
         'maxZoneClicks','emptyClickCount','maxSpotClicks',
-        'sitCount','maxSitSeconds','symbolsDelivered','rocksActivated',
-        'fliesCaught','fliesScared',
+        'sitCount','maxSitSeconds','symbolsDelivered',
+        'combosMade','comboFails','maxSlotToggleStreak',
+        'monkPokeCount','statuePokeCount','fliesScared',
       ]) if (typeof raw[k] === 'number') fresh[k] = raw[k];
       for (const k of [
-        'monkDialogDone','fliesReleased','glowstickMade','waterJarMade',
-        'catHissed','catBuryDone','inscriptionReady',
+        'impatientSit','waterWasted','stickDrinkTried',
+        'fireWatered','durianGiftTried','catHissed','inscriptionReady',
       ]) if (typeof raw[k] === 'boolean') fresh[k] = raw[k];
-      // объекты счётчиков
       if (raw.zoneClickCounts && typeof raw.zoneClickCounts === 'object') fresh.zoneClickCounts = raw.zoneClickCounts;
-      if (raw.spotCounts && typeof raw.spotCounts === 'object')           fresh.spotCounts      = raw.spotCounts;
-      // массивы → Set
-      if (Array.isArray(raw.zonesVisited))  fresh.zonesVisited  = new Set(raw.zonesVisited);
-      if (Array.isArray(raw.itemsPickedUp)) fresh.itemsPickedUp = new Set(raw.itemsPickedUp);
-      if (Array.isArray(raw.scenesVisited)) fresh.scenesVisited = new Set(raw.scenesVisited);
+      if (raw.spotCounts      && typeof raw.spotCounts      === 'object') fresh.spotCounts      = raw.spotCounts;
+      if (Array.isArray(raw.zonesVisited))   fresh.zonesVisited   = new Set(raw.zonesVisited);
+      if (Array.isArray(raw.itemsPickedUp))  fresh.itemsPickedUp  = new Set(raw.itemsPickedUp);
+      if (Array.isArray(raw.monkPokeItems))  fresh.monkPokeItems  = new Set(raw.monkPokeItems);
       _stats = fresh;
     }
   } catch {
@@ -347,27 +218,30 @@ function _save() {
 function _saveStats() {
   try {
     localStorage.setItem(STATS_KEY, JSON.stringify({
-      maxZoneClicks:    _stats.maxZoneClicks,
-      zoneClickCounts:  _stats.zoneClickCounts,
-      zonesVisited:     [..._stats.zonesVisited],
-      emptyClickCount:  _stats.emptyClickCount,
-      maxSpotClicks:    _stats.maxSpotClicks,
-      spotCounts:       _stats.spotCounts,
-      sitCount:         _stats.sitCount,
-      maxSitSeconds:    _stats.maxSitSeconds,
-      symbolsDelivered: _stats.symbolsDelivered,
-      itemsPickedUp:    [..._stats.itemsPickedUp],
-      rocksActivated:   _stats.rocksActivated,
-      monkDialogDone:   _stats.monkDialogDone,
-      fliesCaught:      _stats.fliesCaught,
-      fliesScared:      _stats.fliesScared,
-      fliesReleased:    _stats.fliesReleased,
-      glowstickMade:    _stats.glowstickMade,
-      waterJarMade:     _stats.waterJarMade,
-      catHissed:        _stats.catHissed,
-      catBuryDone:      _stats.catBuryDone,
-      scenesVisited:    [..._stats.scenesVisited],
-      inscriptionReady: _stats.inscriptionReady,
+      maxZoneClicks:       _stats.maxZoneClicks,
+      zoneClickCounts:     _stats.zoneClickCounts,
+      zonesVisited:        [..._stats.zonesVisited],
+      emptyClickCount:     _stats.emptyClickCount,
+      maxSpotClicks:       _stats.maxSpotClicks,
+      spotCounts:          _stats.spotCounts,
+      sitCount:            _stats.sitCount,
+      maxSitSeconds:       _stats.maxSitSeconds,
+      impatientSit:        _stats.impatientSit,
+      symbolsDelivered:    _stats.symbolsDelivered,
+      itemsPickedUp:       [..._stats.itemsPickedUp],
+      combosMade:          _stats.combosMade,
+      comboFails:          _stats.comboFails,
+      maxSlotToggleStreak: _stats.maxSlotToggleStreak,
+      monkPokeItems:       [..._stats.monkPokeItems],
+      monkPokeCount:       _stats.monkPokeCount,
+      statuePokeCount:     _stats.statuePokeCount,
+      waterWasted:         _stats.waterWasted,
+      stickDrinkTried:     _stats.stickDrinkTried,
+      fireWatered:         _stats.fireWatered,
+      durianGiftTried:     _stats.durianGiftTried,
+      catHissed:           _stats.catHissed,
+      fliesScared:         _stats.fliesScared,
+      inscriptionReady:    _stats.inscriptionReady,
     }));
   } catch {}
 }
@@ -411,6 +285,7 @@ export function trackStandUp() {
   if (_stats._sitStartMs) {
     const secs = (Date.now() - _stats._sitStartMs) / 1000;
     _stats.maxSitSeconds = Math.max(_stats.maxSitSeconds, secs);
+    if (secs < 3) _stats.impatientSit = true;
     _stats._sitStartMs = 0;
     _after();
   }
@@ -427,38 +302,54 @@ export function trackItemPickup(itemId) {
   _after();
 }
 
-export function trackRockActivated() {
-  _stats.rocksActivated = Math.min(3, _stats.rocksActivated + 1);
+// Крафт: успешное соединение двух предметов
+export function trackComboSuccess() {
+  _stats.combosMade++;
   _after();
 }
 
-export function trackMonkDialogDone() {
-  _stats.monkDialogDone = true;
+// Крафт: попытка, которая не сработала (failMsg)
+export function trackComboFail() {
+  _stats.comboFails++;
   _after();
 }
 
-export function trackFlyCaught() {
-  _stats.fliesCaught++;
+// Выбор/отмена слота в хотбаре. toggle = последовательность выбор→отмена.
+export function trackSlotSelect(newIdx) {
+  if (newIdx === -1 && _stats._lastSlotIdx >= 0) {
+    _stats._slotToggleStreak++;
+    _stats.maxSlotToggleStreak = Math.max(_stats.maxSlotToggleStreak, _stats._slotToggleStreak);
+  } else if (newIdx >= 0 && _stats._lastSlotIdx === -1) {
+    // продолжение серии — ничего
+  } else if (newIdx >= 0 && _stats._lastSlotIdx >= 0 && newIdx !== _stats._lastSlotIdx) {
+    // переключение между слотами — сброс серии
+    _stats._slotToggleStreak = 0;
+  }
+  _stats._lastSlotIdx = newIdx;
   _after();
 }
 
-export function trackFlyScared() {
-  _stats.fliesScared++;
-  _after();
-}
-
-export function trackFliesReleased() {
-  _stats.fliesReleased = true;
-  _after();
-}
-
-export function trackGlowstickMade() {
-  _stats.glowstickMade = true;
-  _after();
-}
-
-export function trackWaterJar() {
-  _stats.waterJarMade = true;
+// Применение предмета к зоне — для off-script ачивок.
+// itemId — id активного предмета, zoneId — имя зоны
+export function trackItemOnZone(itemId, zoneId) {
+  if (!itemId || !zoneId) return;
+  if (zoneId === 'monk') {
+    _stats.monkPokeItems.add(itemId);
+    _stats.monkPokeCount = _stats.monkPokeItems.size;
+  }
+  if (zoneId === 'statue') _stats.statuePokeCount++;
+  // вода (открытая банка с водой) на не-кота
+  if (itemId === 'jar_open' && zoneId !== 'cat' && zoneId !== 'water') {
+    _stats.waterWasted = true;
+  }
+  // напоить палку
+  if (itemId === 'jar_open' && zoneId === 'stick') _stats.stickDrinkTried = true;
+  // огненный цветок + вода
+  if (itemId === 'jar_open' && zoneId === 'fireflower') _stats.fireWatered = true;
+  // дуриан не коту и не в землю (это сюжет)
+  if (itemId === 'durian' && zoneId !== 'cat' && zoneId !== 'dirt') {
+    _stats.durianGiftTried = true;
+  }
   _after();
 }
 
@@ -467,14 +358,8 @@ export function trackCatHiss() {
   _after();
 }
 
-export function trackCatBury() {
-  _stats.catBuryDone = true;
-  _after();
-}
-
-export function trackSceneVisit(sceneId) {
-  if (!sceneId) return;
-  _stats.scenesVisited.add(sceneId);
+export function trackFlyScared() {
+  _stats.fliesScared++;
   _after();
 }
 
@@ -482,6 +367,17 @@ export function trackInscriptionReady() {
   _stats.inscriptionReady = true;
   _after();
 }
+
+// ── Deprecated no-ops (оставлены для совместимости импортов) ──────────────
+// Эти события больше не дают ачивок — это сюжетные действия.
+export function trackRockActivated()  {}
+export function trackMonkDialogDone() {}
+export function trackFlyCaught()      {}
+export function trackFliesReleased()  {}
+export function trackGlowstickMade()  {}
+export function trackWaterJar()       {}
+export function trackCatBury()        {}
+export function trackSceneVisit()     {}
 
 function _after() {
   _saveStats();

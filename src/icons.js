@@ -812,36 +812,207 @@ export function renderLeafIcon() {
   </svg>`;
 }
 
+// ── Hourglass — нетерпеливый ─────────────────────────────────────────────
+export function renderHourglassIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="6"  y="4"  width="20" height="3"  fill="#c89040"/>
+    <rect x="6"  y="25" width="20" height="3"  fill="#c89040"/>
+    <rect x="8"  y="7"  width="16" height="2"  fill="#e8b870"/>
+    <rect x="8"  y="23" width="16" height="2"  fill="#e8b870"/>
+    <!-- top chamber (empty) -->
+    <rect x="10" y="9"  width="12" height="2"  fill="#e8c880" opacity="0.3"/>
+    <!-- neck -->
+    <rect x="14" y="14" width="4"  height="4"  fill="#f0d890"/>
+    <!-- bottom chamber (full) -->
+    <rect x="10" y="18" width="12" height="2"  fill="#e8c880"/>
+    <rect x="8"  y="20" width="16" height="3"  fill="#d8b060"/>
+    <!-- glass outline -->
+    <rect x="8"  y="9"  width="2"  height="14" fill="#a08858" opacity="0.4"/>
+    <rect x="22" y="9"  width="2"  height="14" fill="#a08858" opacity="0.4"/>
+  </svg>`;
+}
+
+// ── Toggle — сомневающийся (галочка + крестик) ───────────────────────────
+export function renderToggleIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- green check -->
+    <rect x="4"  y="12" width="3"  height="3"  fill="#4a9030"/>
+    <rect x="7"  y="15" width="3"  height="3"  fill="#4a9030"/>
+    <rect x="10" y="18" width="3"  height="3"  fill="#4a9030"/>
+    <rect x="13" y="15" width="3"  height="3"  fill="#4a9030"/>
+    <rect x="16" y="12" width="3"  height="3"  fill="#4a9030"/>
+    <rect x="19" y="9"  width="3"  height="3"  fill="#4a9030"/>
+    <!-- red cross over it -->
+    <rect x="20" y="16" width="2"  height="2"  fill="#c02020"/>
+    <rect x="22" y="18" width="2"  height="2"  fill="#c02020"/>
+    <rect x="24" y="20" width="2"  height="2"  fill="#c02020"/>
+    <rect x="26" y="22" width="2"  height="2"  fill="#c02020"/>
+    <rect x="26" y="16" width="2"  height="2"  fill="#c02020"/>
+    <rect x="24" y="18" width="2"  height="2"  fill="#c02020"/>
+    <rect x="22" y="20" width="2"  height="2"  fill="#c02020"/>
+    <rect x="20" y="22" width="2"  height="2"  fill="#c02020"/>
+  </svg>`;
+}
+
+// ── Alchemy fail — треснувшая колба ──────────────────────────────────────
+export function renderAlchemyFailIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- neck -->
+    <rect x="13" y="4"  width="6"  height="2"  fill="#6a7888"/>
+    <rect x="13" y="6"  width="6"  height="8"  fill="#8a98a8" opacity="0.5"/>
+    <!-- flask body -->
+    <rect x="8"  y="14" width="16" height="14" fill="#8a98a8" opacity="0.5"/>
+    <rect x="6"  y="16" width="20" height="12" fill="#8a98a8" opacity="0.4"/>
+    <rect x="8"  y="28" width="16" height="2"  fill="#6a7888"/>
+    <!-- murky goo -->
+    <rect x="8"  y="22" width="16" height="6"  fill="#507040"/>
+    <rect x="8"  y="21" width="16" height="1"  fill="#709050"/>
+    <!-- crack -->
+    <rect x="14" y="15" width="1"  height="3"  fill="#2a2a2a"/>
+    <rect x="15" y="18" width="1"  height="2"  fill="#2a2a2a"/>
+    <rect x="14" y="20" width="1"  height="2"  fill="#2a2a2a"/>
+    <rect x="16" y="16" width="1"  height="2"  fill="#2a2a2a"/>
+    <!-- sad bubble -->
+    <rect x="18" y="24" width="2"  height="2"  fill="#80a070"/>
+  </svg>`;
+}
+
+// ── Fizz — огонь + вода = пшик ───────────────────────────────────────────
+export function renderFizzIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- steam -->
+    <rect x="8"  y="4"  width="4"  height="2"  fill="#c0d0e0" opacity="0.6"/>
+    <rect x="14" y="2"  width="4"  height="2"  fill="#c0d0e0" opacity="0.7"/>
+    <rect x="20" y="4"  width="4"  height="2"  fill="#c0d0e0" opacity="0.6"/>
+    <rect x="10" y="6"  width="3"  height="2"  fill="#d0e0f0" opacity="0.5"/>
+    <rect x="19" y="6"  width="3"  height="2"  fill="#d0e0f0" opacity="0.5"/>
+    <!-- dying flame -->
+    <rect x="12" y="10" width="8"  height="4"  fill="#c04020"/>
+    <rect x="14" y="14" width="4"  height="3"  fill="#804010"/>
+    <!-- drop falling -->
+    <rect x="15" y="7"  width="2"  height="2"  fill="#5090d0"/>
+    <!-- puddle -->
+    <rect x="6"  y="22" width="20" height="3"  fill="#4880b0"/>
+    <rect x="4"  y="25" width="24" height="2"  fill="#3a6ea0"/>
+    <!-- splashes -->
+    <rect x="2"  y="20" width="2"  height="2"  fill="#5090d0" opacity="0.7"/>
+    <rect x="28" y="20" width="2"  height="2"  fill="#5090d0" opacity="0.7"/>
+  </svg>`;
+}
+
+// ── Splash — разбрызгиватель воды ────────────────────────────────────────
+export function renderSplashIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- central puddle -->
+    <rect x="10" y="18" width="12" height="4"  fill="#3a6ea0"/>
+    <rect x="8"  y="20" width="16" height="4"  fill="#2a5080"/>
+    <rect x="12" y="24" width="8"  height="2"  fill="#184880"/>
+    <!-- droplets flying out -->
+    <rect x="2"  y="12" width="3"  height="3"  fill="#5090d0"/>
+    <rect x="27" y="12" width="3"  height="3"  fill="#5090d0"/>
+    <rect x="6"  y="6"  width="2"  height="2"  fill="#80c0f0"/>
+    <rect x="24" y="6"  width="2"  height="2"  fill="#80c0f0"/>
+    <rect x="14" y="4"  width="4"  height="3"  fill="#80c0f0"/>
+    <rect x="4"  y="20" width="2"  height="2"  fill="#5090d0"/>
+    <rect x="26" y="20" width="2"  height="2"  fill="#5090d0"/>
+    <!-- highlight -->
+    <rect x="14" y="18" width="4"  height="1"  fill="#a0d0f0"/>
+  </svg>`;
+}
+
+// ── Stick drink — палка и капля ──────────────────────────────────────────
+export function renderStickDrinkIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- stick diagonal -->
+    <rect x="6"  y="20" width="3"  height="3"  fill="#8B6914"/>
+    <rect x="9"  y="17" width="3"  height="3"  fill="#8B6914"/>
+    <rect x="12" y="14" width="3"  height="3"  fill="#a07820"/>
+    <rect x="15" y="11" width="3"  height="3"  fill="#8B6914"/>
+    <rect x="18" y="8"  width="3"  height="3"  fill="#8B6914"/>
+    <rect x="21" y="5"  width="3"  height="3"  fill="#6b4a00"/>
+    <!-- drop above tip -->
+    <rect x="23" y="16" width="3"  height="2"  fill="#80c0f0"/>
+    <rect x="22" y="18" width="5"  height="4"  fill="#3a6ea0"/>
+    <rect x="24" y="22" width="2"  height="2"  fill="#184880"/>
+    <!-- '?' above stick -->
+    <rect x="4"  y="4"  width="3"  height="2"  fill="#b0b0b0"/>
+    <rect x="6"  y="6"  width="2"  height="2"  fill="#b0b0b0"/>
+    <rect x="5"  y="10" width="2"  height="1"  fill="#b0b0b0"/>
+  </svg>`;
+}
+
+// ── Durian gift — дуриан с бантом ────────────────────────────────────────
+export function renderDurianGiftIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- bow on top -->
+    <rect x="10" y="4"  width="5"  height="4"  fill="#c02040"/>
+    <rect x="17" y="4"  width="5"  height="4"  fill="#c02040"/>
+    <rect x="14" y="6"  width="4"  height="3"  fill="#e04060"/>
+    <rect x="11" y="5"  width="2"  height="2"  fill="#f06080"/>
+    <!-- durian body -->
+    <rect x="8"  y="12" width="16" height="14" fill="#8ea04a"/>
+    <rect x="10" y="10" width="12" height="2"  fill="#7a9038"/>
+    <rect x="6"  y="14" width="2"  height="10" fill="#7a9038"/>
+    <rect x="24" y="14" width="2"  height="10" fill="#7a9038"/>
+    <rect x="10" y="26" width="12" height="2"  fill="#607828"/>
+    <!-- spikes -->
+    <rect x="10" y="14" width="2"  height="2"  fill="#5a6e18"/>
+    <rect x="14" y="12" width="2"  height="2"  fill="#5a6e18"/>
+    <rect x="18" y="14" width="2"  height="2"  fill="#5a6e18"/>
+    <rect x="20" y="18" width="2"  height="2"  fill="#5a6e18"/>
+    <rect x="14" y="20" width="2"  height="2"  fill="#5a6e18"/>
+    <rect x="10" y="22" width="2"  height="2"  fill="#5a6e18"/>
+    <!-- highlight -->
+    <rect x="11" y="15" width="3"  height="2"  fill="#a8be5a"/>
+  </svg>`;
+}
+
 // ── Achievement icon dispatch (id → function) ────────────────────────────
 // Хелпер для ачивок — сопоставляет id ачивки с функцией рендера.
 const ACH_ICON_MAP = {
-  eye:        renderEyeIcon,
-  compass:    renderCompassIcon,
-  void:       renderVoidIcon,
-  question:   renderQuestionIcon,
-  lotus:      () => renderLotusIcon(false),
-  lotusBr:    () => renderLotusIcon(true),
-  hand:       renderHandIcon,
-  pouch:      renderPouchIcon,
-  rune:       () => renderRuneIcon(false),
-  runeBr:     () => renderRuneIcon(true),
-  stone:      () => renderStoneIcon(false),
-  stoneLit:   () => renderStoneIcon(true),
-  speech:     renderSpeechIcon,
-  flower:     renderFlowerMiniIcon,
-  firefly:    renderFireflyIcon,
-  release:    renderReleaseIcon,
-  jarGlow:    renderJarGlowIcon,
-  drop:       renderDropIcon,
-  catSad:     renderCatSadIcon,
-  paw:        renderPawIcon,
-  treeTop:    renderTreeTopIcon,
-  door:       renderDoorIcon,
-  flame:      renderFlameIcon,
-  heart:      renderHeartIcon,
-  moon:       renderMoonIcon,
-  cycle:      renderCycleIcon,
-  leaf:       renderLeafIcon,
+  eye:          renderEyeIcon,
+  compass:      renderCompassIcon,
+  void:         renderVoidIcon,
+  question:     renderQuestionIcon,
+  lotus:        () => renderLotusIcon(false),
+  lotusBr:      () => renderLotusIcon(true),
+  hand:         renderHandIcon,
+  pouch:        renderPouchIcon,
+  rune:         () => renderRuneIcon(false),
+  runeBr:       () => renderRuneIcon(true),
+  stone:        () => renderStoneIcon(false),
+  stoneLit:     () => renderStoneIcon(true),
+  speech:       renderSpeechIcon,
+  flower:       renderFlowerMiniIcon,
+  firefly:      renderFireflyIcon,
+  release:      renderReleaseIcon,
+  jarGlow:      renderJarGlowIcon,
+  drop:         renderDropIcon,
+  catSad:       renderCatSadIcon,
+  paw:          renderPawIcon,
+  treeTop:      renderTreeTopIcon,
+  door:         renderDoorIcon,
+  flame:        renderFlameIcon,
+  heart:        renderHeartIcon,
+  moon:         renderMoonIcon,
+  cycle:        renderCycleIcon,
+  leaf:         renderLeafIcon,
+  // new off-script icons
+  hourglass:    renderHourglassIcon,
+  toggle:       renderToggleIcon,
+  alchemyFail:  renderAlchemyFailIcon,
+  fizz:         renderFizzIcon,
+  splash:       renderSplashIcon,
+  stickDrink:   renderStickDrinkIcon,
+  durianGift:   renderDurianGiftIcon,
+  jar:          () => renderJarIcon({ id:'jar' }),
 };
 
 export function renderAchIconByKey(key) {
