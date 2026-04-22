@@ -9,6 +9,9 @@
 //            heroImgR, heroImgL, heroImgS } from '../src/hero.js';
 
 // ── Размеры (frame 275×348 для stand, 275×204 для sit) ────────────────────
+// Базовые — рассчитаны для главной сцены (BG 2000×1116). В других сценах
+// с другим BG — пропорционально масштабируются через heroOptsForBG(bgH),
+// чтобы зрительный размер монаха относительно фона был одинаковый.
 export const HERO_STAND_H   = 420;
 export const HERO_STAND_W   = Math.round(HERO_STAND_H * 275 / 348); // 332
 export const HERO_LEFT_YOFF = Math.round(27 * HERO_STAND_H / 348);  // 33
@@ -16,6 +19,28 @@ export const HERO_SIT_W     = HERO_STAND_W;                          // 332
 export const HERO_SIT_H     = Math.round(HERO_SIT_W * 204 / 275);    // 246
 export const HERO_FRAMES    = 5;
 export const HERO_SPEED     = 5;
+
+// BG, для которого заданы базовые размеры (главная сцена).
+const HERO_BASE_BG_H = 1116;
+
+// ── Pro-rata размеры для другого BG ───────────────────────────────────────
+// Если сцена использует BG с другой высотой, визуальный размер монаха
+// должен остаться таким же относительно фона. Пример:
+//   const opts = heroOptsForBG(775); // shelf.png — BG высотой 775
+//   drawHero(ctx, hero, sx, sy, tick, opts);
+// Возвращает объект с scaled standH/standW/sitH/sitW/leftYOff, пригодный
+// как третий аргумент drawHero(..., opts).
+export function heroOptsForBG(bgH) {
+  const k = bgH / HERO_BASE_BG_H;
+  return {
+    standH:   Math.round(HERO_STAND_H   * k),
+    standW:   Math.round(HERO_STAND_W   * k),
+    sitH:     Math.round(HERO_SIT_H     * k),
+    sitW:     Math.round(HERO_SIT_W     * k),
+    leftYOff: Math.round(HERO_LEFT_YOFF * k),
+    frames:   HERO_FRAMES,
+  };
+}
 
 // ── Спрайты-одиночки (кэш на всё приложение) ──────────────────────────────
 export const heroImgR = new Image(); heroImgR.src = 'assets/sprites/hero_right.png';

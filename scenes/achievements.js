@@ -22,7 +22,7 @@ import { AudioSystem }                                      from '../src/audio.j
 import { openScene }                                        from '../src/nav.js';
 import { makeHero, tickHeroMove, drawHero,
          meditationKeyAction, isWalkKey,
-         HERO_SIT_H }                                       from '../src/hero.js';
+         heroOptsForBG }                                    from '../src/hero.js';
 import { createMeditationFx }                               from '../src/meditation-fx.js';
 
 // ── Scene persistent state ─────────────────────────────────────────────────
@@ -37,24 +37,34 @@ function saveAch() { SaveManager.setScene('achievements', S); }
 const BG_W = 1376, BG_H = 775;
 
 // ── Shelves (нормализованные 0..1 относительно BG) ─────────────────────────
-// Внутреннее пространство шкафа — 3 полки. Тонкая подгонка: только видимая
-// область внутренних полок (без рам и боковин).
+// Внутреннее пространство шкафа на shelf.png (1376×775) — между дверцами,
+// ровно там где деревянные горизонтальные планки. Координаты скорректированы
+// так чтобы иконки визуально стояли НА полке (деревянной планке), не в
+// воздухе над ней и не проваливались в траву под шкафом.
+//
+// fx/fw — горизонтальный диапазон полки (между внутренними боковинами);
+// fy/fh — высота секции (информативно, для hit-теста клика по полке).
 const SHELVES = [
-  { fx: 0.370, fy: 0.278, fw: 0.260, fh: 0.125 }, // верхняя
-  { fx: 0.370, fy: 0.445, fw: 0.260, fh: 0.125 }, // средняя
-  { fx: 0.370, fy: 0.615, fw: 0.260, fh: 0.140 }, // нижняя
+  { fx: 0.395, fy: 0.200, fw: 0.210, fh: 0.135 }, // верхняя
+  { fx: 0.395, fy: 0.370, fw: 0.210, fh: 0.160 }, // средняя
+  { fx: 0.395, fy: 0.555, fw: 0.210, fh: 0.180 }, // нижняя
 ];
 
-// Y-координата пола каждой полки — где «стоят» иконки (центры)
-const SHELF_FLOOR_Y = [0.390, 0.555, 0.735];
+// Y-координата «пола» каждой полки (в BG-норм). Иконки центрируются на
+// floorY - size/2, то есть «стоят» нижним краем на этой линии.
+// Значения подобраны по видимым деревянным планкам shelf.png.
+const SHELF_FLOOR_Y = [0.330, 0.525, 0.730];
 
 // 10 слотов на полку → 30 мест. Иконок сейчас 31 — одна может остаться
 // «в руках», игрок перетаскивает. Большие слоты → иконки читаемее.
 const SLOTS_PER_SHELF = 10;
 
 // ── Hero ───────────────────────────────────────────────────────────────────
-// Размер/спрайты/анимация — из src/hero.js. Единый во всех сценах.
+// Спрайты/движение/клавиши — из src/hero.js. Размер монаха пропорционален
+// BG shelf.png (775 px высотой) — визуально такой же как на главной
+// (BG 1116 px). Без этого монах в кадре казался бы в 1.44× больше.
 const GROUND_Y_BG = 720;
+const HERO_OPTS   = heroOptsForBG(BG_H);   // { standH, standW, sitH, sitW, leftYOff, frames }
 const hero = makeHero({ x: BG_W - 240, y: GROUND_Y_BG });
 hero.facing = 'left';
 
@@ -424,15 +434,15 @@ function animate() {
     ctx.drawImage(img, sp.x - sp.size / 2, sp.y - sp.size / 2, sp.size, sp.size);
   }
 
-  // ── Hero (общий drawHero из src/hero.js) ────────────────────────────────
-  drawHero(ctx, hero, sx, sy, tick);
+  // ── Hero (общий drawHero с масштабированными размерами для shelf BG) ────
+  drawHero(ctx, hero, sx, sy, tick, HERO_OPTS);
 
   // ── Meditation: phase + particles (общий fx из src/meditation-fx.js) ────
   if (hero.praying && meditationPhase < 1) meditationPhase = Math.min(meditationPhase + 0.015, 1);
   if (!hero.praying && meditationPhase > 0) meditationPhase = Math.max(meditationPhase - 0.015, 0);
   if (hero.praying && tick % 24 === 0) {
     const px = hero.x * sx;
-    const py = (hero.y - HERO_SIT_H * 0.8) * sy;
+    const py = (hero.y - HERO_OPTS.sitH * 0.8) * sy;
     fx.spawn(px, py);
   }
   fx.tick();
@@ -460,11 +470,13 @@ function animate() {
 function createEl() {
   if (document.getElementById('achievements')) return;
 
+  // Без back-button сверху — возврат идёт через правый край (edge-nav).
   const built = buildSceneDOM({
-    id:      'achievements',
-    bgSrc:   ASSET('bg/shelf'),
-    zIndex:  '55',
-    onClose: closeSceneAchievements,
+    id:       'achievements',
+    bgSrc:    ASSET('bg/shelf'),
+    zIndex:   '55',
+    onClose:  closeSceneAchievements,
+    withBack: false,
   });
   el = built.el; canvas = built.canvas; ctx = built.ctx; msgEl = built.msgEl;
 
