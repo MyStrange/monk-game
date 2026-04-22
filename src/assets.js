@@ -32,6 +32,7 @@ export const ASSETS = {
   'bg/above3':             { path: 'assets/bg/above3.png',             preload: 'critical' },
   'bg/inside':             { path: 'assets/bg/inside.png',             preload: 'critical' },
   'bg/inside_heart':       { path: 'assets/bg/inside_heart.png',       preload: 'critical' },
+  'bg/shelf':              { path: 'assets/bg/shelf.png',              preload: 'critical' },
   'bg/inscription_dim':    { path: 'assets/bg/inscription_dim.png',    preload: 'critical' },
   'bg/inscription_bright': { path: 'assets/bg/inscription_bright.png', preload: 'critical' },
 

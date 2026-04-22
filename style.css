@@ -468,6 +468,113 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   .ach-list{grid-template-columns:repeat(2,1fr);}
 }
 
+/* ── Achievement picker (модалка сцены-полки) ── */
+/* Открывается кликом по полке в achievements-сцене. Сеткой показывает все
+   разблокированные, но ещё не поставленные ачивки. Поддерживает прокрутку
+   и имеет спец-кнопку «Поставить всё». */
+.ach-picker{
+  position:fixed;inset:0;z-index:450;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .24s;
+  pointer-events:none;
+}
+.ach-picker.visible{opacity:1;pointer-events:auto;}
+.ach-picker-backdrop{
+  position:absolute;inset:0;
+  background:rgba(8,6,16,0.86);
+}
+.ach-picker-inner{
+  position:relative;
+  max-width:760px;width:94%;max-height:88vh;
+  border:var(--b-gold);
+  background:var(--c-panel-dk);
+  padding:16px 14px 12px;
+  display:flex;flex-direction:column;gap:12px;
+  box-shadow:0 0 32px rgba(240,192,64,0.12);
+}
+.ach-picker-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-bottom:10px;border-bottom:var(--b-gold-lo);
+}
+.ach-picker-title{
+  color:var(--c-gold-hi);font-family:var(--font);font-size:var(--sz-sm);
+  letter-spacing:4px;
+}
+.ach-picker-close{
+  background:transparent;border:none;color:var(--c-gold-dim);font-size:20px;
+  cursor:pointer;width:32px;height:32px;
+  display:flex;align-items:center;justify-content:center;transition:color .2s;
+}
+.ach-picker-close:hover{color:var(--c-gold);}
+.ach-picker-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  overflow-y:auto;padding-right:4px;
+  flex:1 1 auto;min-height:0;
+  scrollbar-width:thin;scrollbar-color:var(--c-gold-dim) transparent;
+}
+.ach-picker-grid::-webkit-scrollbar{width:6px;}
+.ach-picker-grid::-webkit-scrollbar-thumb{background:var(--c-gold-dim);}
+.ach-picker-grid::-webkit-scrollbar-track{background:transparent;}
+.ach-picker-tile{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:10px 6px 8px;
+  background:var(--c-gold-trace);
+  border:var(--b-gold-lo);
+  color:var(--c-gold);font-family:var(--font);
+  cursor:pointer;text-align:center;
+  transition:border-color .15s,background .15s,transform .1s;
+}
+.ach-picker-tile:hover{
+  border-color:var(--c-gold-hi);
+  background:var(--c-gold-faint);
+}
+.ach-picker-tile:active{transform:scale(0.97);}
+.ach-picker-icon{image-rendering:pixelated;display:flex;justify-content:center;}
+.ach-picker-tile-title{
+  font-size:var(--sz-xs);line-height:1.3;color:var(--c-gold);
+}
+.ach-picker-footer{
+  display:flex;gap:10px;justify-content:center;
+  padding-top:10px;border-top:var(--b-gold-lo);
+}
+.ach-picker-btn{
+  background:rgba(12,8,20,0.94);
+  border:2px solid var(--c-gold-dim);
+  color:var(--c-gold);
+  padding:10px 22px;
+  font-family:var(--font);font-size:var(--sz-base);
+  letter-spacing:0.04em;cursor:pointer;
+  border-radius:var(--r);
+  transition:border-color .15s,background .15s,color .15s;
+}
+.ach-picker-btn:hover{
+  border-color:var(--c-gold-hi);
+  background:var(--c-gold-trace);
+  color:var(--c-gold-hi);
+}
+.ach-picker-all{border-color:var(--c-gold);}
+/* Detail-вариант пикера — один большой блок с описанием и двумя кнопками */
+.ach-picker--detail .ach-picker-inner{max-width:440px;}
+.ach-picker-detail{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  text-align:center;padding:14px 12px 4px;
+}
+.ach-picker-detail-icon{image-rendering:pixelated;}
+.ach-picker-detail strong{
+  color:var(--c-gold-hi);font-family:var(--font);font-size:var(--sz-lg);
+  letter-spacing:0.04em;
+}
+.ach-picker-detail-desc{
+  color:var(--c-text-dim);font-family:var(--font);font-size:var(--sz-base);
+  line-height:1.5;max-width:340px;
+}
+
+@media (max-width:560px){
+  .ach-picker-grid{grid-template-columns:repeat(3,1fr);}
+  .ach-picker-btn{font-size:var(--sz-sm);padding:10px 16px;}
+  .ach-picker-tile-title{font-size:var(--sz-xs);}
+}
+
 /* ══════════════════════════════════════════════════════
    FLYROOM BUBBLES — диалог светлячков
    ══════════════════════════════════════════════════════ */

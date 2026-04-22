@@ -948,6 +948,21 @@ function _onKey(e) {
   if (k === 'arrowup'   || k === 'w' || k === 'щ') standUp();
 }
 
+// ── Edge navigation (левый край → сцена достижений) ───────────────────────
+// Только когда герой свободен: не в медитации, без драга символа, без story.
+// Вертикальный диапазон — верхние 65 % высоты, чтобы не перекрывать куст
+// в нижнем-левом углу (bush). Ширина — 60 px от края.
+const _EDGE_LEFT_PX = 60;
+function _canEdgeNav() {
+  return !hero.praying && meditationPhase <= 0 && !draggedSym && !isStoryActive(msgEl);
+}
+function _isLeftEdge(cx, cy) {
+  if (!_canEdgeNav()) return false;
+  if (cx > _EDGE_LEFT_PX) return false;
+  if (cy > H * 0.65)      return false;
+  return true;
+}
+
 // ── resumeMain — вызывается из closeScene* чтобы перезапустить loop ───────
 export function resumeMain() {
   // Фиксируем возврат на main: F5 теперь не будет бросать назад в закрытую сцену.
@@ -1000,7 +1015,10 @@ export async function initMain() {
 
   // Mouse events — используют кэшированный _cRect, не вызывая getBoundingClientRect
   canvas.addEventListener('click', e => {
-    onTap(e.clientX - _cRect.left, e.clientY - _cRect.top);
+    const cx = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
+    // Левый край → сцена достижений (перехватываем ДО onTap).
+    if (_isLeftEdge(cx, cy)) { openScene('achievements'); return; }
+    onTap(cx, cy);
   });
   canvas.addEventListener('mousedown', e => {
     onDragStart(e.clientX - _cRect.left, e.clientY - _cRect.top);
@@ -1009,6 +1027,8 @@ export async function initMain() {
     if (state.activeScreen !== SCREENS.MAIN) return;
     const cx = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
     onDragMove(cx, cy);
+    // Приоритет: левый край > зоны/символы
+    if (_isLeftEdge(cx, cy))                 { setCursor('left'); return; }
     // Pointer cursor over clickable zones OR meditation symbols
     setCursor(hitZoneBG(cx, cy) || _hitSym(cx, cy));
   });
@@ -1056,6 +1076,8 @@ export async function initMain() {
       }
       if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
       _dragMoved = false;
+    } else if (_isLeftEdge(cx, cy)) {
+      openScene('achievements');
     } else {
       onTap(cx, cy);
     }

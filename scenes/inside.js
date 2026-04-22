@@ -343,7 +343,8 @@ function createEl() {
   }, { passive: false });
   canvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== SCREENS.INSIDE) return;
-    setCursor(!!_hitZone(e.clientX - _iRect.left, e.clientY - _iRect.top));
+    const hz = _hitZone(e.clientX - _iRect.left, e.clientY - _iRect.top);
+    setCursor(hz === 'opening' ? 'up' : !!hz);
   });
   canvas.addEventListener('mouseleave', () => setCursor(false));
   _iCacheRect();

@@ -5,14 +5,15 @@
 // Было: строковые литералы 'main'/'scene2'/… в 47 местах — опечатка
 // ('scene_4' вместо 'scene4') ломала всё незаметно. Теперь через объект.
 export const SCREENS = Object.freeze({
-  MAIN:     'main',
-  SCENE2:   'scene2',
-  SCENE3:   'scene3',
-  SCENE4:   'scene4',
-  BUDDHA:   'buddha',
-  INSIDE:   'inside',
-  MENU:     'menu',
-  PROLOGUE: 'prologue',
+  MAIN:         'main',
+  SCENE2:       'scene2',
+  SCENE3:       'scene3',
+  SCENE4:       'scene4',
+  BUDDHA:       'buddha',
+  INSIDE:       'inside',
+  MENU:         'menu',
+  PROLOGUE:     'prologue',
+  ACHIEVEMENTS: 'achievements',
 });
 
 // ─── UI timing (ms) ────────────────────────────────────────────────────────

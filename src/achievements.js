@@ -443,6 +443,20 @@ function _showToast(def) {
   _toastTimer = setTimeout(() => toast.classList.remove('visible'), TOAST_DUR);
 }
 
+// ── Public queries ─────────────────────────────────────────────────────────
+// Для сцен-полок: список id всех разблокированных ачивок (в порядке definition).
+// ACHIEVEMENT_DEFS даёт стабильный порядок — чтобы «Поставить всё» выкладывало
+// первые полученные в верхний левый угол полок.
+export function getUnlockedIds() {
+  const order = ACHIEVEMENT_DEFS.map(d => d.id);
+  return order.filter(id => _unlocked.has(id));
+}
+
+// Быстрый доступ по id — используется и для тултипов и для полок.
+export function getAchievementById(id) {
+  return ACHIEVEMENT_DEFS.find(d => d.id === id) ?? null;
+}
+
 // ── Achievement screen ─────────────────────────────────────────────────────
 let _achScreenEl = null;
 

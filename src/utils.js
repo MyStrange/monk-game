@@ -8,15 +8,87 @@ import { UI_TIMING } from './constants.js';
 const _SVG_DEF = "data:image/svg+xml,%3Csvg width='20' height='28' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='8' y='0' width='4' height='4' fill='%23fffce8'/%3E%3Crect x='6' y='4' width='8' height='6' fill='%23f0c040'/%3E%3Crect x='4' y='10' width='12' height='6' fill='%23d4a028'/%3E%3Crect x='6' y='16' width='8' height='4' fill='%23c09020'/%3E%3Crect x='8' y='20' width='4' height='8' fill='%234a6018'/%3E%3C%2Fsvg%3E";
 // Hover: chunky open lotus 20×20 — 9 blocks, centered, hotspot (10, 10)
 const _SVG_PTR = "data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='8' y='2' width='4' height='6' fill='%23f0c040'/%3E%3Crect x='8' y='12' width='4' height='6' fill='%23f0c040'/%3E%3Crect x='2' y='8' width='6' height='4' fill='%23f0c040'/%3E%3Crect x='12' y='8' width='6' height='4' fill='%23f0c040'/%3E%3Crect x='4' y='4' width='4' height='4' fill='%23d4a028'/%3E%3Crect x='12' y='4' width='4' height='4' fill='%23d4a028'/%3E%3Crect x='4' y='12' width='4' height='4' fill='%23d4a028'/%3E%3Crect x='12' y='12' width='4' height='4' fill='%23d4a028'/%3E%3Crect x='8' y='8' width='4' height='4' fill='%23fffce8'/%3E%3C%2Fsvg%3E";
+// Arrow LEFT 20×20, hotspot (0,10) — triangle + shaft, gold palette, tip at left edge
+const _SVG_ARL = "data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='8' y='2' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='6' y='4' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='4' y='6' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='2' y='8' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='0' y='10' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='2' y='12' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='4' y='14' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='6' y='16' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='8' y='18' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='10' y='6' width='10' height='8' fill='%23f0c040'/%3E%3Crect x='0' y='10' width='2' height='2' fill='%23d4a028'/%3E%3Crect x='18' y='6' width='2' height='8' fill='%23d4a028'/%3E%3Crect x='4' y='10' width='2' height='2' fill='%23fffce8'/%3E%3Crect x='6' y='6' width='2' height='2' fill='%23fffce8'/%3E%3Crect x='6' y='14' width='2' height='2' fill='%23fffce8'/%3E%3C%2Fsvg%3E";
+// Arrow RIGHT 20×20, hotspot (18,10)
+const _SVG_ARR = "data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='8' y='2' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='10' y='4' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='12' y='6' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='14' y='8' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='16' y='10' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='14' y='12' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='12' y='14' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='10' y='16' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='8' y='18' width='4' height='2' fill='%23f0c040'/%3E%3Crect x='0' y='6' width='10' height='8' fill='%23f0c040'/%3E%3Crect x='18' y='10' width='2' height='2' fill='%23d4a028'/%3E%3Crect x='0' y='6' width='2' height='8' fill='%23d4a028'/%3E%3Crect x='14' y='10' width='2' height='2' fill='%23fffce8'/%3E%3Crect x='12' y='6' width='2' height='2' fill='%23fffce8'/%3E%3Crect x='12' y='14' width='2' height='2' fill='%23fffce8'/%3E%3C%2Fsvg%3E";
+// Arrow UP 20×20, hotspot (10,0)
+const _SVG_ARU = "data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='2' y='8' width='2' height='4' fill='%23f0c040'/%3E%3Crect x='4' y='6' width='2' height='4' fill='%23f0c040'/%3E%3Crect x='6' y='4' width='2' height='4' fill='%23f0c040'/%3E%3Crect x='8' y='2' width='2' height='4' fill='%23f0c040'/%3E%3Crect x='10' y='0' width='2' height='4' fill='%23f0c040'/%3E%3Crect x='12' y='2' width='2' height='4' fill='%23f0c040'/%3E%3Crect x='14' y='4' width='2' height='4' fill='%23f0c040'/%3E%3Crect x='16' y='6' width='2' height='4' fill='%23f0c040'/%3E%3Crect x='18' y='8' width='2' height='4' fill='%23f0c040'/%3E%3Crect x='6' y='10' width='8' height='10' fill='%23f0c040'/%3E%3Crect x='10' y='0' width='2' height='2' fill='%23d4a028'/%3E%3Crect x='6' y='18' width='8' height='2' fill='%23d4a028'/%3E%3Crect x='10' y='4' width='2' height='2' fill='%23fffce8'/%3E%3Crect x='6' y='6' width='2' height='2' fill='%23fffce8'/%3E%3Crect x='14' y='6' width='2' height='2' fill='%23fffce8'/%3E%3C%2Fsvg%3E";
 // Full cursor CSS values — ready to assign to canvas.style.cursor
-export const CURSOR_DEF = `url("${_SVG_DEF}") 10 2, default`;
-export const CURSOR_PTR = `url("${_SVG_PTR}") 10 10, pointer`;
+export const CURSOR_DEF         = `url("${_SVG_DEF}") 10 2, default`;
+export const CURSOR_PTR         = `url("${_SVG_PTR}") 10 10, pointer`;
+export const CURSOR_ARROW_LEFT  = `url("${_SVG_ARL}") 0 10, pointer`;
+export const CURSOR_ARROW_RIGHT = `url("${_SVG_ARR}") 18 10, pointer`;
+export const CURSOR_ARROW_UP    = `url("${_SVG_ARU}") 10 0, pointer`;
 
 // ── Centralised cursor — все сцены вызывают это вместо element.style.cursor ─
 // Всегда выставляем курсор явно (не через CSS-fallback), чтобы работало
 // корректно во всех сценах включая те, где нет <canvas>.
-export function setCursor(isHot) {
-  document.body.style.cursor = isHot ? CURSOR_PTR : CURSOR_DEF;
+//
+// Режимы:
+//   setCursor(false / 'def' / null)     → обычный (бутон)
+//   setCursor(true  / 'ptr')            → hover (лотос)
+//   setCursor('left' | 'right' | 'up')  → стрелка перехода между сценами
+export function setCursor(mode) {
+  let css;
+  if (mode === true || mode === 'ptr')   css = CURSOR_PTR;
+  else if (mode === 'left')              css = CURSOR_ARROW_LEFT;
+  else if (mode === 'right')             css = CURSOR_ARROW_RIGHT;
+  else if (mode === 'up')                css = CURSOR_ARROW_UP;
+  else                                   css = CURSOR_DEF;
+  document.body.style.cursor = css;
+}
+
+// ── Edge navigation helper — переход между сценами через край экрана ───────
+// Единая точка для всех сцен: левый/правый/верхний край ведёт к другой сцене.
+// Ширина зоны считается в display-пикселях контейнера.
+//
+// Использование в сцене:
+//   const nav = { left: { scene: 'achievements' }, right: { scene: 'foo' } };
+//   // в mousemove:
+//   const m = edgeNavMode(el, e, nav);   // 'left' | 'right' | 'up' | null
+//   if (m) { setCursor(m); return; }
+//   // в click:
+//   if (tryEdgeNavClick(el, e, nav)) return;
+//
+// up — это НЕ полоса сверху, а зона (не все сцены имеют такой переход);
+// если нужен up, передать { up: { scene, zone: { x0,y0,x1,y1 } } } с normalized
+// координатами относительно контейнера.
+export const EDGE_NAV_PX = 60;
+
+function _getXY(el, e) {
+  const r  = el.getBoundingClientRect();
+  const pt = e.changedTouches?.[0] || e.touches?.[0] || e;
+  return { cx: pt.clientX - r.left, cy: pt.clientY - r.top, w: r.width, h: r.height };
+}
+
+export function edgeNavMode(el, e, config) {
+  if (!el || !config) return null;
+  const { cx, cy, w, h } = _getXY(el, e);
+  if (config.left  && cx < EDGE_NAV_PX)     return 'left';
+  if (config.right && cx > w - EDGE_NAV_PX) return 'right';
+  if (config.up) {
+    const z = config.up.zone;
+    if (z) {
+      if (cx >= z.x0 * w && cx <= z.x1 * w &&
+          cy >= z.y0 * h && cy <= z.y1 * h) return 'up';
+    } else if (cy < EDGE_NAV_PX) return 'up';
+  }
+  return null;
+}
+
+// Пытается навигировать по краю. Возвращает true если перешли (click поглощён).
+// Импортирует openScene лениво чтобы избежать циклической зависимости.
+export async function tryEdgeNavClick(el, e, config) {
+  const m = edgeNavMode(el, e, config);
+  if (!m) return false;
+  const target = config[m]?.scene;
+  if (!target) return false;
+  e.stopPropagation?.();
+  e.preventDefault?.();
+  const { openScene } = await import('./nav.js');
+  openScene(target);
+  return true;
 }
 
 // ── Hover glow animation (desktop only) ─────────────────────────────────────
