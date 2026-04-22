@@ -63,19 +63,49 @@ function _getXY(el, e) {
   return { cx: pt.clientX - r.left, cy: pt.clientY - r.top, w: r.width, h: r.height };
 }
 
+// ── Global edge-nav target (for Enter-key navigation) ──────────────────────
+// Любая сцена, которая показывает стрелку перехода, заодно обновляет это
+// значение — тогда Enter просто переключит сцену без клика. Работает и для
+// сцен на своём `_isLeftEdge` (main), и для использующих edgeNavMode.
+let _edgeNavTarget = null;
+export function setEdgeNavTarget(scene) {
+  _edgeNavTarget = scene || null;
+}
+export function clearEdgeNavTarget() { _edgeNavTarget = null; }
+
+let _enterKeyInstalled = false;
+function _installEnterKeyOnce() {
+  if (_enterKeyInstalled) return;
+  _enterKeyInstalled = true;
+  document.addEventListener('keydown', async e => {
+    if (e.key !== 'Enter') return;
+    if (!_edgeNavTarget) return;
+    // Не перехватываем если пользователь печатает в поле ввода
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    e.preventDefault();
+    const target = _edgeNavTarget;
+    const { openScene } = await import('./nav.js');
+    openScene(target);
+  });
+}
+_installEnterKeyOnce();
+
 export function edgeNavMode(el, e, config) {
-  if (!el || !config) return null;
+  if (!el || !config) { setEdgeNavTarget(null); return null; }
   const { cx, cy, w, h } = _getXY(el, e);
-  if (config.left  && cx < EDGE_NAV_PX)     return 'left';
-  if (config.right && cx > w - EDGE_NAV_PX) return 'right';
-  if (config.up) {
+  let mode = null;
+  if (config.left  && cx < EDGE_NAV_PX)          mode = 'left';
+  else if (config.right && cx > w - EDGE_NAV_PX) mode = 'right';
+  else if (config.up) {
     const z = config.up.zone;
     if (z) {
       if (cx >= z.x0 * w && cx <= z.x1 * w &&
-          cy >= z.y0 * h && cy <= z.y1 * h) return 'up';
-    } else if (cy < EDGE_NAV_PX) return 'up';
+          cy >= z.y0 * h && cy <= z.y1 * h) mode = 'up';
+    } else if (cy < EDGE_NAV_PX) mode = 'up';
   }
-  return null;
+  setEdgeNavTarget(mode ? config[mode]?.scene : null);
+  return mode;
 }
 
 // Пытается навигировать по краю. Возвращает true если перешли (click поглощён).

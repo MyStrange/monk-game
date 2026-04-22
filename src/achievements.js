@@ -120,6 +120,11 @@ export const ACHIEVEMENT_DEFS = [
     title:'Разгонщик света', desc:'Десять светлячков распугано без толку.',
     condition: s => s.fliesScared >= 10 },
 
+  // ── Мета ─────────────────────────────────────────────────────────────
+  { id:'shelf_visit', iconKey:'shelf',
+    title:'Хранитель полок', desc:'Заглянул в комнату с полками. Есть, что поставить.',
+    condition: s => s.visitedShelf },
+
   // ── Финал ────────────────────────────────────────────────────────────
   { id:'wheel', iconKey:'cycle',
     title:'Колесо повернулось', desc:'Надпись засветилась целиком.',
@@ -180,6 +185,9 @@ function _freshStats() {
     // scene4 (вид сверху)
     durianOnMonkHead:    false,
 
+    // мета — посещение комнаты полок
+    visitedShelf:        false,
+
     // финал
     inscriptionReady:    false,
   };
@@ -209,6 +217,7 @@ export function loadAchievements() {
         'impatientSit','waterWasted','stickDrinkTried',
         'fireWatered','durianGiftTried','catHissed',
         'satOnCat','durianOnMonkHead','inscriptionReady',
+        'visitedShelf',
       ]) if (typeof raw[k] === 'boolean') fresh[k] = raw[k];
       if (raw.zoneClickCounts && typeof raw.zoneClickCounts === 'object') fresh.zoneClickCounts = raw.zoneClickCounts;
       if (raw.spotCounts      && typeof raw.spotCounts      === 'object') fresh.spotCounts      = raw.spotCounts;
@@ -254,6 +263,7 @@ function _saveStats() {
       satOnCat:            _stats.satOnCat,
       fliesScared:         _stats.fliesScared,
       durianOnMonkHead:    _stats.durianOnMonkHead,
+      visitedShelf:        _stats.visitedShelf,
       inscriptionReady:    _stats.inscriptionReady,
     }));
   } catch {}
@@ -388,6 +398,12 @@ export function trackDurianOnMonkHead() {
 
 export function trackInscriptionReady() {
   _stats.inscriptionReady = true;
+  _after();
+}
+
+export function trackShelfVisit() {
+  if (_stats.visitedShelf) return;
+  _stats.visitedShelf = true;
   _after();
 }
 

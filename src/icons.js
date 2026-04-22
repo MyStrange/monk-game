@@ -367,20 +367,64 @@ export function renderCompassIcon() {
   </svg>`;
 }
 
-// Empty circle / void — void category
+// Void — изометрический вихрь пустоты, концентрические кольца с градиентом
 export function renderVoidIcon() {
   return `<svg width="32" height="32" viewBox="0 0 32 32"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <rect x="10" y="4"  width="12" height="4"  fill="#404060"/>
-    <rect x="4"  y="10" width="4"  height="12" fill="#404060"/>
-    <rect x="24" y="10" width="4"  height="12" fill="#404060"/>
-    <rect x="10" y="24" width="12" height="4"  fill="#404060"/>
-    <rect x="6"  y="6"  width="4"  height="4"  fill="#404060"/>
-    <rect x="22" y="6"  width="4"  height="4"  fill="#404060"/>
-    <rect x="6"  y="22" width="4"  height="4"  fill="#404060"/>
-    <rect x="22" y="22" width="4"  height="4"  fill="#404060"/>
-    <rect x="12" y="12" width="8"  height="8"  fill="#0a0a14"/>
-    <rect x="14" y="14" width="4"  height="4"  fill="#1a1a28"/>
+    <!-- outer ring (lightest) -->
+    <rect x="8"  y="2"  width="16" height="2"  fill="#6a6a88"/>
+    <rect x="4"  y="4"  width="24" height="2"  fill="#6a6a88"/>
+    <rect x="2"  y="6"  width="28" height="2"  fill="#5a5a78"/>
+    <rect x="2"  y="8"  width="2"  height="18" fill="#5a5a78"/>
+    <rect x="28" y="8"  width="2"  height="18" fill="#5a5a78"/>
+    <rect x="2"  y="26" width="28" height="2"  fill="#4a4a68"/>
+    <rect x="4"  y="28" width="24" height="2"  fill="#4a4a68"/>
+    <rect x="8"  y="30" width="16" height="2"  fill="#3a3a58"/>
+    <!-- middle ring -->
+    <rect x="8"  y="6"  width="16" height="2"  fill="#3a3a58"/>
+    <rect x="6"  y="8"  width="20" height="2"  fill="#2a2a48"/>
+    <rect x="4"  y="10" width="24" height="2"  fill="#2a2a48"/>
+    <rect x="4"  y="22" width="24" height="2"  fill="#1a1a38"/>
+    <rect x="6"  y="24" width="20" height="2"  fill="#1a1a38"/>
+    <rect x="8"  y="26" width="16" height="2"  fill="#0a0a28"/>
+    <!-- inner ring -->
+    <rect x="6"  y="12" width="20" height="10" fill="#0a0a18"/>
+    <rect x="8"  y="10" width="16" height="2"  fill="#0a0a18"/>
+    <!-- singularity core -->
+    <rect x="12" y="14" width="8"  height="6"  fill="#000008"/>
+    <rect x="14" y="16" width="4"  height="2"  fill="#1a1a3a"/>
+    <!-- faint highlight -->
+    <rect x="10" y="8"  width="4"  height="1"  fill="#8a8aa8" opacity="0.6"/>
+  </svg>`;
+}
+
+// Shelf — комната полок (для ачивки shelf_visit). Изометрическая деревянная полка
+// с маленьким трофеем сверху.
+export function renderShelfIcon() {
+  return `<svg width="32" height="32" viewBox="0 0 32 32"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- back panel (shadow) -->
+    <rect x="4"  y="8"  width="24" height="14" fill="#3a2210"/>
+    <!-- shelf surface front edge -->
+    <rect x="2"  y="20" width="28" height="3"  fill="#8a5830"/>
+    <rect x="2"  y="23" width="28" height="2"  fill="#6a4018"/>
+    <!-- shelf surface top (isometric depth) -->
+    <rect x="4"  y="18" width="24" height="2"  fill="#a06838"/>
+    <!-- side walls -->
+    <rect x="2"  y="6"  width="2"  height="20" fill="#4a2810"/>
+    <rect x="28" y="6"  width="2"  height="20" fill="#4a2810"/>
+    <!-- top edge -->
+    <rect x="2"  y="6"  width="28" height="2"  fill="#6a4018"/>
+    <!-- wood grain (back) -->
+    <rect x="8"  y="12" width="16" height="1"  fill="#2a1608" opacity="0.6"/>
+    <rect x="6"  y="16" width="20" height="1"  fill="#2a1608" opacity="0.6"/>
+    <!-- trophy on the shelf: small golden medal -->
+    <rect x="13" y="10" width="6"  height="8"  fill="#d49030"/>
+    <rect x="14" y="9"  width="4"  height="1"  fill="#e8a840"/>
+    <rect x="13" y="11" width="6"  height="1"  fill="#f0c040"/>
+    <rect x="15" y="12" width="2"  height="4"  fill="#fff0a0"/>
+    <!-- floor shadow -->
+    <rect x="4"  y="28" width="24" height="2"  fill="#1a0a04" opacity="0.5"/>
   </svg>`;
 }
 
@@ -627,26 +671,43 @@ export function renderDropIcon() {
 export function renderCatSadIcon() {
   return `<svg width="32" height="32" viewBox="0 0 32 32"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <!-- head -->
-    <rect x="8"  y="10" width="16" height="12" fill="#d8a040"/>
-    <!-- ears -->
-    <rect x="6"  y="6"  width="4"  height="6"  fill="#d8a040"/>
-    <rect x="22" y="6"  width="4"  height="6"  fill="#d8a040"/>
-    <rect x="8"  y="8"  width="2"  height="2"  fill="#a07828"/>
-    <rect x="22" y="8"  width="2"  height="2"  fill="#a07828"/>
-    <!-- eyes (closed/sad) -->
-    <rect x="10" y="14" width="4"  height="2"  fill="#2a1808"/>
-    <rect x="18" y="14" width="4"  height="2"  fill="#2a1808"/>
-    <!-- tear -->
-    <rect x="11" y="17" width="2"  height="2"  fill="#80c0f0"/>
-    <rect x="11" y="19" width="2"  height="2"  fill="#a0d0f0"/>
-    <!-- nose/mouth frown -->
-    <rect x="14" y="17" width="4"  height="2"  fill="#a04040"/>
-    <rect x="12" y="19" width="3"  height="1"  fill="#4a2010"/>
-    <rect x="17" y="19" width="3"  height="1"  fill="#4a2010"/>
-    <!-- droopy whiskers -->
-    <rect x="4"  y="18" width="4"  height="1"  fill="#808080"/>
-    <rect x="24" y="18" width="4"  height="1"  fill="#808080"/>
+    <!-- ears (tall, triangular, bigger) -->
+    <rect x="4"  y="2"  width="6"  height="8"  fill="#d8a040"/>
+    <rect x="22" y="2"  width="6"  height="8"  fill="#d8a040"/>
+    <rect x="6"  y="4"  width="2"  height="4"  fill="#a07828"/>
+    <rect x="24" y="4"  width="2"  height="4"  fill="#a07828"/>
+    <rect x="6"  y="2"  width="2"  height="2"  fill="#e8b858"/>
+    <rect x="24" y="2"  width="2"  height="2"  fill="#e8b858"/>
+    <!-- head fills most of canvas -->
+    <rect x="4"  y="8"  width="24" height="20" fill="#d8a040"/>
+    <rect x="2"  y="10" width="28" height="16" fill="#d8a040"/>
+    <!-- head shading — right-bottom (isometric depth) -->
+    <rect x="22" y="10" width="6"  height="16" fill="#b08830"/>
+    <rect x="2"  y="24" width="28" height="2"  fill="#a07828"/>
+    <!-- muzzle (lighter patch) -->
+    <rect x="10" y="17" width="12" height="7"  fill="#e8b858"/>
+    <!-- eyes (closed / drooping lines, bigger) -->
+    <rect x="8"  y="14" width="6"  height="2"  fill="#2a1808"/>
+    <rect x="18" y="14" width="6"  height="2"  fill="#2a1808"/>
+    <rect x="7"  y="13" width="2"  height="1"  fill="#2a1808"/>
+    <rect x="23" y="13" width="2"  height="1"  fill="#2a1808"/>
+    <!-- tear, big drop -->
+    <rect x="9"  y="17" width="2"  height="2"  fill="#80c0f0"/>
+    <rect x="9"  y="19" width="2"  height="3"  fill="#a0d0f0"/>
+    <rect x="10" y="22" width="1"  height="1"  fill="#80c0f0"/>
+    <!-- nose (big pink triangle) -->
+    <rect x="14" y="19" width="4"  height="2"  fill="#c05060"/>
+    <rect x="15" y="21" width="2"  height="1"  fill="#a04050"/>
+    <!-- mouth (frown) -->
+    <rect x="12" y="23" width="3"  height="1"  fill="#4a2010"/>
+    <rect x="17" y="23" width="3"  height="1"  fill="#4a2010"/>
+    <rect x="14" y="22" width="1"  height="1"  fill="#4a2010"/>
+    <rect x="17" y="22" width="1"  height="1"  fill="#4a2010"/>
+    <!-- whiskers (droopy, longer) -->
+    <rect x="0"  y="19" width="8"  height="1"  fill="#f0e0b0"/>
+    <rect x="24" y="19" width="8"  height="1"  fill="#f0e0b0"/>
+    <rect x="1"  y="21" width="6"  height="1"  fill="#f0e0b0"/>
+    <rect x="25" y="21" width="6"  height="1"  fill="#f0e0b0"/>
   </svg>`;
 }
 
@@ -812,24 +873,35 @@ export function renderLeafIcon() {
   </svg>`;
 }
 
-// ── Hourglass — нетерпеливый ─────────────────────────────────────────────
+// ── Hourglass — нетерпеливый. Простой, читаемый силуэт. ──────────────────
 export function renderHourglassIcon() {
   return `<svg width="32" height="32" viewBox="0 0 32 32"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <rect x="6"  y="4"  width="20" height="3"  fill="#c89040"/>
-    <rect x="6"  y="25" width="20" height="3"  fill="#c89040"/>
-    <rect x="8"  y="7"  width="16" height="2"  fill="#e8b870"/>
-    <rect x="8"  y="23" width="16" height="2"  fill="#e8b870"/>
-    <!-- top chamber (empty) -->
-    <rect x="10" y="9"  width="12" height="2"  fill="#e8c880" opacity="0.3"/>
-    <!-- neck -->
-    <rect x="14" y="14" width="4"  height="4"  fill="#f0d890"/>
-    <!-- bottom chamber (full) -->
-    <rect x="10" y="18" width="12" height="2"  fill="#e8c880"/>
-    <rect x="8"  y="20" width="16" height="3"  fill="#d8b060"/>
-    <!-- glass outline -->
-    <rect x="8"  y="9"  width="2"  height="14" fill="#a08858" opacity="0.4"/>
-    <rect x="22" y="9"  width="2"  height="14" fill="#a08858" opacity="0.4"/>
+    <!-- top wooden cap -->
+    <rect x="4"  y="2"  width="24" height="4"  fill="#8a5028"/>
+    <rect x="6"  y="6"  width="20" height="2"  fill="#6a3818"/>
+    <!-- bottom wooden cap -->
+    <rect x="6"  y="24" width="20" height="2"  fill="#6a3818"/>
+    <rect x="4"  y="26" width="24" height="4"  fill="#8a5028"/>
+    <!-- hourglass silhouette — solid "sand" + glass -->
+    <rect x="8"  y="8"  width="16" height="2"  fill="#4a2810"/>
+    <rect x="8"  y="22" width="16" height="2"  fill="#4a2810"/>
+    <!-- upper chamber (full sand top, amber) -->
+    <rect x="9"  y="10" width="14" height="4"  fill="#f0c848"/>
+    <rect x="11" y="14" width="10" height="2"  fill="#e8b030"/>
+    <rect x="13" y="16" width="6"  height="1"  fill="#e8b030"/>
+    <!-- narrow neck (sand trickle) -->
+    <rect x="15" y="15" width="2"  height="4"  fill="#e8b030"/>
+    <!-- lower chamber (pile of sand, heavier on bottom) -->
+    <rect x="13" y="18" width="6"  height="2"  fill="#e8b030"/>
+    <rect x="11" y="20" width="10" height="2"  fill="#e8b030"/>
+    <rect x="9"  y="22" width="14" height="1"  fill="#e8b030"/>
+    <!-- glass frame (wraps around sand) -->
+    <rect x="8"  y="10" width="1"  height="12" fill="#c0a060" opacity="0.7"/>
+    <rect x="23" y="10" width="1"  height="12" fill="#c0a060" opacity="0.7"/>
+    <!-- highlights on glass (left side) -->
+    <rect x="9"  y="11" width="1"  height="3"  fill="#fff0b0" opacity="0.5"/>
+    <rect x="9"  y="20" width="1"  height="2"  fill="#fff0b0" opacity="0.5"/>
   </svg>`;
 }
 
@@ -979,36 +1051,43 @@ export function renderDurianGiftIcon() {
 export function renderCatSitIcon() {
   return `<svg width="32" height="32" viewBox="0 0 32 32"
     xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <!-- small lotus on top (монах сел) -->
-    <rect x="12" y="2"  width="8"  height="3"  fill="#c06090"/>
-    <rect x="10" y="4"  width="12" height="3"  fill="#e088b0"/>
-    <rect x="14" y="6"  width="4"  height="2"  fill="#fff8d0"/>
-    <!-- pressure lines — кот сплющен -->
-    <rect x="4"  y="9"  width="2"  height="1"  fill="#808080"/>
-    <rect x="26" y="9"  width="2"  height="1"  fill="#808080"/>
-    <!-- cat ears (squashed, spread sideways) -->
-    <rect x="4"  y="12" width="4"  height="3"  fill="#d8a040"/>
-    <rect x="24" y="12" width="4"  height="3"  fill="#d8a040"/>
-    <!-- cat body (flattened, wider) -->
-    <rect x="6"  y="14" width="20" height="6"  fill="#d8a040"/>
-    <rect x="4"  y="16" width="24" height="4"  fill="#c09030"/>
-    <!-- eyes (X_X) -->
-    <rect x="10" y="15" width="2"  height="1"  fill="#2a1808"/>
-    <rect x="10" y="17" width="2"  height="1"  fill="#2a1808"/>
-    <rect x="11" y="16" width="1"  height="1"  fill="#2a1808"/>
-    <rect x="20" y="15" width="2"  height="1"  fill="#2a1808"/>
-    <rect x="20" y="17" width="2"  height="1"  fill="#2a1808"/>
-    <rect x="21" y="16" width="1"  height="1"  fill="#2a1808"/>
-    <!-- mouth (grimace) -->
-    <rect x="14" y="18" width="4"  height="1"  fill="#4a2010"/>
-    <!-- paws sticking out -->
-    <rect x="4"  y="20" width="3"  height="2"  fill="#c09030"/>
-    <rect x="25" y="20" width="3"  height="2"  fill="#c09030"/>
-    <!-- tail -->
-    <rect x="26" y="22" width="4"  height="2"  fill="#d8a040"/>
-    <rect x="28" y="20" width="2"  height="2"  fill="#d8a040"/>
-    <!-- ground shadow -->
-    <rect x="6"  y="24" width="20" height="2"  fill="#2a2a2a" opacity="0.5"/>
+    <!-- monk sitting on top (lotus pose, bigger, clearer) -->
+    <rect x="12" y="0"  width="8"  height="3"  fill="#c0304a"/>
+    <rect x="10" y="3"  width="12" height="3"  fill="#d04060"/>
+    <rect x="14" y="6"  width="4"  height="2"  fill="#f0e0a0"/>
+    <rect x="8"  y="8"  width="16" height="2"  fill="#c0304a"/>
+    <!-- pressure shock lines -->
+    <rect x="2"  y="10" width="4"  height="1"  fill="#808080"/>
+    <rect x="26" y="10" width="4"  height="1"  fill="#808080"/>
+    <rect x="4"  y="12" width="2"  height="1"  fill="#808080"/>
+    <rect x="26" y="12" width="2"  height="1"  fill="#808080"/>
+    <!-- squashed cat: flattened pancake body filling canvas width -->
+    <rect x="4"  y="14" width="24" height="10" fill="#d8a040"/>
+    <rect x="2"  y="16" width="28" height="8"  fill="#d8a040"/>
+    <!-- bottom shading (isometric) -->
+    <rect x="2"  y="22" width="28" height="2"  fill="#a07828"/>
+    <!-- squashed ears poking sides -->
+    <rect x="0"  y="14" width="4"  height="4"  fill="#d8a040"/>
+    <rect x="28" y="14" width="4"  height="4"  fill="#d8a040"/>
+    <!-- eyes (X_X big, visible) -->
+    <rect x="8"  y="17" width="1"  height="3"  fill="#2a1808"/>
+    <rect x="10" y="17" width="1"  height="3"  fill="#2a1808"/>
+    <rect x="9"  y="18" width="1"  height="1"  fill="#2a1808"/>
+    <rect x="21" y="17" width="1"  height="3"  fill="#2a1808"/>
+    <rect x="23" y="17" width="1"  height="3"  fill="#2a1808"/>
+    <rect x="22" y="18" width="1"  height="1"  fill="#2a1808"/>
+    <!-- mouth (grimace O) -->
+    <rect x="14" y="20" width="4"  height="2"  fill="#4a2010"/>
+    <rect x="15" y="19" width="2"  height="1"  fill="#4a2010"/>
+    <!-- paws splayed out -->
+    <rect x="3"  y="23" width="4"  height="3"  fill="#c09030"/>
+    <rect x="25" y="23" width="4"  height="3"  fill="#c09030"/>
+    <!-- tail flicking -->
+    <rect x="28" y="19" width="4"  height="2"  fill="#d8a040"/>
+    <rect x="30" y="16" width="2"  height="3"  fill="#d8a040"/>
+    <!-- ground shadow (stretched wide) -->
+    <rect x="2"  y="28" width="28" height="2"  fill="#1a1a1a" opacity="0.5"/>
+    <rect x="4"  y="30" width="24" height="1"  fill="#1a1a1a" opacity="0.3"/>
   </svg>`;
 }
 
@@ -1084,6 +1163,7 @@ const ACH_ICON_MAP = {
   catSit:       renderCatSitIcon,
   durianDrop:   renderDurianDropIcon,
   jar:          () => renderJarIcon({ id:'jar' }),
+  shelf:        renderShelfIcon,
 };
 
 export function renderAchIconByKey(key) {

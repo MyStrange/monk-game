@@ -3,7 +3,7 @@
 import { state }           from '../src/state.js';
 import { SCREENS, INPUT }  from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showChoiceIn, isStoryActive,
-         CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
+         CURSOR_DEF, CURSOR_PTR, setCursor, setEdgeNavTarget } from '../src/utils.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
@@ -977,6 +977,7 @@ export function resumeMain() {
 export function leaveMain() {
   standUp();
   draggedSym = null;
+  setEdgeNavTarget(null);
   // Прерываем анимацию закопки землёй: иначе при возврате в main тик-счётчик
   // дотянется до 180 и выстрелит stale сообщение/подарок земли.
   if (catBurying) { catBurying = false; catBuryTimer = 0; }
@@ -993,8 +994,15 @@ export async function initMain() {
   ctx = canvas.getContext('2d');
   setHotbarMsgEl(msgEl);
 
-  // Pray button — только на мобильном (скрыт на десктопе через CSS)
-  document.getElementById('pray-btn')?.addEventListener('click', sitDown);
+  // Pray button — только на мобильном (скрыт на десктопе через CSS).
+  // Работает как диспетчер: бросает событие 'app:meditate' и каждая сцена,
+  // поддерживающая медитацию, слушает его сама.
+  document.getElementById('pray-btn')?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('app:meditate'));
+  });
+  window.addEventListener('app:meditate', () => {
+    if (state.activeScreen === SCREENS.MAIN) sitDown();
+  });
 
   // Resize. Кэшируем canvas rect — его читают все event handlers и при 60fps
   // mousemove это форсит layout на каждый кадр. Обновляем только на resize
@@ -1028,7 +1036,12 @@ export async function initMain() {
     const cx = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
     onDragMove(cx, cy);
     // Приоритет: левый край > зоны/символы
-    if (_isLeftEdge(cx, cy))                 { setCursor('left'); return; }
+    if (_isLeftEdge(cx, cy))                 {
+      setEdgeNavTarget('achievements');
+      setCursor('left');
+      return;
+    }
+    setEdgeNavTarget(null);
     // Pointer cursor over clickable zones OR meditation symbols
     setCursor(hitZoneBG(cx, cy) || _hitSym(cx, cy));
   });
@@ -1049,6 +1062,7 @@ export async function initMain() {
   });
   canvas.addEventListener('mouseleave', () => {
     setCursor(false);
+    setEdgeNavTarget(null);
     _inscriptionHeld = false;
   });
 
