@@ -20,6 +20,10 @@ import { waitImg, coverRect, hitZone as rectHitZone,
          buildSceneDOM }                                    from '../src/scene-base.js';
 import { AudioSystem }                                      from '../src/audio.js';
 import { openScene }                                        from '../src/nav.js';
+import { makeHero, tickHeroMove, drawHero,
+         meditationKeyAction, isWalkKey,
+         HERO_SIT_H }                                       from '../src/hero.js';
+import { createMeditationFx }                               from '../src/meditation-fx.js';
 
 // ── Scene persistent state ─────────────────────────────────────────────────
 // S.placed: { [achId]: { shelf: 0|1|2, slot: 0..SLOTS_PER_SHELF-1 } }
@@ -49,36 +53,16 @@ const SHELF_FLOOR_Y = [0.390, 0.555, 0.735];
 const SLOTS_PER_SHELF = 10;
 
 // ── Hero ───────────────────────────────────────────────────────────────────
-// Тот же размер, что и на главной — глобальное правило.
-const HERO_STAND_H    = 420;
-const HERO_STAND_W    = Math.round(HERO_STAND_H * 275 / 348);   // 332
-const HERO_FRAMES     = 5;
-const HERO_LEFT_YOFF  = Math.round(27 * HERO_STAND_H / 348);    // ≈ 33 BG px
-const HERO_SPEED      = 5;
-const GROUND_Y_BG     = 720;
-// Sit sprite — как на главной.
-const HERO_SIT_W      = HERO_STAND_W;                            // 332
-const HERO_SIT_H      = Math.round(HERO_SIT_W * 204 / 275);      // 246
-
-const heroImgR = new Image(); heroImgR.src = 'assets/sprites/hero_right.png';
-const heroImgL = new Image(); heroImgL.src = 'assets/sprites/hero_left.png';
-const heroImgS = new Image(); heroImgS.src = 'assets/sprites/hero_sit.png';
-
-const hero = {
-  x: BG_W - 240,
-  y: GROUND_Y_BG,
-  targetX: null,
-  facing:  'left',
-  walking: false,
-  praying: false,
-};
+// Размер/спрайты/анимация — из src/hero.js. Единый во всех сценах.
+const GROUND_Y_BG = 720;
+const hero = makeHero({ x: BG_W - 240, y: GROUND_Y_BG });
+hero.facing = 'left';
 
 const keysHeld = {};
 
-// ── Meditation particles (лёгкий аналог main) ────────────────────────────
-const THAI_CHARS = ['มี','ก็','กิน','ได้','ซึ่ง','อยู่'];
-const PURPLE_PALETTE = ['#b48cd6','#d5a0f0','#9a6bbf','#e2baff'];
-let pSyms = [];
+// ── Meditation particles ───────────────────────────────────────────────────
+// Общий эффект — тайские символы плывут вверх. См. src/meditation-fx.js.
+const fx = createMeditationFx();
 let meditationPhase = 0;
 
 function sitDown() {
@@ -93,54 +77,9 @@ function sitDown() {
 function standUp() {
   if (!hero.praying) return;
   hero.praying = false;
-  pSyms = [];
+  fx.clear();
   meditationPhase = 0;
   AudioSystem.setMode?.('ambient');
-}
-
-function _spawnSym() {
-  if (!hero.praying) return;
-  const ch   = THAI_CHARS[Math.floor(Math.random() * THAI_CHARS.length)];
-  const sx   = W / BG_W, sy = H / BG_H;
-  const px   = hero.x * sx;
-  const py   = (hero.y - HERO_SIT_H * 0.8) * sy;
-  pSyms.push({
-    ch,
-    x: px, y: py,
-    t: 0,
-    phase:     Math.random() * Math.PI * 2,
-    ampX:      18 + Math.random() * 28,
-    freqX:     0.35 + Math.random() * 0.45,
-    riseSpeed: 0.35 + Math.random() * 0.30,
-    life:      1.0,
-    size:      22 + Math.random() * 28,
-    color:     PURPLE_PALETTE[Math.floor(Math.random() * PURPLE_PALETTE.length)],
-  });
-}
-
-function _symTick() {
-  for (let i = pSyms.length - 1; i >= 0; i--) {
-    const s = pSyms[i];
-    s.t += 0.02;
-    s.y -= s.riseSpeed;
-    s.x += Math.sin(s.phase + s.t * s.freqX * Math.PI) * 0.8;
-    s.life -= 0.004;
-    if (s.life <= 0 || s.y < -60) pSyms.splice(i, 1);
-  }
-}
-
-function _drawSyms() {
-  if (!pSyms.length) return;
-  ctx.save();
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-  for (const s of pSyms) {
-    ctx.globalAlpha = Math.max(0, Math.min(1, s.life));
-    ctx.fillStyle   = s.color;
-    ctx.font        = `${s.size}px "VT323", monospace`;
-    ctx.fillText(s.ch, s.x, s.y);
-  }
-  ctx.restore();
 }
 
 // ── Edge navigation: правый край → назад на main ──────────────────────────
@@ -471,33 +410,8 @@ function animate() {
 
   const sx = W / BG_W, sy = H / BG_H;
 
-  // ── Hero movement ────────────────────────────────────────────────────────
-  if (!hero.praying) {
-    if (keysHeld['ArrowLeft']  || keysHeld['a'] || keysHeld['ф']) {
-      hero.x       = Math.max(120, hero.x - HERO_SPEED);
-      hero.facing  = 'left';
-      hero.walking = true;
-      hero.targetX = null;
-    } else if (keysHeld['ArrowRight'] || keysHeld['d'] || keysHeld['в']) {
-      hero.x       = Math.min(BG_W - 120, hero.x + HERO_SPEED);
-      hero.facing  = 'right';
-      hero.walking = true;
-      hero.targetX = null;
-    } else if (hero.targetX !== null) {
-      const dx = hero.targetX - hero.x;
-      if (Math.abs(dx) > HERO_SPEED) {
-        hero.x      += Math.sign(dx) * HERO_SPEED;
-        hero.facing  = dx > 0 ? 'right' : 'left';
-        hero.walking = true;
-      } else {
-        hero.x       = hero.targetX;
-        hero.targetX = null;
-        hero.walking = false;
-      }
-    } else {
-      hero.walking = false;
-    }
-  }
+  // ── Hero movement (общая логика из src/hero.js) ─────────────────────────
+  tickHeroMove(hero, keysHeld, { minX: 120, maxX: BG_W - 120 });
 
   // ── Placed achievement icons (кроме перетаскиваемой) ─────────────────────
   for (const [id, p] of Object.entries(S.placed)) {
@@ -510,47 +424,19 @@ function animate() {
     ctx.drawImage(img, sp.x - sp.size / 2, sp.y - sp.size / 2, sp.size, sp.size);
   }
 
-  // ── Hero ─────────────────────────────────────────────────────────────────
-  if (hero.praying) {
-    const heroImg = heroImgS;
-    const hW  = HERO_SIT_W * sx;
-    const hH  = HERO_SIT_H * sy;
-    const hpX = hero.x * sx;
-    const hpY = hero.y * sy;
-    if (heroImg.complete && heroImg.naturalWidth) {
-      const frameW    = heroImg.naturalWidth / HERO_FRAMES;
-      const frameTick = 20;
-      const frame     = Math.floor(tick / frameTick) % HERO_FRAMES;
-      ctx.drawImage(heroImg,
-        frame * frameW, 0, frameW, heroImg.naturalHeight,
-        hpX - hW / 2, hpY - hH, hW, hH);
-    }
-  } else {
-    const heroImg = hero.facing === 'left' ? heroImgL : heroImgR;
-    const yOff    = hero.facing === 'left' ? HERO_LEFT_YOFF : 0;
-    const hpX     = hero.x * sx;
-    const hpY     = (hero.y + yOff) * sy;
-    const hW      = HERO_STAND_W * sx;
-    const hH      = HERO_STAND_H * sy;
-    if (heroImg.complete && heroImg.naturalWidth) {
-      const frameW    = heroImg.naturalWidth / HERO_FRAMES;
-      const frameTick = hero.walking ? 6 : 14;
-      const frame     = Math.floor(tick / frameTick) % HERO_FRAMES;
-      ctx.drawImage(heroImg,
-        frame * frameW, 0, frameW, heroImg.naturalHeight,
-        hpX - hW / 2, hpY - hH, hW, hH);
-    } else {
-      ctx.fillStyle = '#c87040';
-      ctx.fillRect(hpX - 16 * sx, hpY - hH, 32 * sx, hH);
-    }
-  }
+  // ── Hero (общий drawHero из src/hero.js) ────────────────────────────────
+  drawHero(ctx, hero, sx, sy, tick);
 
-  // ── Meditation: phase + particles ───────────────────────────────────────
+  // ── Meditation: phase + particles (общий fx из src/meditation-fx.js) ────
   if (hero.praying && meditationPhase < 1) meditationPhase = Math.min(meditationPhase + 0.015, 1);
   if (!hero.praying && meditationPhase > 0) meditationPhase = Math.max(meditationPhase - 0.015, 0);
-  if (hero.praying && tick % 24 === 0) _spawnSym();
-  _symTick();
-  _drawSyms();
+  if (hero.praying && tick % 24 === 0) {
+    const px = hero.x * sx;
+    const py = (hero.y - HERO_SIT_H * 0.8) * sy;
+    fx.spawn(px, py);
+  }
+  fx.tick();
+  fx.draw(ctx);
 
   // ── Dragged icon follows cursor ─────────────────────────────────────────
   if (_drag && _drag.moved) {
@@ -641,18 +527,14 @@ function createEl() {
   canvas.addEventListener('touchmove',  e => { e.preventDefault(); onMove(e); }, { passive: false });
   canvas.addEventListener('touchend',   e => { e.preventDefault(); onUp(e);   }, { passive: false });
 
-  // Keyboard — WASD / стрелки + сит/стенд
+  // Keyboard — общие helpers из src/hero.js
   document.addEventListener('keydown', e => {
     if (state.activeScreen !== SCREENS.ACHIEVEMENTS) return;
-    const k = e.key.toLowerCase();
-    // sit/stand
-    if (k === 'arrowdown' || k === 's' || k === 'ы') { sitDown(); return; }
-    if (k === 'arrowup'   || k === 'w' || k === 'щ') { standUp(); return; }
-    // любая ходьба поднимает
-    if (hero.praying && (k === 'arrowleft' || k === 'a' || k === 'ф' ||
-                         k === 'arrowright' || k === 'd' || k === 'в')) {
-      standUp();
-    }
+    const act = meditationKeyAction(e.key);
+    if (act === 'sit')   { sitDown();  return; }
+    if (act === 'stand') { standUp();  return; }
+    // Ходьба в медитации — поднимает.
+    if (hero.praying && isWalkKey(e.key)) standUp();
     keysHeld[e.key] = true;
   });
   document.addEventListener('keyup', e => {
@@ -691,7 +573,7 @@ export async function openSceneAchievements() {
   hero.targetX = null;
   hero.walking = false;
   hero.praying = false;
-  pSyms        = [];
+  fx.clear();
   meditationPhase = 0;
 
   // Enter на achievements → возврат на main.
@@ -712,7 +594,7 @@ export function closeSceneAchievements() {
   if (_pickerEl) closePicker();
   _drag = null;
   hero.praying = false;
-  pSyms = [];
+  fx.clear();
   meditationPhase = 0;
   state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';

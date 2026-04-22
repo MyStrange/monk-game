@@ -23,6 +23,14 @@ import {
   MONK_NEED_ROCKS_MSG,
   INSCRIPTION_MSGS, INSCRIPTION_ITEM_MSGS,
 } from '../src/dialogue.js';
+// Общий монах — спрайты, размеры, движение, отрисовка, клавиши.
+import { makeHero, tickHeroMove, drawHero,
+         meditationKeyAction, isWalkKey,
+         HERO_STAND_H, HERO_STAND_W, HERO_SIT_W, HERO_SIT_H,
+         HERO_LEFT_YOFF, HERO_FRAMES, HERO_SPEED,
+         heroImgR, heroImgL, heroImgS }                      from '../src/hero.js';
+// Палитра/символы медитации — общие со всеми сценами с медитацией.
+import { THAI_CHARS, PURPLE_PALETTE }                        from '../src/meditation-fx.js';
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let canvas, ctx, msgEl;
@@ -53,32 +61,18 @@ const INSCRIPTION_OVERLAY = { x: 537, y: 494, w: 479, h: 620 };
 const INSCRIPTION_TARGET  = { x: 566, y: 593, w: 421, h: 149 };
 
 // ── Sprites ────────────────────────────────────────────────────────────────
-// hero_left/right.png: 1376×348, 5 frames (275×348 each)
-// hero_sit.png:        1376×204, 5 frames (275×204 each)
+// hero_left/right.png, hero_sit.png — импортированы из src/hero.js
+//   (общие спрайты с одинаковыми размерами во всех сценах).
 // cat.png:             2048×338, 5 frames (~410×338)
 // monk_red.png:        2000×464, 5 frames (400×464)
-const heroImgR = new Image(); heroImgR.src = 'assets/sprites/hero_right.png';
-const heroImgL = new Image(); heroImgL.src = 'assets/sprites/hero_left.png';
-const heroImgS = new Image(); heroImgS.src = 'assets/sprites/hero_sit.png';
 const catSheet  = new Image(); catSheet.src  = 'assets/sprites/cat.png';
 const monkSheet = new Image(); monkSheet.src = 'assets/sprites/monk_red.png';
 
 // ── Scene constants (in BG px, BG = 2000×1116) ────────────────────────────
+// HERO_* размеры, HERO_SPEED, HERO_FRAMES, HERO_LEFT_YOFF — из src/hero.js.
 const BG_W = 2000, BG_H = 1116;
 const GROUND_Y      = 920;   // единая плоскость героя/монаха/кота
 const HERO_GROUND_Y = GROUND_Y;
-const HERO_SPEED = 5;  // BG px per frame
-
-// Hero display size — proportional to sprite frame ratio (275/348 = 0.791)
-const HERO_STAND_H = 420;
-// Vertical offset compensation for left sprite (BG px, positive = lower).
-// Left sprite last visible row = 317, right = 344 → diff 27px × (420/348) ≈ 33 BG px
-const HERO_LEFT_YOFF = 33;
-const HERO_STAND_W = Math.round(HERO_STAND_H * 275 / 348); // 332
-// Sit sprite ratio: 275/204 = 1.348 — keep same width, compute height
-const HERO_SIT_W   = HERO_STAND_W;                          // 332
-const HERO_SIT_H   = Math.round(HERO_SIT_W * 204 / 275);    // 246
-const HERO_FRAMES  = 5;
 
 // Cat display size — frame ratio ~410/338 = 1.21
 const CAT_H = 145;
@@ -123,35 +117,23 @@ let inscriptionGlow = 0;
 let catHidden = false;
 
 // ── Hero ───────────────────────────────────────────────────────────────────
-const hero = {
-  x: 300, y: HERO_GROUND_Y,
-  targetX:  null,   // click-to-move target (BG px)
-  facing:   'right',
-  walking:  false,
-  praying:  false,
-  frame: 0, frameTick: 0,
-};
+// Общий makeHero() из src/hero.js — единое состояние на все сцены.
+const hero = makeHero({ x: 300, y: HERO_GROUND_Y });
 
 // Held keys for smooth movement
 const keysHeld = {};
 
 // ── Meditation ─────────────────────────────────────────────────────────────
+// THAI_CHARS и PURPLE_PALETTE — из src/meditation-fx.js.
+// Главный _spawnSym / _symTick — свой, с path-вариациями, drag, delivery.
+// Простой fx не подходит: здесь символы нужно ловить, таскать и доставлять
+// на надпись. См. тж. scenes/achievements.js — там простой createMeditationFx.
 let meditationPhase  = 0;
 let pSyms    = [];
 let mParticles = [];
 let draggedSym = null;
 let _justDelivered = false;  // блокирует click после mouseup с _deliverSym
 let statueParticles = [];  // вспышки при доставке символа
-
-const THAI_CHARS = 'ธมอนภวตสกรคทยชพระศษสหฬาิีุูเแโใไ';
-const PURPLE_PALETTE = [
-  '#ffffff','#f0e8ff','#e2d4ff','#c8aaff',
-  '#b888ff','#9966ee','#ddaaff','#ffe8ff','#ccbbff','#aa88ee',
-];
-
-// (_makeThaiGlyph и кэши _thaiGlyph* удалены — процедурная надпись
-// полностью заменена спрайтом INSCRIPTION_OVERLAY. THAI_CHARS всё ещё
-// используется для спавна летящих символов в медитации.)
 
 // ── Ambient fireflies (240, yellow pixel, varied sizes + glow) ────────────
 const _SIZES = [1,1,2,2,2,2,3,3,3,4,5];
@@ -741,33 +723,8 @@ function animate() {
     ctx.globalAlpha = 1;
   }
 
-  // ── Hero movement ─────────────────────────────────────────────────────────
-  if (!hero.praying) {
-    if (keysHeld['ArrowLeft']  || keysHeld['a'] || keysHeld['ф']) {
-      hero.x       = Math.max(80, hero.x - HERO_SPEED);
-      hero.facing  = 'left';
-      hero.walking = true;
-      hero.targetX = null;
-    } else if (keysHeld['ArrowRight'] || keysHeld['d'] || keysHeld['в']) {
-      hero.x       = Math.min(BG_W - 80, hero.x + HERO_SPEED);
-      hero.facing  = 'right';
-      hero.walking = true;
-      hero.targetX = null;
-    } else if (hero.targetX !== null) {
-      const dx = hero.targetX - hero.x;
-      if (Math.abs(dx) > HERO_SPEED) {
-        hero.x      += Math.sign(dx) * HERO_SPEED;
-        hero.facing  = dx > 0 ? 'right' : 'left';
-        hero.walking = true;
-      } else {
-        hero.x       = hero.targetX;
-        hero.targetX = null;
-        hero.walking = false;
-      }
-    } else {
-      hero.walking = false;
-    }
-  }
+  // ── Hero movement (общая логика из src/hero.js) ─────────────────────────
+  tickHeroMove(hero, keysHeld, { minX: 80, maxX: BG_W - 80 });
 
   // ── Fireflies: yellow pixel rects with glow ──────────────────────────────
   for (const f of flies) {
@@ -817,22 +774,8 @@ function animate() {
   }
 
   // ── Hero — рисуется после монаха/кота (ближе к камере) ───────────────────
-  const heroImg = hero.praying ? heroImgS : (hero.facing === 'left' ? heroImgL : heroImgR);
-  const hW  = hero.praying ? HERO_SIT_W   : HERO_STAND_W;
-  const hH  = hero.praying ? HERO_SIT_H   : HERO_STAND_H;
-  const heroYOff = (!hero.praying && hero.facing === 'left') ? HERO_LEFT_YOFF : 0;
-  const hp  = bgToCanvas(hero.x, hero.y + heroYOff);
-  if (heroImg.complete && heroImg.naturalWidth) {
-    const frameW   = heroImg.naturalWidth / HERO_FRAMES;
-    const frameTick = hero.praying ? 20 : 10;
-    const frame    = Math.floor(tick / frameTick) % HERO_FRAMES;
-    ctx.drawImage(heroImg,
-      frame * frameW, 0, frameW, heroImg.naturalHeight,
-      hp.x - (hW / 2) * sx, hp.y - hH * sy, hW * sx, hH * sy);
-  } else {
-    ctx.fillStyle = '#c87040';
-    ctx.fillRect(hp.x - 16 * sx, hp.y - hH * sy, 32 * sx, hH * sy);
-  }
+  // Общий drawHero() из src/hero.js.
+  drawHero(ctx, hero, sx, sy, tick);
 
   // ── Cat burying timer ─────────────────────────────────────────────────────
   if (catBurying) {
@@ -942,11 +885,12 @@ function animate() {
 }
 
 // ── Keyboard ───────────────────────────────────────────────────────────────
+// Общие helpers из src/hero.js — одни и те же клавиши во всех сценах.
 function _onKey(e) {
   if (state.activeScreen !== SCREENS.MAIN) return;
-  const k = e.key.toLowerCase();
-  if (k === 'arrowdown' || k === 's' || k === 'ы') sitDown();
-  if (k === 'arrowup'   || k === 'w' || k === 'щ') standUp();
+  const act = meditationKeyAction(e.key);
+  if (act === 'sit')   sitDown();
+  if (act === 'stand') standUp();
 }
 
 // ── Edge navigation (левый край → сцена достижений) ───────────────────────
