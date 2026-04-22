@@ -8,7 +8,8 @@
 import { state }                                            from '../src/state.js';
 import { SCREENS }                                          from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showError,
-         setCursor, edgeNavMode, tryEdgeNavClick }          from '../src/utils.js';
+         setCursor, edgeNavMode, tryEdgeNavClick,
+         setDefaultEnterFor }                                from '../src/utils.js';
 import { leaveMain, resumeMain }                            from './main.js';
 import { SaveManager }                                      from '../src/save.js';
 import { ACHIEVEMENT_DEFS, getUnlockedIds,
@@ -692,6 +693,9 @@ export async function openSceneAchievements() {
   hero.praying = false;
   pSyms        = [];
   meditationPhase = 0;
+
+  // Enter на achievements → возврат на main.
+  setDefaultEnterFor('achievements', 'main');
 
   // ── Achievement: заглянул в комнату с полками ────────────────────────
   trackShelfVisit();

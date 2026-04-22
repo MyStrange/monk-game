@@ -88,18 +88,36 @@ export function setEdgeNavTarget(scene) {
 }
 export function clearEdgeNavTarget() { _edgeNavTarget = null; }
 
+// Default Enter-target per active scene. Даже если мышь не у края — Enter
+// переключит на дефолтный «соседний» экран. Заполняется из scene-модулей:
+//   setDefaultEnterFor('main', 'achievements');
+//   setDefaultEnterFor('achievements', 'main');
+const _defaultEnterMap = Object.create(null);
+export function setDefaultEnterFor(scene, target) {
+  if (!scene) return;
+  if (target) _defaultEnterMap[scene] = target;
+  else delete _defaultEnterMap[scene];
+}
+
 let _enterKeyInstalled = false;
 function _installEnterKeyOnce() {
   if (_enterKeyInstalled) return;
   _enterKeyInstalled = true;
   document.addEventListener('keydown', async e => {
     if (e.key !== 'Enter') return;
-    if (!_edgeNavTarget) return;
     // Не перехватываем если пользователь печатает в поле ввода
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+
+    // 1) приоритет — активная edge-цель (мышь у края)
+    let target = _edgeNavTarget;
+    // 2) иначе — дефолтный переход для текущей сцены
+    if (!target) {
+      const { state } = await import('./state.js');
+      target = _defaultEnterMap[state.activeScreen];
+    }
+    if (!target) return;
     e.preventDefault();
-    const target = _edgeNavTarget;
     const { openScene } = await import('./nav.js');
     openScene(target);
   });

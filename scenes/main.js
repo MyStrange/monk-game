@@ -3,7 +3,8 @@
 import { state }           from '../src/state.js';
 import { SCREENS, INPUT }  from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showChoiceIn, isStoryActive,
-         CURSOR_DEF, CURSOR_PTR, setCursor, setEdgeNavTarget } from '../src/utils.js';
+         CURSOR_DEF, CURSOR_PTR, setCursor, setEdgeNavTarget,
+         setDefaultEnterFor }                                 from '../src/utils.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
@@ -970,6 +971,8 @@ export function resumeMain() {
   SaveManager.save();
   // Кот возвращается при любом повторном входе — обида кота не постоянная.
   catHidden = false;
+  // Enter без наведения на край — переход на achievements.
+  setDefaultEnterFor('main', 'achievements');
   if (state.activeScreen === SCREENS.MAIN && !animId) animate();
 }
 
@@ -993,6 +996,9 @@ export async function initMain() {
   }
   ctx = canvas.getContext('2d');
   setHotbarMsgEl(msgEl);
+
+  // Enter на главной без наведения на край → переход в achievements.
+  setDefaultEnterFor('main', 'achievements');
 
   // Pray button — только на мобильном (скрыт на десктопе через CSS).
   // Работает как диспетчер: бросает событие 'app:meditate' и каждая сцена,
