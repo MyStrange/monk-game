@@ -26,19 +26,34 @@ export const CURSOR_ARROW_UP    = `url("${_SVG_ARU}") 10 0, pointer`;
 // Всегда выставляем курсор явно (не через CSS-fallback), чтобы работало
 // корректно во всех сценах включая те, где нет <canvas>.
 //
+// Важно: CSS-правило `html,body,#wrap{cursor:url(bud)...}` наследуется
+// canvas-ом через `#wrap`. Inline-стиль на body не пробивает правило #wrap
+// для дочерних canvas. Поэтому мы ВЫСТАВЛЯЕМ inline-стиль и на body, и на
+// #wrap — так канвасы внутри #wrap наследуют нужный курсор.
+//
 // Режимы:
 //   setCursor(false / 'def' / null)     → обычный (бутон)
 //   setCursor(true  / 'ptr')            → hover (лотос)
 //   setCursor('left' | 'right' | 'up')  → стрелка перехода между сценами
-export function setCursor(mode) {
-  let css;
-  if (mode === true || mode === 'ptr')   css = CURSOR_PTR;
-  else if (mode === 'left')              css = CURSOR_ARROW_LEFT;
-  else if (mode === 'right')             css = CURSOR_ARROW_RIGHT;
-  else if (mode === 'up')                css = CURSOR_ARROW_UP;
-  else                                   css = CURSOR_DEF;
-  document.body.style.cursor = css;
+let _cursorMode = 'def';
+let _wrapEl = null;
+function _getWrap() {
+  if (!_wrapEl) _wrapEl = document.getElementById('wrap');
+  return _wrapEl;
 }
+export function setCursor(mode) {
+  let css, name;
+  if (mode === true || mode === 'ptr')   { css = CURSOR_PTR;         name = 'ptr'; }
+  else if (mode === 'left')              { css = CURSOR_ARROW_LEFT;  name = 'left'; }
+  else if (mode === 'right')             { css = CURSOR_ARROW_RIGHT; name = 'right'; }
+  else if (mode === 'up')                { css = CURSOR_ARROW_UP;    name = 'up'; }
+  else                                   { css = CURSOR_DEF;         name = 'def'; }
+  _cursorMode = name;
+  document.body.style.cursor = css;
+  const w = _getWrap();
+  if (w) w.style.cursor = css;
+}
+export function getCursorMode() { return _cursorMode; }
 
 // ── Edge navigation helper — переход между сценами через край экрана ───────
 // Единая точка для всех сцен: левый/правый/верхний край ведёт к другой сцене.
@@ -138,9 +153,11 @@ export function initHoverAnim() {
     ring.style.left = e.clientX + 'px';
     ring.style.top  = e.clientY + 'px';
     const el = document.elementFromPoint(e.clientX, e.clientY);
+    // Браузер нормализует CSS-строку при чтении body.style.cursor — строгое
+    // сравнение не работает. Отслеживаем режим через счётчик в setCursor.
     const isHot = el && (
       el.closest(SEL) ||
-      document.body.style.cursor === CURSOR_PTR
+      _cursorMode === 'ptr'
     );
     if (isHot) { ring.style.display = 'block'; ring.classList.add('active'); }
     else        { ring.style.display = 'none';  ring.classList.remove('active'); }
