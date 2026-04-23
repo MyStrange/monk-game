@@ -22,7 +22,7 @@ import { AudioSystem }                                      from '../src/audio.j
 import { openScene }                                        from '../src/nav.js';
 import { makeHero, tickHeroMove, drawHero,
          meditationKeyAction, isWalkKey,
-         heroOptsForBG }                                    from '../src/hero.js';
+         heroOptsForBG, HERO_GROUND_RATIO }                 from '../src/hero.js';
 import { createMeditationFx }                               from '../src/meditation-fx.js';
 
 // ── Scene persistent state ─────────────────────────────────────────────────
@@ -67,10 +67,24 @@ const SLOTS_PER_SHELF = 10;
 // Спрайты/движение/клавиши — из src/hero.js. Размер монаха пропорционален
 // BG shelf.png (775 px высотой) — визуально такой же как на главной
 // (BG 1116 px). Без этого монах в кадре казался бы в 1.44× больше.
+//
+// GROUND_Y_BG — где на shelf.png трава под шкафом (монах стоит на ней).
+// Это 720 из 775 BG-px = 0.929 высоты BG. На главной плоскость 0.824 —
+// если просто отрисовать как есть, монах «упал» бы на 10% ниже по экрану.
+// Поэтому в createEl() мы сдвигаем BG+canvas вверх на эту разницу:
+// монах остаётся стоять на траве шкафа, но визуально это становится
+// той же плоскостью, что и на главной. См. SCENE_Y_SHIFT ниже.
 const GROUND_Y_BG = 720;
 const HERO_OPTS   = heroOptsForBG(BG_H);   // { standH, standW, sitH, sitW, leftYOff, frames }
 const hero = makeHero({ x: BG_W - 240, y: GROUND_Y_BG });
 hero.facing = 'left';
+
+// Вертикальный сдвиг (в долях высоты viewport), чтобы трава shelf.png
+// (при 0.929 BG_H) оказалась на той же доле экрана, что и земля main
+// (0.824 BG_H). Применяется через CSS transform к BG-img и canvas —
+// оба сдвигаются вместе, координаты совпадают, шкаф и иконки остаются
+// согласованы. Нижняя пустая полоса закрывается зелёным фоном scene-root.
+const SCENE_Y_SHIFT = (GROUND_Y_BG / BG_H) - HERO_GROUND_RATIO;  // ≈ 0.1046
 
 const keysHeld = {};
 
@@ -489,6 +503,22 @@ function createEl() {
     withBack: false,
   });
   el = built.el; canvas = built.canvas; ctx = built.ctx; msgEl = built.msgEl;
+
+  // ── Выравниваем плоскость пола с главной ──────────────────────────────
+  // shelf.png имеет траву под шкафом на 0.929 BG-H; main имеет землю на
+  // 0.824 BG-H. Чтобы монах при переходе main↔achievements не прыгал
+  // вверх/вниз по экрану, сдвигаем BG-img и canvas одинаково вверх на
+  // SCENE_Y_SHIFT (≈10.5% высоты viewport). Оба слоя двигаются как
+  // единое целое — координаты не расходятся, иконки и шкафы остаются
+  // согласованы визуально. msgEl не трогаем — это UI-элемент.
+  //
+  // Пустая нижняя полоса после сдвига закрывается фоном el (тёмный
+  // лесной оттенок, чтобы создавать ощущение продолжающейся земли).
+  const shiftStyle = `translateY(-${(SCENE_Y_SHIFT * 100).toFixed(2)}%)`;
+  const bgImg      = built.bgImg;
+  if (bgImg) bgImg.style.transform = shiftStyle;
+  canvas.style.transform = shiftStyle;
+  el.style.background    = '#1d2813';   // тёмный лесной грунт (под травой)
 
   // Кэш rect вручную
   let rect = { left: 0, top: 0, width: 0, height: 0 };
