@@ -419,8 +419,10 @@ async function onTap(e, cx, cy) {
   const shelf = findShelf(cx, cy);
   if (shelf !== null) { openPicker(shelf); return; }
 
-  // Пустое место → шагаем
-  const bgX = cx * BG_W / W;
+  // Пустое место → шагаем. Конверсия через coverRect — иначе на не-16:9
+  // вьюпортах клик мапится не в ту BG-точку.
+  const R = coverRect(W, H, BG_W, BG_H);
+  const bgX = (cx - R.x) * BG_W / R.w;
   hero.targetX = Math.max(120, Math.min(BG_W - 120, bgX));
 }
 
@@ -433,7 +435,11 @@ function animate() {
   ctx.clearRect(0, 0, W, H);
   tick++;
 
-  const sx = W / BG_W, sy = H / BG_H;
+  // Cover-rect BG (shelf.png — object-fit:cover на <img>). Все канвас-
+  // рисования считаются в этих координатах — иначе герой «плавает»
+  // относительно полок на не-16:9 вьюпортах.
+  const R  = coverRect(W, H, BG_W, BG_H);
+  const sx = R.w / BG_W, sy = R.h / BG_H;
 
   // ── Hero movement (общая логика из src/hero.js) ─────────────────────────
   // mv.edge срабатывает только в момент, когда монах УПЁРСЯ в границу,
@@ -448,6 +454,7 @@ function animate() {
   }
 
   // ── Placed achievement icons (кроме перетаскиваемой) ─────────────────────
+  // slotPos() внутри уже считается через coverRect.
   for (const [id, p] of Object.entries(S.placed)) {
     if (_drag && _drag.id === id && _drag.moved) continue;
     const def = getAchievementById(id);
@@ -459,14 +466,19 @@ function animate() {
   }
 
   // ── Hero (общий drawHero с масштабированными размерами для shelf BG) ────
+  // drawHero рисует от (0,0) canvas — сдвигаем origin в cover-rect, чтобы
+  // герой вставал на ту же визуальную линию, что и фон.
+  ctx.save();
+  ctx.translate(R.x, R.y);
   drawHero(ctx, hero, sx, sy, tick, HERO_OPTS);
+  ctx.restore();
 
   // ── Meditation: phase + particles (общий fx из src/meditation-fx.js) ────
   if (hero.praying && meditationPhase < 1) meditationPhase = Math.min(meditationPhase + 0.015, 1);
   if (!hero.praying && meditationPhase > 0) meditationPhase = Math.max(meditationPhase - 0.015, 0);
   if (hero.praying && tick % 24 === 0) {
-    const px = hero.x * sx;
-    const py = (hero.y - HERO_OPTS.sitH * 0.8) * sy;
+    const px = R.x + hero.x * sx;
+    const py = R.y + (hero.y - HERO_OPTS.sitH * 0.8) * sy;
     fx.spawn(px, py);
   }
   fx.tick();
@@ -665,6 +677,10 @@ export function closeSceneAchievements(opts = {}) {
   state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
+  // Сброс зажатых клавиш — если игрок перешёл через край удерживая →,
+  // keyup по возвращении уже может не прилететь, и в сцене останется
+  // стабильный true в keysHeld. Чистим.
+  for (const k in keysHeld) keysHeld[k] = false;
   SaveManager.setScene('achievements', S);
   resumeMain(opts);
 }

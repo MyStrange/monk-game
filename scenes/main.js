@@ -5,6 +5,7 @@ import { SCREENS, INPUT }  from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showChoiceIn, isStoryActive,
          CURSOR_DEF, CURSOR_PTR, setCursor, setEdgeNavTarget,
          setDefaultEnterFor, OPPOSITE_EDGE }                  from '../src/utils.js';
+import { coverRect }       from '../src/scene-base.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
@@ -34,11 +35,14 @@ import { THAI_CHARS, PURPLE_PALETTE }                        from '../src/medita
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let canvas, ctx, msgEl;
+let bgImg;   // <img id="main-bg"> — фон через object-fit:cover (в HTML)
 let W = 0, H = 0;
 
-// ── Background ─────────────────────────────────────────────────────────────
-const bgImg = new Image();
-bgImg.src = 'assets/bg/main.png';
+// Кэш cover-rect: BG на экране может быть шире/выше canvas (cover обрезает
+// лишнее). Все рисования героя/монаха/котов/символов идут через это.
+// Пересчитывается только при resize — не надо дёргать getBoundingClientRect
+// по 60fps.
+let _bgR = { x: 0, y: 0, w: 0, h: 0 };
 
 // Надпись на постаменте Будды — видна только в медитации.
 // Две версии: dim (до активации), bright (после 5 доставок символов).
@@ -154,11 +158,17 @@ let monkMsgIdx = 0;
 const interactCounts = {};
 
 // ── Coordinate scaling ─────────────────────────────────────────────────────
+// BG рендерится через <img class="scene-bg"> c object-fit:cover — AR фона
+// сохраняется. Все канвас-координаты должны считаться через _bgR, иначе
+// герой «висит в воздухе» относительно фона на не-16:9 вьюпортах.
 function bgToCanvas(bgX, bgY) {
-  return { x: bgX * W / BG_W, y: bgY * H / BG_H };
+  return { x: _bgR.x + bgX * _bgR.w / BG_W, y: _bgR.y + bgY * _bgR.h / BG_H };
+}
+function canvasToBG(cx, cy) {
+  return { x: (cx - _bgR.x) * BG_W / _bgR.w, y: (cy - _bgR.y) * BG_H / _bgR.h };
 }
 function hitZoneBG(cx, cy) {
-  const bx = cx * BG_W / W, by = cy * BG_H / H;
+  const { x: bx, y: by } = canvasToBG(cx, cy);
 
   // Клик по надписи — только в медитации. ВСЕГДА узкая полоска рун
   // (INSCRIPTION_TARGET), и до и после активации. Раньше после активации
@@ -508,8 +518,8 @@ function onTap(cx, cy) {
 
   // Empty click: walk to clicked position
   if (!hero.praying) {
-    const bgX = Math.max(80, Math.min(BG_W - 80, cx * BG_W / W));
-    hero.targetX = bgX;
+    const { x: bgX } = canvasToBG(cx, cy);
+    hero.targetX = Math.max(80, Math.min(BG_W - 80, bgX));
   }
   trackEmptyClick();
 }
@@ -551,26 +561,21 @@ let _inscriptionTwitch = 0;   // 0..1 — текущая энергия дрож
 function _pointInInscription(cx, cy) {
   // Надпись видима только в медитации — иначе дёргать нечего
   if (meditationPhase <= 0) return false;
-  const sx = W / BG_W, sy = H / BG_H;
-  const ox = INSCRIPTION_OVERLAY.x * sx;
-  const oy = INSCRIPTION_OVERLAY.y * sy;
-  const ow = INSCRIPTION_OVERLAY.w * sx;
-  const oh = INSCRIPTION_OVERLAY.h * sy;
+  // Конвертим клик в BG-координаты (cover-aware) и проверяем в них.
   // Ограничиваем по верхней половине сприта (где сами руны), чтобы
   // водное отражение внизу не ловило клики.
-  return cx >= ox && cx < ox + ow && cy >= oy && cy < oy + oh * 0.6;
+  const { x: bx, y: by } = canvasToBG(cx, cy);
+  const o = INSCRIPTION_OVERLAY;
+  return bx >= o.x && bx < o.x + o.w && by >= o.y && by < o.y + o.h * 0.6;
 }
 
 // Зона доставки символа — узкая полоска рун внутри спрайта.
 // Заменяет старую радиальную проверку (INSCRIPTION_HIT_R).
 function _pointInInscriptionTarget(cx, cy) {
   if (meditationPhase <= 0) return false;
-  const sx = W / BG_W, sy = H / BG_H;
-  const tx = INSCRIPTION_TARGET.x * sx;
-  const ty = INSCRIPTION_TARGET.y * sy;
-  const tw = INSCRIPTION_TARGET.w * sx;
-  const th = INSCRIPTION_TARGET.h * sy;
-  return cx >= tx && cx < tx + tw && cy >= ty && cy < ty + th;
+  const { x: bx, y: by } = canvasToBG(cx, cy);
+  const t = INSCRIPTION_TARGET;
+  return bx >= t.x && bx < t.x + t.w && by >= t.y && by < t.y + t.h;
 }
 
 // Проверить, попадает ли точка по живому символу (для курсора)
@@ -599,7 +604,7 @@ function _spawnDissolveFrom(px, py, color, count = 80) {
   const tx  = INSCRIPTION_TARGET.x + INSCRIPTION_TARGET.w / 2;
   const ty  = INSCRIPTION_TARGET.y + INSCRIPTION_TARGET.h / 2;
   const tp  = bgToCanvas(tx, ty);
-  const csx = W / BG_W, csy = H / BG_H;
+  const csx = _bgR.w / BG_W, csy = _bgR.h / BG_H;
   const spd = Math.min(csx, csy);
   for (let i = 0; i < count; i++) {
     const sxPx = px + (Math.random() - 0.5) * 30;
@@ -657,7 +662,7 @@ function _deliverSym() {
       const tp2 = bgToCanvas(
         INSCRIPTION_TARGET.x + INSCRIPTION_TARGET.w / 2,
         INSCRIPTION_TARGET.y + INSCRIPTION_TARGET.h / 2);
-      const spd2 = Math.min(W / BG_W, H / BG_H);
+      const spd2 = Math.min(_bgR.w / BG_W, _bgR.h / BG_H);
       for (let i = 0; i < 40; i++) {
         const angle = Math.random() * Math.PI * 2;
         const v     = (2.4 + Math.random() * 5) * spd2;
@@ -685,11 +690,11 @@ function animate() {
   ctx.clearRect(0, 0, W, H);
   tick++;
 
-  // Background
-  // naturalWidth==0 на некоторых браузерах при ошибке загрузки даже если complete=true
-  if (bgImg.complete && bgImg.naturalWidth) ctx.drawImage(bgImg, 0, 0, W, H);
+  // Background рисуется CSS-ом через <img id="main-bg" object-fit:cover>.
+  // Canvas поверх, прозрачный. Все канвас-сущности считаются в cover-
+  // координатах _bgR (шкала _bgR.w/BG_W, сдвиг _bgR.x/_bgR.y).
 
-  const sx = W / BG_W, sy = H / BG_H;
+  const sx = _bgR.w / BG_W, sy = _bgR.h / BG_H;
 
   // ── Inscription overlay (видна только в медитации) ──────────────────────
   // Базовый слой — ВСЕГДА dim. Сверху — bright с модулированной alpha:
@@ -698,8 +703,8 @@ function animate() {
   //   • после активации (inscriptionReady): синусоидальный непрерывный
   //     пульс 0.55..1.0 → надпись «дышит», никогда не гаснет полностью.
   if (meditationPhase > 0 && inscriptionDimImg.complete && inscriptionDimImg.naturalWidth) {
-    const ox = INSCRIPTION_OVERLAY.x * sx;
-    const oy = INSCRIPTION_OVERLAY.y * sy;
+    const ox = _bgR.x + INSCRIPTION_OVERLAY.x * sx;
+    const oy = _bgR.y + INSCRIPTION_OVERLAY.y * sy;
     const ow = INSCRIPTION_OVERLAY.w * sx;
     const oh = INSCRIPTION_OVERLAY.h * sy;
     ctx.globalAlpha = meditationPhase;
@@ -746,8 +751,8 @@ function animate() {
     if (f.x < 0) f.x = BG_W; if (f.x > BG_W) f.x = 0;
     if (f.y < 0) f.y = BG_H * 0.5; if (f.y > BG_H * 0.5) f.y = 0;
     const alpha = 0.4 + f.brightness * 0.6;
-    const px    = Math.round(f.x * sx);
-    const py    = Math.round(f.y * sy);
+    const px    = Math.round(_bgR.x + f.x * sx);
+    const py    = Math.round(_bgR.y + f.y * sy);
     const fsz   = Math.max(1, Math.round(f.sz * sx));
     ctx.save();
     ctx.shadowColor = `rgba(255,210,40,${alpha})`;
@@ -786,8 +791,12 @@ function animate() {
   }
 
   // ── Hero — рисуется после монаха/кота (ближе к камере) ───────────────────
-  // Общий drawHero() из src/hero.js.
+  // Общий drawHero() из src/hero.js. Сдвигаем canvas в cover-origin
+  // (_bgR.x,_bgR.y) — drawHero внутри считает через sx/sy от 0,0.
+  ctx.save();
+  ctx.translate(_bgR.x, _bgR.y);
   drawHero(ctx, hero, sx, sy, tick);
+  ctx.restore();
 
   // ── Cat burying timer ─────────────────────────────────────────────────────
   if (catBurying) {
@@ -915,8 +924,12 @@ function _onKey(e) {
 // по верхним 65% высоты, чтобы не мешать кусту в нижнем углу).
 const _EDGE_LEFT_PX = 60;
 const _MAIN_NAV = { left: { scene: 'achievements' } };
+// NOTE: раньше проверяли `meditationPhase <= 0` — но phase затухает ~800ms
+// после standUp(), и edge-nav в этом окне не срабатывал. leaveMain()/standUp()
+// и так чистят pSyms/mParticles/draggedSym, так что переход в соседнюю
+// сцену во время fade-out безопасен. Убрали — теперь → сразу работает.
 function _canEdgeNav() {
-  return !hero.praying && meditationPhase <= 0 && !draggedSym && !isStoryActive(msgEl);
+  return !hero.praying && !draggedSym && !isStoryActive(msgEl);
 }
 function _isLeftEdge(cx, cy) {
   if (!_canEdgeNav()) return false;
@@ -971,12 +984,17 @@ export function leaveMain() {
   // Прерываем анимацию закопки землёй: иначе при возврате в main тик-счётчик
   // дотянется до 180 и выстрелит stale сообщение/подарок земли.
   if (catBurying) { catBurying = false; catBuryTimer = 0; }
+  // Сброс зажатых клавиш: если игрок зашёл в соседнюю сцену через край,
+  // удерживая →, keyup по возвращении уже не прилетит, и монах застрянет в
+  // бесконечном движении. Чистим всё состояние.
+  for (const k in keysHeld) keysHeld[k] = false;
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
 export async function initMain() {
   canvas = document.getElementById('main-canvas');
   msgEl  = document.getElementById('main-msg');
+  bgImg  = document.getElementById('main-bg');
   if (!canvas || !msgEl) {
     console.error('main.js: missing #main-canvas or #main-msg');
     return;
@@ -1008,6 +1026,9 @@ export async function initMain() {
     W = canvas.width  = wrap.offsetWidth;
     H = canvas.height = wrap.offsetHeight;
     _cRect = canvas.getBoundingClientRect();
+    // Пересчитываем cover-rect фона. Всё что рисуется на canvas должно
+    // через него считаться, иначе герой «плавает» относительно фона.
+    _bgR = coverRect(W, H, BG_W, BG_H);
   }
   resize();
   window.addEventListener('resize', resize);
@@ -1102,7 +1123,9 @@ export async function initMain() {
     if (!document.hidden && state.activeScreen === SCREENS.MAIN && !animId) animate();
   });
 
-  // Ждём загрузки всех спрайтов — чтобы сцена появилась без рывков
+  // Ждём загрузки всех спрайтов — чтобы сцена появилась без рывков.
+  // bgImg — DOM-картинка из index.html, браузер загружает её параллельно,
+  // здесь только ждём complete (если ещё не готова).
   const _sprites = [bgImg, heroImgR, heroImgL, heroImgS, catSheet, monkSheet];
   if (!_sprites.every(img => img.complete && img.naturalWidth)) {
     showLoading('...');

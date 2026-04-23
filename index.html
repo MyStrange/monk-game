@@ -154,7 +154,11 @@
 <!-- Game wrap — все сцены внутри -->
 <div id="wrap">
 
-  <!-- Main scene -->
+  <!-- Main scene. Фон — <img> c object-fit:cover, чтобы AR сохранялся
+       как у других сцен. Canvas поверх, прозрачный, рисует героя/котов/
+       символы в cover-координатах (см. coverRect в src/scene-base.js). -->
+  <img id="main-bg" src="assets/bg/main.png"
+       style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
   <canvas id="main-canvas"></canvas>
   <div id="main-msg" class="scene-msg"></div>
   <button id="pray-btn" class="pray-btn" title="Медитировать">มี</button>
@@ -163,6 +167,6 @@
 
 <!-- Сцены создаются динамически из своих JS-модулей -->
 
-<script type="module" src="game.js?v=89" defer></script>
+<script type="module" src="game.js?v=90" defer></script>
 </body>
 </html>
