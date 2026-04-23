@@ -610,11 +610,17 @@ export async function openSceneAchievements(opts = {}) {
   // Edge-spawn: герой спаунится у того края, через который логически
   // вошёл. Это создаёт визуальное ощущение перехода через границу
   // экрана — ушёл слева main → появился у правой двери achievements.
+  //
+  // Важно: спаун ОТСТУПАЕТ от точной границы на EDGE_SPAWN_OFFSET пикс.
+  // Иначе tickHeroMove не сможет сгенерировать edge-событие для обратного
+  // перехода (условие edge = «prev < maxX && x === maxX» — если prev
+  // сразу равен maxX, событие не стреляет и герой «застревает» у края).
+  const EDGE_SPAWN_OFFSET = 20;
   if (opts.enterAt === 'left') {
-    hero.x      = 120;                 // minX
+    hero.x      = 120 + EDGE_SPAWN_OFFSET;
     hero.facing = 'right';
   } else if (opts.enterAt === 'right') {
-    hero.x      = BG_W - 120;          // maxX
+    hero.x      = BG_W - 120 - EDGE_SPAWN_OFFSET;
     hero.facing = 'left';
   } else {
     // Дефолт (back-button, прямой openScene без enterAt) — правая дверь.

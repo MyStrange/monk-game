@@ -942,13 +942,19 @@ export function resumeMain(opts = {}) {
 
   // Edge-spawn: при переходе через границу экрана монах спаунится на
   // соответствующем крае main, чтобы визуально «войти из-за кадра».
+  //
+  // EDGE_SPAWN_OFFSET — отступ от точной границы в BG-пикс., чтобы
+  // tickHeroMove мог повторно триггернуть edge-событие для обратного
+  // перехода (условие edge = «prev < maxX && x === maxX» требует движение
+  // в край, а не стоянку в нём).
+  const EDGE_SPAWN_OFFSET = 20;
   if (opts.enterAt === 'left') {
-    hero.x       = 80;                 // minX
+    hero.x       = 80 + EDGE_SPAWN_OFFSET;
     hero.facing  = 'right';
     hero.targetX = null;
     hero.walking = false;
   } else if (opts.enterAt === 'right') {
-    hero.x       = BG_W - 80;          // maxX
+    hero.x       = BG_W - 80 - EDGE_SPAWN_OFFSET;
     hero.facing  = 'left';
     hero.targetX = null;
     hero.walking = false;
