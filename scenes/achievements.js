@@ -22,7 +22,7 @@ import { AudioSystem }                                      from '../src/audio.j
 import { openScene }                                        from '../src/nav.js';
 import { makeHero, tickHeroMove, drawHero,
          meditationKeyAction, isWalkKey,
-         heroOptsForBG }                                    from '../src/hero.js';
+         heroOptsForBG, groundYForBG }                      from '../src/hero.js';
 import { createMeditationFx }                               from '../src/meditation-fx.js';
 
 // ── Scene persistent state ─────────────────────────────────────────────────
@@ -68,14 +68,13 @@ const SLOTS_PER_SHELF = 10;
 // BG shelf.png (775 px высотой) — визуально такой же как на главной
 // (BG 1116 px). Без этого монах в кадре казался бы в 1.44× больше.
 //
-// GROUND_Y_BG — где на shelf.png трава под шкафом (монах стоит на ней).
-// Это 720 из 775 BG-px ≈ 0.929 высоты BG. На главной плоскость 0.824 —
-// немного выше по экрану. Мы НЕ выравниваем эти плоскости через сдвиг
-// BG/canvas — такой сдвиг создавал видимую пустую полосу внизу экрана
-// и зрительно «ломал» композицию шкафа. Каждая сцена рисуется как есть,
-// монах стоит на реальной траве своей сцены. Визуальная разница высоты
-// при переходе main↔ach принимается как честная особенность разных BG.
-const GROUND_Y_BG = 720;
+// Ground plane: монах рисуется на доле 0.824 высоты viewport — точно
+// той же, что и на главной сцене (общая константа HERO_GROUND_RATIO
+// в src/hero.js). Это НЕ совпадает с травой под шкафом на shelf.png
+// (там 0.929), но это осознанное решение: при переходе main↔ach монах
+// остаётся на той же линии экрана, ни фон, ни canvas не сдвигаются —
+// поднимается только сам спрайт. Композиция шкафа не ломается.
+const GROUND_Y_BG = groundYForBG(BG_H);    // ≈ 639 из 775 = 0.824 BG
 const HERO_OPTS   = heroOptsForBG(BG_H);   // { standH, standW, sitH, sitW, leftYOff, frames }
 const hero = makeHero({ x: BG_W - 240, y: GROUND_Y_BG });
 hero.facing = 'left';
