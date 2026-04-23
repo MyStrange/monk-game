@@ -421,7 +421,13 @@ function animate() {
   const sx = W / BG_W, sy = H / BG_H;
 
   // ── Hero movement (общая логика из src/hero.js) ─────────────────────────
-  tickHeroMove(hero, keysHeld, { minX: 120, maxX: BG_W - 120 });
+  // mv.edge срабатывает только в момент, когда монах УПЁРСЯ в границу,
+  // удерживая клавишу в ту сторону. Если в эту сторону есть NAV-цель —
+  // автоматически переходим, без клика.
+  const mv = tickHeroMove(hero, keysHeld, { minX: 120, maxX: BG_W - 120 });
+  if (mv.edge && NAV[mv.edge]?.scene && !hero.praying) {
+    openScene(NAV[mv.edge].scene);
+  }
 
   // ── Placed achievement icons (кроме перетаскиваемой) ─────────────────────
   for (const [id, p] of Object.entries(S.placed)) {

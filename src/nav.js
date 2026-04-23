@@ -25,7 +25,27 @@ export const NAV_MAP = {
 
 export async function openScene(id) {
   const def = NAV_MAP[id];
-  if (!def || !def.open) return;
+  if (!def) return;
+
+  // Особый случай: main — НЕ открывается (open: null), это «базовая» сцена,
+  // из которой игрок заходит в другие. Чтобы вернуться на main — надо
+  // закрыть текущую активную сцену через её exposed `window.closeSceneX`.
+  // Это позволяет универсальному edge-nav / openScene('main') работать
+  // одинаково изо всех сцен.
+  if (id === 'main') {
+    const cur = state.activeScreen;
+    if (!cur || cur === 'main') return;     // уже на main
+    const closerName = `closeScene${toPascal(cur)}`;
+    const closer = window[closerName];
+    if (typeof closer === 'function') {
+      SaveManager.global.lastScene = 'main';
+      SaveManager.save();
+      closer();
+    }
+    return;
+  }
+
+  if (!def.open) return;
   const mod = await import(`../${def.open}`);
   const fnName = `openScene${toPascal(id)}`;
   const fn = mod[fnName] ?? mod[`open${toPascal(id)}`];

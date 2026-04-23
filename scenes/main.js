@@ -724,7 +724,15 @@ function animate() {
   }
 
   // ── Hero movement (общая логика из src/hero.js) ─────────────────────────
-  tickHeroMove(hero, keysHeld, { minX: 80, maxX: BG_W - 80 });
+  // mv.edge === 'left'|'right' срабатывает только в момент, когда монах
+  // УПЁРСЯ в границу, удерживая клавишу в ту сторону. Для main это значит:
+  // дошёл пешком до левого края + жмёт влево → переход на сцену достижений.
+  // Условие _canEdgeNav() то же, что и для клик-navigation: без медитации,
+  // без драга символа, без story-сообщения.
+  const mv = tickHeroMove(hero, keysHeld, { minX: 80, maxX: BG_W - 80 });
+  if (mv.edge && _MAIN_NAV[mv.edge]?.scene && _canEdgeNav()) {
+    openScene(_MAIN_NAV[mv.edge].scene);
+  }
 
   // ── Fireflies: yellow pixel rects with glow ──────────────────────────────
   for (const f of flies) {
@@ -897,7 +905,12 @@ function _onKey(e) {
 // Только когда герой свободен: не в медитации, без драга символа, без story.
 // Вертикальный диапазон — верхние 65 % высоты, чтобы не перекрывать куст
 // в нижнем-левом углу (bush). Ширина — 60 px от края.
+//
+// _MAIN_NAV — таблица для walk-to-edge auto-nav (herой дошёл пешком до края).
+// Для клика / стрелки у курсора используется _isLeftEdge (с ограничением
+// по верхним 65% высоты, чтобы не мешать кусту в нижнем углу).
 const _EDGE_LEFT_PX = 60;
+const _MAIN_NAV = { left: { scene: 'achievements' } };
 function _canEdgeNav() {
   return !hero.praying && meditationPhase <= 0 && !draggedSym && !isStoryActive(msgEl);
 }

@@ -63,23 +63,34 @@ export function makeHero({ x = 300, y = 920 } = {}) {
 // ── Movement tick ──────────────────────────────────────────────────────────
 // В медитации не двигается. Обрабатывает стрелки/WASD + targetX лерп.
 // minX/maxX — границы в BG-пикселях; speed — пикселей за кадр.
-// Возвращает true если монах двигался этот кадр.
+// Возвращает { moved, edge }:
+//   moved — двигался ли монах в этом кадре (для анимации).
+//   edge  — 'left'|'right'|null. Срабатывает ТОЛЬКО в момент, когда монах
+//           упирается в границу движения (переход prev>min → hero.x===min).
+//           Сцена использует это, чтобы автопереключиться в соседнюю сцену:
+//           дошёл до края + продолжает удерживать клавишу = переход без клика.
+//           Важно: возвращается null если монах уже стоял на границе раньше
+//           (например, спавн в край) — иначе был бы бесконечный цикл.
 export function tickHeroMove(hero, keysHeld,
   { minX = 120, maxX = Infinity, speed = HERO_SPEED } = {}) {
-  if (hero.praying) return false;
+  if (hero.praying) return { moved: false, edge: null };
 
   const hasLeft  = keysHeld['ArrowLeft']  || keysHeld['a'] || keysHeld['ф'];
   const hasRight = keysHeld['ArrowRight'] || keysHeld['d'] || keysHeld['в'];
 
   if (hasLeft) {
+    const prev = hero.x;
     hero.x = Math.max(minX, hero.x - speed);
     hero.facing = 'left';  hero.walking = true;  hero.targetX = null;
-    return true;
+    const edge = (prev > minX && hero.x === minX) ? 'left' : null;
+    return { moved: true, edge };
   }
   if (hasRight) {
+    const prev = hero.x;
     hero.x = Math.min(maxX, hero.x + speed);
     hero.facing = 'right'; hero.walking = true;  hero.targetX = null;
-    return true;
+    const edge = (prev < maxX && hero.x === maxX) ? 'right' : null;
+    return { moved: true, edge };
   }
   if (hero.targetX !== null) {
     const dx = hero.targetX - hero.x;
@@ -87,15 +98,15 @@ export function tickHeroMove(hero, keysHeld,
       hero.x += Math.sign(dx) * speed;
       hero.facing = dx > 0 ? 'right' : 'left';
       hero.walking = true;
-      return true;
+      return { moved: true, edge: null };
     }
     hero.x       = hero.targetX;
     hero.targetX = null;
     hero.walking = false;
-    return false;
+    return { moved: false, edge: null };
   }
   hero.walking = false;
-  return false;
+  return { moved: false, edge: null };
 }
 
 // ── Draw ───────────────────────────────────────────────────────────────────
