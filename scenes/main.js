@@ -4,7 +4,7 @@ import { state }           from '../src/state.js';
 import { SCREENS, INPUT }  from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showChoiceIn, isStoryActive,
          CURSOR_DEF, CURSOR_PTR, setCursor, setEdgeNavTarget,
-         setDefaultEnterFor }                                 from '../src/utils.js';
+         setDefaultEnterFor, OPPOSITE_EDGE }                  from '../src/utils.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
@@ -729,9 +729,13 @@ function animate() {
   // дошёл пешком до левого края + жмёт влево → переход на сцену достижений.
   // Условие _canEdgeNav() то же, что и для клик-navigation: без медитации,
   // без драга символа, без story-сообщения.
+  //
+  // enterAt прокидывается в целевую сцену: OPPOSITE_EDGE[mv.edge] —
+  // монах зайдёт в новую сцену с противоположного края, создавая
+  // визуальное ощущение непрерывного перехода «через край экрана».
   const mv = tickHeroMove(hero, keysHeld, { minX: 80, maxX: BG_W - 80 });
   if (mv.edge && _MAIN_NAV[mv.edge]?.scene && _canEdgeNav()) {
-    openScene(_MAIN_NAV[mv.edge].scene);
+    openScene(_MAIN_NAV[mv.edge].scene, { enterAt: OPPOSITE_EDGE[mv.edge] });
   }
 
   // ── Fireflies: yellow pixel rects with glow ──────────────────────────────
@@ -922,14 +926,34 @@ function _isLeftEdge(cx, cy) {
 }
 
 // ── resumeMain — вызывается из closeScene* чтобы перезапустить loop ───────
-export function resumeMain() {
+// opts.enterAt — если задано 'left' / 'right', герой ставится у
+// соответствующего края main (с соответствующим facing). Это работает
+// только для edge-nav переходов; обычное закрытие сцены через back-button
+// передаёт пустой opts и герой остаётся там, где был.
+export function resumeMain(opts = {}) {
   // Фиксируем возврат на main: F5 теперь не будет бросать назад в закрытую сцену.
   SaveManager.global.lastScene = 'main';
   SaveManager.save();
   // Кот возвращается при любом повторном входе — обида кота не постоянная.
   catHidden = false;
-  // Enter без наведения на край — переход на achievements.
-  setDefaultEnterFor('main', 'achievements');
+  // Enter без наведения на край — переход на achievements (через левый край
+  // main → enterAt 'right' в achievements).
+  setDefaultEnterFor('main', 'achievements', 'right');
+
+  // Edge-spawn: при переходе через границу экрана монах спаунится на
+  // соответствующем крае main, чтобы визуально «войти из-за кадра».
+  if (opts.enterAt === 'left') {
+    hero.x       = 80;                 // minX
+    hero.facing  = 'right';
+    hero.targetX = null;
+    hero.walking = false;
+  } else if (opts.enterAt === 'right') {
+    hero.x       = BG_W - 80;          // maxX
+    hero.facing  = 'left';
+    hero.targetX = null;
+    hero.walking = false;
+  }
+
   if (state.activeScreen === SCREENS.MAIN && !animId) animate();
 }
 
@@ -955,7 +979,9 @@ export async function initMain() {
   setHotbarMsgEl(msgEl);
 
   // Enter на главной без наведения на край → переход в achievements.
-  setDefaultEnterFor('main', 'achievements');
+  // enterAt 'right' — монах войдёт в achievements с правого края (т.е.
+  // логически вышел через левый край main).
+  setDefaultEnterFor('main', 'achievements', 'right');
 
   // Pray button — только на мобильном (скрыт на десктопе через CSS).
   // Работает как диспетчер: бросает событие 'app:meditate' и каждая сцена,
@@ -988,7 +1014,8 @@ export async function initMain() {
   canvas.addEventListener('click', e => {
     const cx = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
     // Левый край → сцена достижений (перехватываем ДО onTap).
-    if (_isLeftEdge(cx, cy)) { openScene('achievements'); return; }
+    // enterAt 'right' — герой войдёт в ach с правого края.
+    if (_isLeftEdge(cx, cy)) { openScene('achievements', { enterAt: 'right' }); return; }
     onTap(cx, cy);
   });
   canvas.addEventListener('mousedown', e => {
@@ -1000,7 +1027,7 @@ export async function initMain() {
     onDragMove(cx, cy);
     // Приоритет: левый край > зоны/символы
     if (_isLeftEdge(cx, cy))                 {
-      setEdgeNavTarget('achievements');
+      setEdgeNavTarget('achievements', 'right');
       setCursor('left');
       return;
     }
@@ -1054,7 +1081,7 @@ export async function initMain() {
       if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
       _dragMoved = false;
     } else if (_isLeftEdge(cx, cy)) {
-      openScene('achievements');
+      openScene('achievements', { enterAt: 'right' });
     } else {
       onTap(cx, cy);
     }

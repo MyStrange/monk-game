@@ -23,7 +23,12 @@ export const NAV_MAP = {
   // new_scene: { open: 'scenes/new_scene.js', canLeave: () => true,    block: null },
 };
 
-export async function openScene(id) {
+// `opts` — необязательный объект, прокидывается в опенер сцены. Ключевое
+// использование: `{ enterAt: 'left' | 'right' }` — где спаунить героя в
+// целевой сцене при переходе через границу экрана (см. src/utils.js).
+// Для выхода обратно на main прокидывается в `window.closeSceneX(opts)`,
+// который вызовет `resumeMain(opts)` с тем же enterAt.
+export async function openScene(id, opts = {}) {
   const def = NAV_MAP[id];
   if (!def) return;
 
@@ -40,7 +45,7 @@ export async function openScene(id) {
     if (typeof closer === 'function') {
       SaveManager.global.lastScene = 'main';
       SaveManager.save();
-      closer();
+      closer(opts);
     }
     return;
   }
@@ -54,7 +59,7 @@ export async function openScene(id) {
   SaveManager.global.lastScene = id;
   SaveManager.save();
   trackSceneVisit(id);
-  fn();
+  fn(opts);
 }
 
 export function canLeave(id, sceneState = {}) {

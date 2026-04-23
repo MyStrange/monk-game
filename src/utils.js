@@ -82,22 +82,36 @@ function _getXY(el, e) {
 // Любая сцена, которая показывает стрелку перехода, заодно обновляет это
 // значение — тогда Enter просто переключит сцену без клика. Работает и для
 // сцен на своём `_isLeftEdge` (main), и для использующих edgeNavMode.
+//
+// `enterAt` — куда ставить героя в целевой сцене (противоположный край):
+//   hover на левом крае → герой войдёт в цель с ПРАВОГО края → enterAt: 'right'
+//   Это правило: при переходе через границу экрана монах спаунится на том
+//   крае новой сцены, откуда он логически «вошёл». Визуально получается
+//   непрерывный перехода: ушёл влево на экране A → появился справа на B.
 let _edgeNavTarget = null;
-export function setEdgeNavTarget(scene) {
-  _edgeNavTarget = scene || null;
+let _edgeNavEnterAt = null;
+export function setEdgeNavTarget(scene, enterAt = null) {
+  _edgeNavTarget  = scene || null;
+  _edgeNavEnterAt = scene ? enterAt : null;
 }
-export function clearEdgeNavTarget() { _edgeNavTarget = null; }
+export function clearEdgeNavTarget() { _edgeNavTarget = null; _edgeNavEnterAt = null; }
 
 // Default Enter-target per active scene. Даже если мышь не у края — Enter
 // переключит на дефолтный «соседний» экран. Заполняется из scene-модулей:
-//   setDefaultEnterFor('main', 'achievements');
-//   setDefaultEnterFor('achievements', 'main');
+//   setDefaultEnterFor('main',         'achievements', 'right');
+//   setDefaultEnterFor('achievements', 'main',         'left');
+// Третий аргумент — куда ставить героя в целевой сцене, то есть
+// противоположный край той стороны, куда смотрит сосед.
 const _defaultEnterMap = Object.create(null);
-export function setDefaultEnterFor(scene, target) {
+export function setDefaultEnterFor(scene, target, enterAt = null) {
   if (!scene) return;
-  if (target) _defaultEnterMap[scene] = target;
+  if (target) _defaultEnterMap[scene] = { target, enterAt };
   else delete _defaultEnterMap[scene];
 }
+
+// Пара противоположных краёв — используется везде, где нужно перевернуть
+// «край выхода» в «край входа». Единая таблица, чтобы не расходились.
+export const OPPOSITE_EDGE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
 let _enterKeyInstalled = false;
 function _installEnterKeyOnce() {
@@ -110,16 +124,18 @@ function _installEnterKeyOnce() {
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
 
     // 1) приоритет — активная edge-цель (мышь у края)
-    let target = _edgeNavTarget;
+    let target  = _edgeNavTarget;
+    let enterAt = _edgeNavEnterAt;
     // 2) иначе — дефолтный переход для текущей сцены
     if (!target) {
       const { state } = await import('./state.js');
-      target = _defaultEnterMap[state.activeScreen];
+      const entry = _defaultEnterMap[state.activeScreen];
+      if (entry) { target = entry.target; enterAt = entry.enterAt; }
     }
     if (!target) return;
     e.preventDefault();
     const { openScene } = await import('./nav.js');
-    openScene(target);
+    openScene(target, { enterAt });
   });
 }
 _installEnterKeyOnce();
@@ -137,7 +153,8 @@ export function edgeNavMode(el, e, config) {
           cy >= z.y0 * h && cy <= z.y1 * h) mode = 'up';
     } else if (cy < EDGE_NAV_PX) mode = 'up';
   }
-  setEdgeNavTarget(mode ? config[mode]?.scene : null);
+  const enterAt = mode ? OPPOSITE_EDGE[mode] : null;
+  setEdgeNavTarget(mode ? config[mode]?.scene : null, enterAt);
   return mode;
 }
 
@@ -150,8 +167,9 @@ export async function tryEdgeNavClick(el, e, config) {
   if (!target) return false;
   e.stopPropagation?.();
   e.preventDefault?.();
+  const enterAt = OPPOSITE_EDGE[m];
   const { openScene } = await import('./nav.js');
-  openScene(target);
+  openScene(target, { enterAt });
   return true;
 }
 

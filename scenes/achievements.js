@@ -9,7 +9,7 @@ import { state }                                            from '../src/state.j
 import { SCREENS }                                          from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showError,
          setCursor, edgeNavMode, tryEdgeNavClick,
-         setDefaultEnterFor }                                from '../src/utils.js';
+         setDefaultEnterFor, OPPOSITE_EDGE }                 from '../src/utils.js';
 import { leaveMain, resumeMain }                            from './main.js';
 import { SaveManager }                                      from '../src/save.js';
 import { ACHIEVEMENT_DEFS, getUnlockedIds,
@@ -442,9 +442,12 @@ function animate() {
   // mv.edge срабатывает только в момент, когда монах УПЁРСЯ в границу,
   // удерживая клавишу в ту сторону. Если в эту сторону есть NAV-цель —
   // автоматически переходим, без клика.
+  //
+  // enterAt = OPPOSITE_EDGE[mv.edge] — герой зайдёт в целевую сцену с
+  // противоположного края, чтобы переход ощущался «через границу экрана».
   const mv = tickHeroMove(hero, keysHeld, { minX: 120, maxX: BG_W - 120 });
   if (mv.edge && NAV[mv.edge]?.scene && !hero.praying) {
-    openScene(NAV[mv.edge].scene);
+    openScene(NAV[mv.edge].scene, { enterAt: OPPOSITE_EDGE[mv.edge] });
   }
 
   // ── Placed achievement icons (кроме перетаскиваемой) ─────────────────────
@@ -514,11 +517,10 @@ function createEl() {
   //
   // Пустая нижняя полоса после сдвига закрывается фоном el (тёмный
   // лесной оттенок, чтобы создавать ощущение продолжающейся земли).
-  const shiftStyle = `translateY(-${(SCENE_Y_SHIFT * 100).toFixed(2)}%)`;
-  const bgImg      = built.bgImg;
-  if (bgImg) bgImg.style.transform = shiftStyle;
-  canvas.style.transform = shiftStyle;
-  el.style.background    = '#1d2813';   // тёмный лесной грунт (под травой)
+  //
+  // Также переприменяется в openSceneAchievements — на случай если DOM
+  // был создан до этой логики (старая версия кода в кэше).
+  _applyGroundPlaneShift();
 
   // Кэш rect вручную
   let rect = { left: 0, top: 0, width: 0, height: 0 };
@@ -600,9 +602,24 @@ function createEl() {
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
-export async function openSceneAchievements() {
+// opts.enterAt:
+//   'left'  — герой спаунится у левого края (входит с левой стороны),
+//   'right' — у правого края (входит через правую сторону, дверь),
+//   иначе — дефолтный спаун у правой двери.
+// Это работает как универсальное правило: при переходе через границу
+// экрана монах всегда появляется ровно на том крае, откуда логически
+// вошёл, чтобы переход выглядел непрерывно.
+export async function openSceneAchievements(opts = {}) {
   leaveMain();
   createEl();
+
+  // Защитное повторное применение CSS-transform для выравнивания
+  // плоскости пола с главной. createEl() ставит это один раз при
+  // первом создании scene-root, но если сцена открывалась до того, как
+  // эта логика появилась в коде (кэш браузера, старая DOM), transform
+  // мог не попасть в элементы. Ставим его каждый раз — идемпотентно.
+  _applyGroundPlaneShift();
+
   const bgImg = el.querySelector('img.scene-bg');
   if (!bgImg.complete || !bgImg.naturalWidth) {
     showLoading('...');
@@ -619,17 +636,29 @@ export async function openSceneAchievements() {
   state.activeScreen = SCREENS.ACHIEVEMENTS;
   el.style.display   = 'block';
 
-  // Спавн героя у правой двери
-  hero.x       = BG_W - 240;
-  hero.facing  = 'left';
+  // Edge-spawn: герой спаунится у того края, через который логически
+  // вошёл. Это создаёт визуальное ощущение перехода через границу
+  // экрана — ушёл слева main → появился у правой двери achievements.
+  if (opts.enterAt === 'left') {
+    hero.x      = 120;                 // minX
+    hero.facing = 'right';
+  } else if (opts.enterAt === 'right') {
+    hero.x      = BG_W - 120;          // maxX
+    hero.facing = 'left';
+  } else {
+    // Дефолт (back-button, прямой openScene без enterAt) — правая дверь.
+    hero.x      = BG_W - 240;
+    hero.facing = 'left';
+  }
   hero.targetX = null;
   hero.walking = false;
   hero.praying = false;
   fx.clear();
   meditationPhase = 0;
 
-  // Enter на achievements → возврат на main.
-  setDefaultEnterFor('achievements', 'main');
+  // Enter на achievements → возврат на main (через правый край ach →
+  // enterAt 'left' в main).
+  setDefaultEnterFor('achievements', 'main', 'left');
 
   // ── Achievement: заглянул в комнату с полками ────────────────────────
   trackShelfVisit();
@@ -642,7 +671,23 @@ export async function openSceneAchievements() {
   });
 }
 
-export function closeSceneAchievements() {
+// Применяет CSS-трансформы, выравнивающие плоскость пола shelf.png с
+// главной сценой. Вынесено в функцию чтобы можно было переприменить
+// в openSceneAchievements (см. комментарий там).
+function _applyGroundPlaneShift() {
+  if (!el) return;
+  const shiftStyle = `translateY(-${(SCENE_Y_SHIFT * 100).toFixed(2)}%)`;
+  const bgImgEl = el.querySelector('img.scene-bg');
+  if (bgImgEl) bgImgEl.style.transform = shiftStyle;
+  if (canvas)  canvas.style.transform  = shiftStyle;
+  el.style.background = '#1d2813';   // тёмный лесной грунт под травой
+}
+
+// opts.enterAt — прокидывается дальше в resumeMain, чтобы при переходе
+// через границу экрана (walk-to-edge / click) монах спаунился у
+// соответствующего края main. Back-button и прямые закрытия передают
+// пустой opts и герой остаётся там, где был.
+export function closeSceneAchievements(opts = {}) {
   if (_pickerEl) closePicker();
   _drag = null;
   hero.praying = false;
@@ -652,6 +697,6 @@ export function closeSceneAchievements() {
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   SaveManager.setScene('achievements', S);
-  resumeMain();
+  resumeMain(opts);
 }
 window.closeSceneAchievements = closeSceneAchievements;
