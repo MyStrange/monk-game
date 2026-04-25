@@ -39,18 +39,18 @@ const BG_FIRE_A = 'assets/bg/tut_fire_a.png';  // огонь kadr A
 const BG_FIRE_B = 'assets/bg/tut_fire_b.png';  // огонь kadr B
 let _curBg = BG_START;
 
-// ── Overlay sprites — показываются ПОСЛЕ действия (вырезаны из tut_after) ─
+// ── Overlay sprites — прямоугольные crop'ы из tut_after (полностью непрозрачные) ─
 const sprTrashFallen  = new Image(); sprTrashFallen.src  = 'assets/sprites/trash_fallen.png';
-const sprBottleDrop   = new Image(); sprBottleDrop.src   = 'assets/sprites/bottle_drop.png';
+const sprBottleTaken  = new Image(); sprBottleTaken.src  = 'assets/sprites/bottle_taken.png';
 const sprPosterGone   = new Image(); sprPosterGone.src   = 'assets/sprites/poster_gone.png';
 const sprCanisterGone = new Image(); sprCanisterGone.src = 'assets/sprites/canister_gone.png';
 
 // Расположение спрайтов-после в координатах фона (где они вырезались)
 const SPR_POS = {
-  trash_fallen:   { x: 60,  y: 455, w: 350, h: 265 },
-  bottle_drop:    { x: 308, y: 600, w: 52,  h: 90  },  // стоячая бутылка в куче мусора
-  poster_gone:    { x: 388, y: 365, w: 92,  h: 130 },
-  canister_gone:  { x: 790, y: 545, w: 180, h: 175 },
+  trash_fallen:   { x: 60,  y: 455, w: 350, h: 265 },  // упавшая мусорка + мусор + бутылка
+  bottle_taken:   { x: 308, y: 600, w: 52,  h: 90  },  // патч tut_start чтобы скрыть бутылку
+  poster_gone:    { x: 385, y: 360, w: 97,  h: 140 },
+  canister_gone:  { x: 785, y: 540, w: 190, h: 180 },
 };
 
 // ── Hero movement — упор в светофор ───────────────────────────────────────
@@ -381,11 +381,61 @@ function _spawnCar() {
   car.x = BG_W + 200;
   car.lit = true;
 }
+// ── Car hit: drama sequence — white flash → black → philosophy → space ───
+let _hitFadeStart = 0;     // ms timestamp когда начался чёрный фейд
+let _hitDeepBlack = false; // полный чёрный установлен
 function _onCarHit() {
   hero.hit = true;
-  AudioSystem.playPickup();
-  showMsg(_pick(punkThoughts.hit), 3000);
-  setTimeout(_startSpaceSequence, 1700);
+  _playKick();              // глухой удар
+  // 0–0.6s: белая вспышка (рисуется в animate)
+  // 1.0s: начинаем фейд в чёрный
+  setTimeout(() => { _hitFadeStart = Date.now(); }, 1000);
+  // 2.5s: уже плотный чёрный — пускаем sad chord
+  setTimeout(() => { _hitDeepBlack = true; _playSadChord(); }, 2500);
+  // 3.5s: первая философская строка
+  setTimeout(() => showMsg('Этот мир тебя ещё держит.', 4500), 3500);
+  // 7s: вторая строка
+  setTimeout(() => showMsg(_pick(punkThoughts.hit), 4500), 7000);
+  // 11s: третья строка
+  setTimeout(() => showMsg('Бунт был не дверью. Бунт был петлёй.', 4500), 11000);
+  // 16s: четвёртая
+  setTimeout(() => showMsg('Колесо ждёт. Оно не торопится.', 4500), 16000);
+  // 21s: уход в космос
+  setTimeout(_startSpaceSequence, 21000);
+}
+
+// Грустный аккорд — низкий минор через AudioSystem.ctx
+function _playSadChord() {
+  const ac = AudioSystem.ctx;
+  if (!ac) return;
+  AudioSystem.setMode('silent');  // приглушить ambient
+  const now = ac.currentTime;
+  // A minor: A2 (110), C3 (130.8), E3 (164.8) + low octave 55
+  const notes = [55, 110, 130.81, 164.81, 220];
+  for (const f of notes) {
+    const osc = ac.createOscillator();
+    const g   = ac.createGain();
+    osc.type = 'sine'; osc.frequency.value = f;
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.09, now + 1.5);
+    g.gain.linearRampToValueAtTime(0.06, now + 8);
+    g.gain.linearRampToValueAtTime(0, now + 16);
+    osc.connect(g); g.connect(AudioSystem.masterGain);
+    osc.start(now); osc.stop(now + 17);
+  }
+  // Одинокая нота-капля повторяется
+  const _drip = (delay) => {
+    const t = now + delay;
+    const osc = ac.createOscillator();
+    const g   = ac.createGain();
+    osc.type = 'sine'; osc.frequency.value = 880;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.13, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 4);
+    osc.connect(g); g.connect(AudioSystem.masterGain);
+    osc.start(t); osc.stop(t + 4.2);
+  };
+  [3, 7.5, 12].forEach(_drip);
 }
 
 // ── Space warp finale ─────────────────────────────────────────────────────
@@ -680,10 +730,10 @@ function animate() {
       const p = SPR_POS.trash_fallen;
       ctx.drawImage(sprTrashFallen, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
     }
-    // стоячая бутылка — пока её не подняли
-    if (S.trashKicked && !S.bottleTaken && sprBottleDrop.complete && sprBottleDrop.naturalWidth) {
-      const p = SPR_POS.bottle_drop;
-      ctx.drawImage(sprBottleDrop, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
+    // Бутылка взята → накладываем патч tut_start чтобы скрыть её из trash_fallen
+    if (S.trashKicked && S.bottleTaken && sprBottleTaken.complete && sprBottleTaken.naturalWidth) {
+      const p = SPR_POS.bottle_taken;
+      ctx.drawImage(sprBottleTaken, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
     }
     if (S.posterTaken && sprPosterGone.complete && sprPosterGone.naturalWidth) {
       const p = SPR_POS.poster_gone;
@@ -759,11 +809,20 @@ function animate() {
   }
   if (smoke.length) _drawSmoke(sx, sy);
 
-  // Hit white flash
+  // Hit drama: 0–1s белая вспышка, далее затемнение в чёрный
   if (hero.hit) {
-    const a = Math.max(0, 1 - (tick % 90) / 90);
-    ctx.fillStyle = `rgba(255,255,255,${a})`;
-    ctx.fillRect(0, 0, W, H);
+    const ms = _hitFadeStart ? (Date.now() - _hitFadeStart) : 0;
+    if (!_hitFadeStart) {
+      // Белая вспышка (первая секунда после удара) — быстрый fade-out
+      const a = Math.max(0, 1 - (Date.now() % 1500) / 1000);
+      ctx.fillStyle = `rgba(255,255,255,${a})`;
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      // Чёрный fade-in за 1.5 сек, потом плотный чёрный
+      const fade = Math.min(1, ms / 1500);
+      ctx.fillStyle = `rgba(0,0,0,${fade})`;
+      ctx.fillRect(0, 0, W, H);
+    }
   }
 
   // Onboarding auto-advance + подсветка зон
@@ -941,7 +1000,7 @@ export async function openSceneTutorial() {
   showLoading('туториал');
 
   bgEl.onerror = () => showError('не удалось загрузить туториал');
-  await Promise.all([_waitImg(bgEl), _waitImg(sprTrashFallen), _waitImg(sprBottleDrop), _waitImg(sprPosterGone), _waitImg(sprCanisterGone)]);
+  await Promise.all([_waitImg(bgEl), _waitImg(sprTrashFallen), _waitImg(sprBottleTaken), _waitImg(sprPosterGone), _waitImg(sprCanisterGone)]);
   if (!bgEl.naturalWidth) return;
 
   hideLoading();
@@ -985,6 +1044,8 @@ function _resetTutorialIfReplay() {
   _stars = [];
   _curBg = BG_START;
   _trafficMsgIdx = 0;
+  _hitFadeStart = 0;
+  _hitDeepBlack = false;
   S.tutorialStep = 0;
   saveTut();
   if (_fireFrameTimer) { clearInterval(_fireFrameTimer); _fireFrameTimer = null; }
