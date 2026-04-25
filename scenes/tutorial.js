@@ -11,7 +11,8 @@ import { renderHotbar, setHotbarMsgEl }                  from '../src/hotbar.js'
 import { AudioSystem }                                   from '../src/audio.js';
 import { SaveManager }                                   from '../src/save.js';
 import { punkThoughts, tutHints, tutZoneMsgs,
-         trafficLightMsgs }                              from '../src/dialogue.js';
+         trafficLightMsgs, stepMessages,
+         tutBottleOnTrash, tutBottleAfterPick }          from '../src/dialogue.js';
 
 // ── Persistent scene state ────────────────────────────────────────────────
 const S = SaveManager.getScene('tutorial');
@@ -22,6 +23,7 @@ S.canisterUsed ??= false;
 S.windowBroken ??= false;
 S.fireStarted  ??= false;
 S.completed    ??= false;
+S.tutorialStep ??= 0;   // 0..10, см. HL_ZONES
 function saveTut() { SaveManager.setScene('tutorial', S); }
 
 // ── DOM ────────────────────────────────────────────────────────────────────
@@ -55,13 +57,64 @@ const SPR_POS = {
 const HERO_X_MAX  = 850;  // BG-px, дальше нельзя
 let _trafficMsgIdx = 0;
 
+// ── Onboarding step → подсвечиваемая зона/слот ───────────────────────────
+function _currentStepHighlights() {
+  // Возвращает массив зон для подсветки на BG: [{cx, cy, r}, ...]
+  // и идентификаторы слотов хотбара для пульсации: ['bottle', 'poster', ...]
+  switch (S.tutorialStep) {
+    case 1: return { zones: [HL_ZONES.trash_kick], slots: [] };
+    case 2: return { zones: [HL_ZONES.bottle],     slots: [] };
+    case 3: return { zones: [],                    slots: ['bottle'] };
+    case 4: return { zones: [HL_ZONES.canister, HL_ZONES.trash_kick, HL_ZONES.poster, HL_ZONES.window], slots: [] };
+    case 5: return { zones: [HL_ZONES.poster],     slots: [] };
+    case 6: return { zones: [],                    slots: ['bottle_fuel', 'poster'] };
+    case 7: return { zones: [],                    slots: [] };  // подсказка S/↓
+    case 8: return { zones: [],                    slots: ['molotov'] };  // + динамическая cigarette подсветка
+    case 9: return { zones: [HL_ZONES.window],     slots: ['molotov_lit'] };
+    default: return { zones: [], slots: [] };
+  }
+}
+function _advanceStep(to) {
+  if (S.tutorialStep < to) {
+    S.tutorialStep = to;
+    saveTut();
+    _onStepEnter(to);
+  }
+}
+function _onStepEnter(step) {
+  const m = stepMessages[step];
+  if (m) showMsg(m, 5000);
+}
+
 // ── Zones (BG px) ─────────────────────────────────────────────────────────
+// trash широкая — покрывает и стоящую бочку, и упавшую кучу + бутылку
 const ZONES_BG = {
-  trash:    { x: 110, y: 460, w: 208, h: 240 },
+  trash:    { x: 60,  y: 455, w: 350, h: 265 },
   poster:   { x: 388, y: 378, w: 90,  h: 110 },
   canister: { x: 800, y: 540, w: 145, h: 165 },
   window:   { x: 175, y: 280, w: 320, h: 230 },  // витрина
   // cigarette — динамическая, считается у руки сидящего героя
+};
+
+// ── Onboarding step-machine (центр и радиус подсветки на BG) ─────────────
+// Шаги:
+// 0 — intro: подсказка ходить (стрелки/A·D, клик)
+// 1 — kick trash (подсветить мусорку)
+// 2 — pick bottle (подсветить лежащую бутылку)
+// 3 — select bottle in hotbar (подсветить слот)
+// 4 — bottle on canister (подсветить канистру)
+// 5 — pick poster (подсветить плакат)
+// 6 — combine bottle_fuel + poster (подсветить слоты)
+// 7 — sit & smoke (подсказка)
+// 8 — molotov on cigarette
+// 9 — molotov_lit on window
+// 10+ — finale (без подсветки, авто-сценарий)
+const HL_ZONES = {
+  trash_kick: { cx: 200, cy: 540, r: 95  },  // целая мусорка
+  bottle:     { cx: 334, cy: 645, r: 36  },  // лежащая бутылка
+  canister:   { cx: 873, cy: 620, r: 55  },
+  poster:     { cx: 433, cy: 433, r: 50  },
+  window:     { cx: 335, cy: 395, r: 110 },
 };
 
 // ── Hero (panк placeholder) ───────────────────────────────────────────────
@@ -108,6 +161,35 @@ function _pick(arr) {
 }
 function _hasItem(id) { return state.inventory.some(i => i?.id === id); }
 
+// ── Глухой звук «ПАМ» при пинке мусорки и разбивании окна ────────────────
+function _playKick() {
+  const ac = AudioSystem.ctx;
+  if (!ac) return;
+  const now = ac.currentTime;
+  // Низкий thump
+  const osc = ac.createOscillator();
+  const g   = ac.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(150, now);
+  osc.frequency.exponentialRampToValueAtTime(40, now + 0.18);
+  g.gain.setValueAtTime(0.35, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+  osc.connect(g); g.connect(AudioSystem.masterGain);
+  osc.start(now); osc.stop(now + 0.35);
+  // Шумок-удар
+  const buf = ac.createBuffer(1, ac.sampleRate * 0.12, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const noise = ac.createBufferSource();
+  const ng    = ac.createGain();
+  const flt   = ac.createBiquadFilter();
+  flt.type = 'lowpass'; flt.frequency.value = 700;
+  noise.buffer = buf;
+  ng.gain.value = 0.18;
+  noise.connect(flt); flt.connect(ng); ng.connect(AudioSystem.masterGain);
+  noise.start(now);
+}
+
 // ── Hint progression — repeats unobtrusive nudge ──────────────────────────
 let _hintTimer = null;
 function _scheduleHint(delay = 9000) {
@@ -132,6 +214,11 @@ function _nextHint() {
 
 // ── Item × zone interactions ──────────────────────────────────────────────
 function interactItem(itemId, zone) {
+  // bottle обратно по мусорке — ироничный отказ
+  if (itemId === 'bottle' && zone === 'trash') {
+    showMsg(_pick(tutBottleOnTrash));
+    return;
+  }
   // bottle на канистру → bottle_fuel
   if (itemId === 'bottle' && zone === 'canister') {
     state.inventory[state.selectedSlot] = makeItem('bottle_fuel');
@@ -142,6 +229,7 @@ function interactItem(itemId, zone) {
     saveTut();
     showMsg(_pick(tutZoneMsgs.fillBottle));
     setTimeout(() => showMsg(_pick(punkThoughts.bottleFuel)), 2400);
+    _advanceStep(5);
     return;
   }
   // molotov на сигарету (только сидя) → molotov_lit + авто-встать
@@ -162,10 +250,11 @@ function interactItem(itemId, zone) {
     state.selectedSlot = -1;
     S.windowBroken = true;
     _curBg = BG_BROKEN;
-    AudioSystem.playPickup();  // звон стекла-заглушка
+    _playKick();  // звон + удар
     renderHotbar();
     saveTut();
     showMsg(_pick(punkThoughts.break), 4000);
+    _advanceStep(10);
     _startFireSequence();
     return;
   }
@@ -178,10 +267,10 @@ function zoneClick(zone) {
   if (zone === 'trash') {
     if (!S.trashKicked) {
       S.trashKicked = true;
-      AudioSystem.playPickup();
+      _playKick();  // глухой ПАМ
       saveTut();
-      showMsg(_pick(tutZoneMsgs.kickTrash));
-      setTimeout(() => showMsg(_pick(punkThoughts.kickTrash)), 2400);
+      showMsg(tutBottleAfterPick);
+      _advanceStep(2);
       return;
     }
     if (!S.bottleTaken) {
@@ -191,6 +280,7 @@ function zoneClick(zone) {
       renderHotbar();
       saveTut();
       showMsg(_pick(tutZoneMsgs.takeBottle));
+      _advanceStep(3);
       return;
     }
     showMsg(_pick(tutZoneMsgs.trashEmpty));
@@ -204,6 +294,7 @@ function zoneClick(zone) {
     saveTut();
     showMsg(_pick(tutZoneMsgs.takePoster));
     setTimeout(() => showMsg(_pick(punkThoughts.poster)), 2400);
+    _advanceStep(6);
     return;
   }
   if (zone === 'canister') {
@@ -675,7 +766,91 @@ function animate() {
     ctx.fillRect(0, 0, W, H);
   }
 
+  // Onboarding auto-advance + подсветка зон
+  _checkAutoAdvance();
+  if (!hero.running && !hero.hit && !S.windowBroken) _drawHighlights(sx, sy, tick);
+  _pulseHotbarSlots(tick);
+
   animId = requestAnimationFrame(animate);
+}
+
+// ── Onboarding: автопродвижение шагов на ключевых событиях ───────────────
+function _checkAutoAdvance() {
+  // 0 → 1: первый шаг героя (отъехал от стартовой 320)
+  if (S.tutorialStep === 0 && Math.abs(hero.x - 320) > 30) _advanceStep(1);
+  // 3 → 4: бутылка выбрана в хотбаре
+  if (S.tutorialStep === 3 && getSelectedItem()?.id === 'bottle') _advanceStep(4);
+  // 6 → 7: молотов скрафчен
+  if (S.tutorialStep === 6 && _hasItem('molotov')) _advanceStep(7);
+  // 7 → 8: герой сел
+  if (S.tutorialStep === 7 && hero.smoking) _advanceStep(8);
+  // 8 → 9: молотов горит
+  if (S.tutorialStep === 8 && _hasItem('molotov_lit')) _advanceStep(9);
+}
+
+// ── Пульсирующее золотое кольцо над зоной (через canvas) ──────────────────
+function _drawHighlights(sx, sy, tick) {
+  const { zones } = _currentStepHighlights();
+  if (!zones || !zones.length) return;
+  // также cigarette в режиме курения (шаг 8)
+  const all = [...zones];
+  if (S.tutorialStep === 8 && hero.smoking) {
+    const c = _cigZoneBG();
+    all.push({ cx: c.x + c.w / 2, cy: c.y + c.h / 2, r: 22 });
+  }
+  const t = tick * 0.06;
+  for (const z of all) {
+    const px = z.cx * sx, py = z.cy * sy;
+    const baseR = z.r * Math.min(sx, sy);
+    // Двойное кольцо: внутреннее + внешнее (расходящаяся волна)
+    for (let i = 0; i < 2; i++) {
+      const phase = (t + i * 0.5) % 1;
+      const r = baseR * (1 + phase * 0.45);
+      const alpha = (1 - phase) * 0.85;
+      ctx.save();
+      ctx.strokeStyle = `rgba(255,210,80,${alpha})`;
+      ctx.lineWidth = Math.max(2, 4 * Math.min(sx, sy));
+      ctx.shadowColor = '#ffd040';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    // Сплошное кольцо + центральная точка
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,232,128,0.55)';
+    ctx.lineWidth = Math.max(1.5, 2 * Math.min(sx, sy));
+    ctx.beginPath();
+    ctx.arc(px, py, baseR * 0.85, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ── Пульсация слотов хотбара (через box-shadow на DOM) ───────────────────
+const _hbPulseTracked = new Set();
+function _pulseHotbarSlots(tick) {
+  const { slots } = _currentStepHighlights();
+  const ids = new Set(slots || []);
+  const hb = document.getElementById('hotbar');
+  if (!hb) return;
+  const els = hb.querySelectorAll('.slot');
+  els.forEach((el) => {
+    const idx = parseInt(el.dataset.idx, 10);
+    const item = state.inventory[idx];
+    const match = item && ids.has(item.id);
+    if (match) {
+      const a = 0.5 + 0.5 * Math.sin(tick * 0.18);
+      el.style.boxShadow = `0 0 ${12 + a * 14}px ${4 + a * 4}px rgba(255,210,80,${0.45 + a * 0.4})`;
+      el.style.outline = '2px solid rgba(255,232,128,0.9)';
+      _hbPulseTracked.add(el);
+    } else if (_hbPulseTracked.has(el)) {
+      el.style.boxShadow = '';
+      el.style.outline = '';
+      _hbPulseTracked.delete(el);
+    }
+  });
 }
 
 // ── DOM creation ──────────────────────────────────────────────────────────
@@ -810,6 +985,8 @@ function _resetTutorialIfReplay() {
   _stars = [];
   _curBg = BG_START;
   _trafficMsgIdx = 0;
+  S.tutorialStep = 0;
+  saveTut();
   if (_fireFrameTimer) { clearInterval(_fireFrameTimer); _fireFrameTimer = null; }
   // Уберём только tutorial-предметы из инвентаря
   for (let i = 0; i < state.inventory.length; i++) {
@@ -831,6 +1008,9 @@ export function closeSceneTutorial() {
   clearTimeout(_smokeIdleTimer);
   AudioSystem.setMode('ambient');
   saveTut();
+  // Снять подсветку с слотов хотбара
+  _hbPulseTracked.forEach(el => { el.style.boxShadow = ''; el.style.outline = ''; });
+  _hbPulseTracked.clear();
   // Восстановить msgEl у hotbar обратно на main-msg
   setHotbarMsgEl(document.getElementById('main-msg'));
   resumeMain();
