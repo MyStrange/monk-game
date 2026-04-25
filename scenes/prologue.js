@@ -11,7 +11,7 @@
 
 import { state }                              from '../src/state.js';
 import { SCREENS }                            from '../src/constants.js';
-import { showMsgIn }                          from '../src/utils.js';
+import { showMsgIn, setCursor }               from '../src/utils.js';
 import { leaveMain, resumeMain }              from './main.js';
 import { Sequence }                           from '../src/sequence.js';
 import { openScene }                          from '../src/nav.js';
@@ -89,7 +89,7 @@ function createEl() {
 
   canvas = document.createElement('canvas');
   canvas.className = 'scene-canvas';
-  canvas.style.cursor = 'pointer';
+  // Не задаём cursor — наследуется bud от #wrap (lotus задаёт setCursor через #wrap).
   ctx = canvas.getContext('2d');
 
   el.appendChild(canvas);
@@ -123,6 +123,7 @@ export function closeScenePrologue() {
   state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
+  setCursor(false);   // сброс hover-состояния
   SaveManager.setScene('prologue', S);
   resumeMain();   // иначе после пролога main не перезапустит animate()
 }

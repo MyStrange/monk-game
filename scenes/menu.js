@@ -16,6 +16,7 @@ import { leaveMain, resumeMain }              from './main.js';
 import { openScene }                          from '../src/nav.js';
 import { SaveManager }                        from '../src/save.js';
 import { openAchievements }                   from '../src/achievements.js';
+import { setCursor }                          from '../src/utils.js';
 
 // ── Buttons (фракции 0..1 от W/H) ─────────────────────────────────────────
 const BUTTONS = [
@@ -102,7 +103,7 @@ function createEl() {
 
   canvas = document.createElement('canvas');
   canvas.className = 'scene-canvas';
-  canvas.style.cursor = 'default';
+  // Не задаём cursor — наследуется bud/lotus от #wrap (см. utils.setCursor + style.css).
   ctx = canvas.getContext('2d');
 
   el.appendChild(canvas);
@@ -123,6 +124,14 @@ function createEl() {
     const r = canvas.getBoundingClientRect();
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
+
+  // Hover: lotus над кнопкой, bud над пустым местом.
+  canvas.addEventListener('mousemove', e => {
+    if (state.activeScreen !== SCREENS.MENU) return;
+    const r = canvas.getBoundingClientRect();
+    setCursor(hitButton(e.clientX - r.left, e.clientY - r.top) ? 'ptr' : false);
+  });
+  canvas.addEventListener('mouseleave', () => setCursor(false));
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -146,6 +155,7 @@ export function closeSceneMenu() {
   state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
+  setCursor(false);   // сбросить hover-курсор если уходим с подсвеченной кнопки
   resumeMain();   // иначе main-анимация не перезапустится после меню
 }
 window.closeSceneMenu = closeSceneMenu;
