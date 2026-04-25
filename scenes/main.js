@@ -4,7 +4,7 @@ import { state }           from '../src/state.js';
 import { SCREENS, INPUT }  from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showChoiceIn, isStoryActive,
          CURSOR_DEF, CURSOR_PTR, setCursor, setEdgeNavTarget,
-         setDefaultEnterFor, OPPOSITE_EDGE }                  from '../src/utils.js';
+         setDefaultEnterFor, OPPOSITE_EDGE, setMeditateBtn }  from '../src/utils.js';
 import { coverRect }       from '../src/scene-base.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
@@ -973,6 +973,10 @@ export function resumeMain(opts = {}) {
     hero.walking = false;
   }
 
+  // Pray-кнопка — top-level фиксированная, видна только в сценах с ходячим
+  // героем/монахом. Включаем на resume (возврат из соседней сцены).
+  setMeditateBtn(true);
+
   if (state.activeScreen === SCREENS.MAIN && !animId) animate();
 }
 
@@ -981,6 +985,8 @@ export function leaveMain() {
   standUp();
   draggedSym = null;
   setEdgeNavTarget(null);
+  // Скрываем pray-кнопку — целевая сцена включит её сама, если поддерживает.
+  setMeditateBtn(false);
   // Прерываем анимацию закопки землёй: иначе при возврате в main тик-счётчик
   // дотянется до 180 и выстрелит stale сообщение/подарок земли.
   if (catBurying) { catBurying = false; catBuryTimer = 0; }
@@ -1136,5 +1142,8 @@ export async function initMain() {
     ));
     hideLoading();
   }
+  // Pray-кнопка — top-level фиксированная UI, видна только в сценах с
+  // ходячим героем/монахом. main — стартовая сцена, показываем сразу.
+  setMeditateBtn(true);
   animate();
 }

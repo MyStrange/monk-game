@@ -3,7 +3,8 @@
 
 import { state }                                         from '../src/state.js';
 import { showMsgIn, showLoading, hideLoading,
-         showError, CURSOR_DEF, CURSOR_PTR }             from '../src/utils.js';
+         showError, CURSOR_DEF, CURSOR_PTR,
+         setMeditateBtn }                                from '../src/utils.js';
 import { leaveMain, resumeMain }                         from './main.js';
 import { getSelectedItem, addItem, makeItem }            from '../src/inventory.js';
 import { renderHotbar, setHotbarMsgEl }                  from '../src/hotbar.js';
@@ -731,6 +732,12 @@ function createEl() {
 
   document.addEventListener('keydown', _onKey);
   document.addEventListener('keyup',   e => { keysHeld[e.key] = false; });
+
+  // Pray button event — глобальный dispatcher (см. main.js init).
+  // В туториале «медитация» = присесть и закурить.
+  window.addEventListener('app:meditate', () => {
+    if (state.activeScreen === 'tutorial') sitDown();
+  });
 }
 
 function _onKey(e) {
@@ -765,6 +772,8 @@ export async function openSceneTutorial() {
   hideLoading();
   state.activeScreen = 'tutorial';
   el.style.display   = 'block';
+  // Pray-кнопка — top-level фиксированная UI, видна в сценах с ходячим героем.
+  setMeditateBtn(true);
 
   // Hotbar showMsg → наш msgEl
   setHotbarMsgEl(msgEl);

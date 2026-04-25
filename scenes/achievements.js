@@ -9,7 +9,7 @@ import { state }                                            from '../src/state.j
 import { SCREENS }                                          from '../src/constants.js';
 import { showMsgIn, showLoading, hideLoading, showError,
          setCursor, edgeNavMode, tryEdgeNavClick,
-         setDefaultEnterFor, OPPOSITE_EDGE }                 from '../src/utils.js';
+         setDefaultEnterFor, OPPOSITE_EDGE, setMeditateBtn } from '../src/utils.js';
 import { leaveMain, resumeMain }                            from './main.js';
 import { SaveManager }                                      from '../src/save.js';
 import { ACHIEVEMENT_DEFS, getUnlockedIds,
@@ -622,6 +622,8 @@ export async function openSceneAchievements(opts = {}) {
 
   state.activeScreen = SCREENS.ACHIEVEMENTS;
   el.style.display   = 'block';
+  // Pray-кнопка — top-level фиксированная UI, видна в сценах с ходячим героем.
+  setMeditateBtn(true);
 
   // Edge-spawn: герой спаунится у того края, через который логически
   // вошёл. Это создаёт визуальное ощущение перехода через границу

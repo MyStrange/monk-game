@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 <!-- Preload ALL scene assets — каждая сцена должна загружаться без pop-in -->
 <link rel="preload" as="image" href="assets/bg/main.png">
 <link rel="preload" as="image" href="assets/bg/inscription_dim.png">
@@ -171,9 +171,13 @@
        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
   <canvas id="main-canvas"></canvas>
   <div id="main-msg" class="scene-msg"></div>
-  <button id="pray-btn" class="pray-btn" title="Медитировать">มี</button>
 
 </div>
+
+<!-- Pray button — fixed top-level UI, виден поверх любой сцены, где есть
+     ходячий герой/монах. Видимость управляется через body[data-meditate]
+     (см. utils.setMeditateBtn). -->
+<button id="pray-btn" class="pray-btn" title="Медитировать">มี</button>
 
 <!-- Сцены создаются динамически из своих JS-модулей -->
 
@@ -188,6 +192,6 @@
     }
   }, 10000);
 </script>
-<script type="module" src="game.js?v=95" defer></script>
+<script type="module" src="game.js?v=96" defer></script>
 </body>
 </html>

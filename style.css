@@ -310,17 +310,22 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   z-index:9999;max-width:240px;line-height:1.5;
 }
 
-/* ── Pray button (mobile) ── */
+/* ── Pray button — fixed top-level UI ──
+   Видна только в сценах с ходячим героем/монахом (main, achievements, tutorial).
+   Видимость управляется атрибутом body[data-meditate] из utils.setMeditateBtn().
+   Скрыта по умолчанию — каждая поддерживающая сцена включает на open, выключает на close. */
 .pray-btn{
-  position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
+  display:none;
+  position:fixed;bottom:24px;right:20px;
   width:52px;height:52px;border-radius:50%;
   background:rgba(10,8,18,0.82);border:var(--b-gold-lo);
   color:var(--c-gold);font-size:24px;font-family:serif;
   cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
   touch-action:manipulation;
-  display:flex;align-items:center;justify-content:center;
-  transition:background .2s,border-color .2s,box-shadow .2s;z-index:10;
+  align-items:center;justify-content:center;
+  transition:background .2s,border-color .2s,box-shadow .2s;z-index:50;
 }
+body[data-meditate] .pray-btn{display:flex;}
 .pray-btn:hover,.pray-btn:active{
   background:var(--c-gold-trace);border-color:var(--c-gold);
   box-shadow:0 0 14px rgba(240,192,64,0.35);
@@ -329,9 +334,8 @@ canvas{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-s
   background:var(--c-gold-trace);border-color:var(--c-gold);
   box-shadow:0 0 18px rgba(240,192,64,0.4);
 }
-@media (pointer:fine) and (min-width:768px){.pray-btn{display:none;}}
 @media (pointer:coarse){
-  .pray-btn{left:auto;bottom:24px;right:16px;transform:none;width:56px;height:56px;}
+  .pray-btn{bottom:24px;right:16px;width:56px;height:56px;}
 }
 
 /* ── UI buttons ── */
