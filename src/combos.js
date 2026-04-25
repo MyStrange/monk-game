@@ -21,6 +21,20 @@ function _key(a, b) {
 // apply(aIdx, bIdx): void — изменить инвентарь
 const ITEM_COMBO = {
 
+  // poster + bottle_fuel → molotov (фитиль из плаката)
+  'bottle_fuel+poster': {
+    condition() { return true; },
+    failMsg: '',
+    apply(aIdx, bIdx) {
+      const a = state.inventory[aIdx];
+      const fuelIdx   = a.id === 'bottle_fuel' ? aIdx : bIdx;
+      const posterIdx = fuelIdx === aIdx ? bIdx : aIdx;
+      state.inventory[fuelIdx]   = makeItem('molotov');
+      state.inventory[posterIdx] = null;
+      return 'Плакат скрутился в фитиль. Бутылка ждёт огня.';
+    },
+  },
+
   // jar + stick → glowstick + jar_open
   // Условие: банка непустая (glowing или caught > 0)
   'jar+stick': {
@@ -79,8 +93,8 @@ export function itemOnItem(aIdx, bIdx) {
     return combo.failMsg;   // string → показать сообщение
   }
 
-  combo.apply(aIdx, bIdx);
+  const successMsg = combo.apply(aIdx, bIdx);
   state.selectedSlot = -1;  // верхнеуровневое правило: после крафта убрать из руки
   renderHotbar();
-  return false;             // false → успех, снять выбор
+  return typeof successMsg === 'string' && successMsg ? successMsg : false;
 }
