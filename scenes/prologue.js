@@ -10,7 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { state }                              from '../src/state.js';
-import { showMsgIn }                          from '../src/utils.js';
+import { showMsgIn, setCursor }               from '../src/utils.js';
 import { leaveMain }                          from './main.js';
 import { Sequence }                           from '../src/sequence.js';
 import { openScene }                          from '../src/nav.js';
@@ -86,7 +86,8 @@ function createEl() {
   el.style.cssText = 'position:absolute;inset:0;display:none;z-index:60;background:#000;';
 
   canvas = document.createElement('canvas');
-  canvas.style.cssText = 'display:block;width:100%;height:100%;cursor:pointer;';
+  // Не задаём cursor — наследуется bud от #wrap (см. utils.setCursor + style.css).
+  canvas.style.cssText = 'display:block;width:100%;height:100%;';
   ctx = canvas.getContext('2d');
 
   el.appendChild(canvas);
@@ -121,5 +122,6 @@ export function closeScenePrologue() {
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   SaveManager.setScene('prologue', S);
+  setCursor(false);   // вернуть bud курсор после пролога
 }
 window.closeScenePrologue = closeScenePrologue;

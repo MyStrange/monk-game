@@ -15,6 +15,7 @@ import { leaveMain }                          from './main.js';
 import { openScene }                          from '../src/nav.js';
 import { SaveManager }                        from '../src/save.js';
 import { openAchievements }                   from '../src/achievements.js';
+import { setCursor }                          from '../src/utils.js';
 
 // ── Buttons (фракции 0..1 от W/H) ─────────────────────────────────────────
 const BUTTONS = [
@@ -99,7 +100,8 @@ function createEl() {
   el.style.cssText = 'position:absolute;inset:0;display:none;z-index:60;';
 
   canvas = document.createElement('canvas');
-  canvas.style.cssText = 'display:block;width:100%;height:100%;cursor:default;';
+  // Не задаём cursor — наследуется bud/lotus от #wrap (см. utils.setCursor + style.css).
+  canvas.style.cssText = 'display:block;width:100%;height:100%;';
   ctx = canvas.getContext('2d');
 
   el.appendChild(canvas);
@@ -120,6 +122,14 @@ function createEl() {
     const r = canvas.getBoundingClientRect();
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
+
+  // Hover: lotus над кнопкой, bud над пустым местом.
+  canvas.addEventListener('mousemove', e => {
+    if (state.activeScreen !== 'menu') return;
+    const r = canvas.getBoundingClientRect();
+    setCursor(hitButton(e.clientX - r.left, e.clientY - r.top) ? 'ptr' : false);
+  });
+  canvas.addEventListener('mouseleave', () => setCursor(false));
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -143,5 +153,6 @@ export function closeSceneMenu() {
   state.activeScreen = 'main';
   if (el) el.style.display = 'none';
   if (animId) { cancelAnimationFrame(animId); animId = null; }
+  setCursor(false);   // сбросить hover-курсор если уходим с подсвеченной кнопки
 }
 window.closeSceneMenu = closeSceneMenu;
