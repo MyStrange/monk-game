@@ -29,22 +29,22 @@ const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
 // ── BG ────────────────────────────────────────────────────────────────────
 const BG_W = 1376, BG_H = 768;
-const BG_AFTER  = 'assets/bg/tut_after.png';   // база — мусорка лежит, без постера/канистры
+const BG_START  = 'assets/bg/tut_start.png';   // база — всё на местах
 const BG_BROKEN = 'assets/bg/tut_broken.png';  // окно разбито
 const BG_FIRE_A = 'assets/bg/tut_fire_a.png';  // огонь kadr A
 const BG_FIRE_B = 'assets/bg/tut_fire_b.png';  // огонь kadr B
-let _curBg = BG_AFTER;
+let _curBg = BG_START;
 
-// ── Overlay sprites (показываются до взаимодействия) ──────────────────────
-const sprTrash  = new Image(); sprTrash.src  = 'assets/sprites/trash_standing.png';
-const sprPoster = new Image(); sprPoster.src = 'assets/sprites/poster.png';
-const sprCan    = new Image(); sprCan.src    = 'assets/sprites/canister.png';
+// ── Overlay sprites — показываются ПОСЛЕ действия (вырезаны из tut_after) ─
+const sprTrashFallen  = new Image(); sprTrashFallen.src  = 'assets/sprites/trash_fallen.png';
+const sprPosterGone   = new Image(); sprPosterGone.src   = 'assets/sprites/poster_gone.png';
+const sprCanisterGone = new Image(); sprCanisterGone.src = 'assets/sprites/canister_gone.png';
 
-// Расположение спрайтов в координатах фона (где они вырезались)
+// Расположение спрайтов-после в координатах фона (где они вырезались)
 const SPR_POS = {
-  trash:    { x: 110, y: 460, w: 208, h: 240 },
-  poster:   { x: 388, y: 378, w: 90,  h: 110 },
-  canister: { x: 823, y: 558, w: 112, h: 132 },
+  trash_fallen:   { x: 60,  y: 455, w: 350, h: 265 },
+  poster_gone:    { x: 388, y: 365, w: 92,  h: 130 },
+  canister_gone:  { x: 790, y: 545, w: 180, h: 175 },
 };
 
 // ── Zones (BG px) ─────────────────────────────────────────────────────────
@@ -575,19 +575,19 @@ function animate() {
 
   const sx = W / BG_W, sy = H / BG_H;
 
-  // Overlay sprites (только пока сцена не сгорела)
+  // Overlay sprites — после-состояние, рисуем поверх старта (только до пожара)
   if (!S.windowBroken && !S.fireStarted) {
-    if (!S.trashKicked && sprTrash.complete && sprTrash.naturalWidth) {
-      const p = SPR_POS.trash;
-      ctx.drawImage(sprTrash, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
+    if (S.trashKicked && sprTrashFallen.complete && sprTrashFallen.naturalWidth) {
+      const p = SPR_POS.trash_fallen;
+      ctx.drawImage(sprTrashFallen, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
     }
-    if (!S.posterTaken && sprPoster.complete && sprPoster.naturalWidth) {
-      const p = SPR_POS.poster;
-      ctx.drawImage(sprPoster, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
+    if (S.posterTaken && sprPosterGone.complete && sprPosterGone.naturalWidth) {
+      const p = SPR_POS.poster_gone;
+      ctx.drawImage(sprPosterGone, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
     }
-    if (!S.canisterUsed && sprCan.complete && sprCan.naturalWidth) {
-      const p = SPR_POS.canister;
-      ctx.drawImage(sprCan, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
+    if (S.canisterUsed && sprCanisterGone.complete && sprCanisterGone.naturalWidth) {
+      const p = SPR_POS.canister_gone;
+      ctx.drawImage(sprCanisterGone, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
     }
   }
 
@@ -665,8 +665,8 @@ function createEl() {
   el.style.cssText = 'position:absolute;inset:0;display:none;z-index:55;overflow:hidden;background:#000;';
 
   bgEl = document.createElement('img');
-  bgEl.src = BG_AFTER;
-  bgEl.dataset.cur = BG_AFTER;
+  bgEl.src = BG_START;
+  bgEl.dataset.cur = BG_START;
   bgEl.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
 
   canvas = document.createElement('canvas');
@@ -735,7 +735,7 @@ export async function openSceneTutorial() {
   showLoading('туториал');
 
   bgEl.onerror = () => showError('не удалось загрузить туториал');
-  await Promise.all([_waitImg(bgEl), _waitImg(sprTrash), _waitImg(sprPoster), _waitImg(sprCan)]);
+  await Promise.all([_waitImg(bgEl), _waitImg(sprTrashFallen), _waitImg(sprPosterGone), _waitImg(sprCanisterGone)]);
   if (!bgEl.naturalWidth) return;
 
   hideLoading();
@@ -775,7 +775,7 @@ function _resetTutorialIfReplay() {
   _spaceStarted = false; _spacePhase = 0;
   _spaceTextStart = 0; _spaceFadeStart = 0;
   _stars = [];
-  _curBg = BG_AFTER;
+  _curBg = BG_START;
   if (_fireFrameTimer) { clearInterval(_fireFrameTimer); _fireFrameTimer = null; }
   // Уберём только tutorial-предметы из инвентаря
   for (let i = 0; i < state.inventory.length; i++) {
