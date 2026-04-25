@@ -375,6 +375,15 @@ gh api -X POST repos/MyStrange/monk-game/pages \
 
 Перед `git push` всегда проверять `git branch --show-current`.
 
+**Старт каждой сессии в worktree (фича-чат):**
+```
+git fetch origin && git merge origin/main
+```
+Это держит фича-ветку всегда впереди main. Тогда мердж фичи в main у основного
+чата всегда fast-forward — без конфликтов и cherry-pick'ов. Если игнорировать —
+конфликты в общих файлах (`inventory.js`, `icons.js`, `combos.js`, `style.css`,
+`index.html` preload) почти гарантированы при долгой работе параллельно.
+
 ---
 
 ## Правило обновления .md файлов
