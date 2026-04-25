@@ -333,6 +333,126 @@ export function renderFlowerIcon() {
   </svg>`;
 }
 
+// ── Bottle (empty) ─────────────────────────────────────────────────────────
+export function renderBottleIcon() {
+  return `<svg width="48" height="48" viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="20" y="6"  width="8"  height="4"  fill="#1a3020"/>
+    <rect x="19" y="10" width="10" height="6"  fill="#264830"/>
+    <rect x="16" y="16" width="16" height="26" fill="#2d5238"/>
+    <rect x="17" y="17" width="14" height="24" fill="#3a6848"/>
+    <rect x="18" y="18" width="2"  height="20" fill="#5a8868" opacity="0.6"/>
+    <rect x="20" y="22" width="8"  height="6"  fill="#d4d0a0"/>
+    <rect x="21" y="23" width="6"  height="4"  fill="#e8e4b8"/>
+    <rect x="22" y="24" width="2"  height="2"  fill="#3a3020"/>
+    <rect x="25" y="24" width="2"  height="2"  fill="#3a3020"/>
+    <rect x="22" y="26" width="4"  height="1"  fill="#3a3020"/>
+    <rect x="16" y="42" width="16" height="2"  fill="#1a2818"/>
+  </svg>`;
+}
+
+// ── Bottle with fuel ───────────────────────────────────────────────────────
+export function renderBottleFuelIcon() {
+  return `<svg width="48" height="48" viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="20" y="6"  width="8"  height="4"  fill="#1a3020"/>
+    <rect x="19" y="10" width="10" height="6"  fill="#264830"/>
+    <rect x="16" y="16" width="16" height="26" fill="#2d5238"/>
+    <rect x="17" y="17" width="14" height="24" fill="#3a6848"/>
+    <rect x="18" y="20" width="12" height="20" fill="#d8741a" opacity="0.85"/>
+    <rect x="19" y="21" width="10" height="18" fill="#f0902a" opacity="0.8"/>
+    <rect x="20" y="22" width="2"  height="14" fill="#ffc060" opacity="0.5"/>
+    <rect x="18" y="20" width="12" height="2"  fill="#a04010"/>
+    <rect x="16" y="42" width="16" height="2"  fill="#1a2818"/>
+  </svg>`;
+}
+
+// ── Molotov (bottle with fuse) ─────────────────────────────────────────────
+export function renderMolotovIcon() {
+  return `<svg width="48" height="48" viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="22" y="2"  width="4"  height="6"  fill="#a08868"/>
+    <rect x="20" y="6"  width="8"  height="4"  fill="#1a3020"/>
+    <rect x="22" y="6"  width="4"  height="4"  fill="#c0a080"/>
+    <rect x="19" y="10" width="10" height="6"  fill="#264830"/>
+    <rect x="16" y="16" width="16" height="26" fill="#2d5238"/>
+    <rect x="17" y="17" width="14" height="24" fill="#3a6848"/>
+    <rect x="18" y="20" width="12" height="20" fill="#d8741a" opacity="0.85"/>
+    <rect x="19" y="21" width="10" height="18" fill="#f0902a" opacity="0.8"/>
+    <rect x="20" y="22" width="2"  height="14" fill="#ffc060" opacity="0.5"/>
+    <rect x="18" y="20" width="12" height="2"  fill="#a04010"/>
+    <rect x="16" y="42" width="16" height="2"  fill="#1a2818"/>
+  </svg>`;
+}
+
+// ── Molotov lit (fire on fuse) ─────────────────────────────────────────────
+export function renderMolotovLitIcon() {
+  return `<svg width="48" height="48" viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- glow -->
+    <rect x="18" y="0"  width="12" height="6"  fill="#ffaa20" opacity="0.4"/>
+    <rect x="14" y="2"  width="20" height="4"  fill="#ff6600" opacity="0.3"/>
+    <!-- flame on fuse -->
+    <rect x="22" y="0"  width="4"  height="2"  fill="#fff0a0"/>
+    <rect x="20" y="0"  width="8"  height="4"  fill="#ffcc20"/>
+    <rect x="20" y="2"  width="8"  height="2"  fill="#ff8000">
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="0.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="22" y="4"  width="4"  height="2"  fill="#ff4000"/>
+    <!-- burning fuse stub -->
+    <rect x="22" y="6"  width="4"  height="2"  fill="#3a2010"/>
+    <!-- bottle -->
+    <rect x="20" y="8"  width="8"  height="2"  fill="#1a3020"/>
+    <rect x="19" y="10" width="10" height="6"  fill="#264830"/>
+    <rect x="16" y="16" width="16" height="26" fill="#2d5238"/>
+    <rect x="17" y="17" width="14" height="24" fill="#3a6848"/>
+    <rect x="18" y="20" width="12" height="20" fill="#d8741a" opacity="0.85"/>
+    <rect x="19" y="21" width="10" height="18" fill="#f0902a" opacity="0.8"/>
+    <rect x="18" y="20" width="12" height="2"  fill="#a04010"/>
+    <rect x="16" y="42" width="16" height="2"  fill="#1a2818"/>
+  </svg>`;
+}
+
+// ── Poster — белый прямоугольник с буквами ZEN ────────────────────────────
+export function renderPosterIcon() {
+  return `<svg width="48" height="48" viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <!-- shadow -->
+    <rect x="9"  y="7"  width="32" height="36" fill="#0a0810" opacity="0.5"/>
+    <!-- paper -->
+    <rect x="8"  y="6"  width="32" height="36" fill="#e8e0c8"/>
+    <rect x="9"  y="7"  width="30" height="34" fill="#f4ecd0"/>
+    <!-- torn corner -->
+    <rect x="36" y="6"  width="4"  height="4"  fill="#0a0810" opacity="0.4"/>
+    <rect x="38" y="6"  width="2"  height="6"  fill="#0a0810" opacity="0.3"/>
+    <!-- "ZEN" -->
+    <rect x="13" y="12" width="6"  height="2"  fill="#1a1810"/>
+    <rect x="17" y="14" width="2"  height="2"  fill="#1a1810"/>
+    <rect x="15" y="16" width="2"  height="2"  fill="#1a1810"/>
+    <rect x="13" y="18" width="6"  height="2"  fill="#1a1810"/>
+    <rect x="21" y="12" width="2"  height="8"  fill="#1a1810"/>
+    <rect x="23" y="12" width="4"  height="2"  fill="#1a1810"/>
+    <rect x="23" y="15" width="3"  height="2"  fill="#1a1810"/>
+    <rect x="23" y="18" width="4"  height="2"  fill="#1a1810"/>
+    <rect x="29" y="12" width="2"  height="8"  fill="#1a1810"/>
+    <rect x="35" y="12" width="2"  height="8"  fill="#1a1810"/>
+    <rect x="31" y="14" width="2"  height="2"  fill="#1a1810"/>
+    <rect x="33" y="16" width="2"  height="2"  fill="#1a1810"/>
+    <!-- "$1.99" -->
+    <rect x="14" y="26" width="2"  height="6"  fill="#1a1810"/>
+    <rect x="16" y="24" width="2"  height="2"  fill="#1a1810"/>
+    <rect x="16" y="32" width="2"  height="2"  fill="#1a1810"/>
+    <rect x="14" y="34" width="6"  height="2"  fill="#1a1810"/>
+    <rect x="22" y="24" width="2"  height="12" fill="#1a1810"/>
+    <rect x="20" y="26" width="2"  height="2"  fill="#1a1810"/>
+    <rect x="26" y="34" width="2"  height="2"  fill="#1a1810"/>
+    <rect x="30" y="24" width="6"  height="2"  fill="#1a1810"/>
+    <rect x="30" y="26" width="2"  height="6"  fill="#1a1810"/>
+    <rect x="34" y="26" width="2"  height="6"  fill="#1a1810"/>
+    <rect x="30" y="32" width="6"  height="2"  fill="#1a1810"/>
+  </svg>`;
+}
+
 // ── Achievement icons (UI) ─────────────────────────────────────────────────
 
 // Eye — stub / persistence category
@@ -1184,6 +1304,11 @@ export function renderItemIcon(item) {
     case 'durian':     return renderDurianIcon();
     case 'fireflower': return renderFireflowerIcon();
     case 'flower':     return renderFlowerIcon();
+    case 'bottle':     return renderBottleIcon();
+    case 'bottle_fuel':return renderBottleFuelIcon();
+    case 'molotov':    return renderMolotovIcon();
+    case 'molotov_lit':return renderMolotovLitIcon();
+    case 'poster':     return renderPosterIcon();
     default:           return null;
   }
 }
