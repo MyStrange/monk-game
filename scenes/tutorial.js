@@ -9,7 +9,8 @@ import { getSelectedItem, addItem, makeItem }            from '../src/inventory.
 import { renderHotbar, setHotbarMsgEl }                  from '../src/hotbar.js';
 import { AudioSystem }                                   from '../src/audio.js';
 import { SaveManager }                                   from '../src/save.js';
-import { punkThoughts, tutHints, tutZoneMsgs }           from '../src/dialogue.js';
+import { punkThoughts, tutHints, tutZoneMsgs,
+         trafficLightMsgs }                              from '../src/dialogue.js';
 
 // ── Persistent scene state ────────────────────────────────────────────────
 const S = SaveManager.getScene('tutorial');
@@ -37,15 +38,21 @@ let _curBg = BG_START;
 
 // ── Overlay sprites — показываются ПОСЛЕ действия (вырезаны из tut_after) ─
 const sprTrashFallen  = new Image(); sprTrashFallen.src  = 'assets/sprites/trash_fallen.png';
+const sprBottleDrop   = new Image(); sprBottleDrop.src   = 'assets/sprites/bottle_drop.png';
 const sprPosterGone   = new Image(); sprPosterGone.src   = 'assets/sprites/poster_gone.png';
 const sprCanisterGone = new Image(); sprCanisterGone.src = 'assets/sprites/canister_gone.png';
 
 // Расположение спрайтов-после в координатах фона (где они вырезались)
 const SPR_POS = {
   trash_fallen:   { x: 60,  y: 455, w: 350, h: 265 },
+  bottle_drop:    { x: 308, y: 600, w: 52,  h: 90  },  // стоячая бутылка в куче мусора
   poster_gone:    { x: 388, y: 365, w: 92,  h: 130 },
   canister_gone:  { x: 790, y: 545, w: 180, h: 175 },
 };
+
+// ── Hero movement — упор в светофор ───────────────────────────────────────
+const HERO_X_MAX  = 850;  // BG-px, дальше нельзя
+let _trafficMsgIdx = 0;
 
 // ── Zones (BG px) ─────────────────────────────────────────────────────────
 const ZONES_BG = {
@@ -249,7 +256,7 @@ function onTap(cx, cy) {
   // empty click — walk
   if (!hero.smoking) {
     const bgX = Math.max(80, Math.min(BG_W - 80, cx * BG_W / W));
-    hero.targetX = bgX;
+    hero.targetX = bgX;  // ограничится HERO_X_MAX в animate
   }
 }
 
@@ -581,6 +588,11 @@ function animate() {
       const p = SPR_POS.trash_fallen;
       ctx.drawImage(sprTrashFallen, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
     }
+    // стоячая бутылка — пока её не подняли
+    if (S.trashKicked && !S.bottleTaken && sprBottleDrop.complete && sprBottleDrop.naturalWidth) {
+      const p = SPR_POS.bottle_drop;
+      ctx.drawImage(sprBottleDrop, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
+    }
     if (S.posterTaken && sprPosterGone.complete && sprPosterGone.naturalWidth) {
       const p = SPR_POS.poster_gone;
       ctx.drawImage(sprPosterGone, p.x * sx, p.y * sy, p.w * sx, p.h * sy);
@@ -599,29 +611,38 @@ function animate() {
     if (hero.x >= BG_W * 0.78 && !car.lit) _spawnCar();
     if (hero.x >= BG_W * 0.92 && !hero.hit) _onCarHit();
   } else if (!hero.smoking && !hero.hit) {
+    const prevX = hero.x;
     if (keysHeld['ArrowLeft'] || keysHeld['a'] || keysHeld['ф']) {
       hero.x = Math.max(80, hero.x - HERO_SPEED);
       hero.facing = 'left';
       hero.walking = true;
       hero.targetX = null;
     } else if (keysHeld['ArrowRight'] || keysHeld['d'] || keysHeld['в']) {
-      hero.x = Math.min(BG_W - 80, hero.x + HERO_SPEED);
+      hero.x = Math.min(HERO_X_MAX, hero.x + HERO_SPEED);
       hero.facing = 'right';
       hero.walking = true;
       hero.targetX = null;
     } else if (hero.targetX !== null) {
-      const dx = hero.targetX - hero.x;
+      // если цель за светофором — упираемся в HERO_X_MAX
+      const target = Math.min(HERO_X_MAX, hero.targetX);
+      const dx = target - hero.x;
       if (Math.abs(dx) > HERO_SPEED) {
         hero.x += Math.sign(dx) * HERO_SPEED;
         hero.facing = dx > 0 ? 'right' : 'left';
         hero.walking = true;
       } else {
-        hero.x = hero.targetX;
+        hero.x = target;
         hero.targetX = null;
         hero.walking = false;
       }
     } else {
       hero.walking = false;
+    }
+    // Подсказка про светофор — когда упираемся в правую границу
+    if (hero.x >= HERO_X_MAX && prevX < HERO_X_MAX && !S.windowBroken) {
+      const arr = trafficLightMsgs;
+      showMsg(arr[Math.min(_trafficMsgIdx, arr.length - 1)]);
+      _trafficMsgIdx++;
     }
   }
 
@@ -701,9 +722,12 @@ function createEl() {
   canvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== 'tutorial') return;
     const r = canvas.getBoundingClientRect();
-    canvas.style.cursor = hitZoneBG(e.clientX - r.left, e.clientY - r.top) ? CURSOR_PTR : CURSOR_DEF;
+    // Курсор: только при hover на интерактивную зону. Иначе — наследуем от body
+  // (соседний чат настроил пиксельный flame-cursor через CSS с !important).
+  const z = hitZoneBG(e.clientX - r.left, e.clientY - r.top);
+  canvas.style.cursor = z ? CURSOR_PTR : '';
   });
-  canvas.addEventListener('mouseleave', () => { canvas.style.cursor = CURSOR_DEF; });
+  canvas.addEventListener('mouseleave', () => { canvas.style.cursor = ''; });
 
   document.addEventListener('keydown', _onKey);
   document.addEventListener('keyup',   e => { keysHeld[e.key] = false; });
@@ -735,7 +759,7 @@ export async function openSceneTutorial() {
   showLoading('туториал');
 
   bgEl.onerror = () => showError('не удалось загрузить туториал');
-  await Promise.all([_waitImg(bgEl), _waitImg(sprTrashFallen), _waitImg(sprPosterGone), _waitImg(sprCanisterGone)]);
+  await Promise.all([_waitImg(bgEl), _waitImg(sprTrashFallen), _waitImg(sprBottleDrop), _waitImg(sprPosterGone), _waitImg(sprCanisterGone)]);
   if (!bgEl.naturalWidth) return;
 
   hideLoading();
@@ -776,6 +800,7 @@ function _resetTutorialIfReplay() {
   _spaceTextStart = 0; _spaceFadeStart = 0;
   _stars = [];
   _curBg = BG_START;
+  _trafficMsgIdx = 0;
   if (_fireFrameTimer) { clearInterval(_fireFrameTimer); _fireFrameTimer = null; }
   // Уберём только tutorial-предметы из инвентаря
   for (let i = 0; i < state.inventory.length; i++) {
