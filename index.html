@@ -102,8 +102,8 @@
   </div>
 </div>
 
-<!-- Loading overlay -->
-<div id="loading-overlay" style="display:none">
+<!-- Loading overlay — показывается СРАЗУ, скрывается в game.js после загрузки assets -->
+<div id="loading-overlay" style="display:flex">
   <div class="loading-inner">
     <svg id="loading-wheel" width="80" height="80" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated;display:block;">
       <!-- outer rim -->
@@ -175,6 +175,17 @@
 
 <!-- Сцены создаются динамически из своих JS-модулей -->
 
+<script>
+  // Safety net: если game.js упадёт при импорте, через 10s принудительно убираем
+  // loading-overlay чтобы пользователь увидел хоть что-то (вместо вечного wheel).
+  setTimeout(() => {
+    const el = document.getElementById('loading-overlay');
+    if (el && el.style.display !== 'none') {
+      el.style.opacity = '0';
+      setTimeout(() => { el.style.display = 'none'; }, 400);
+    }
+  }, 10000);
+</script>
 <script type="module" src="game.js?v=92" defer></script>
 </body>
 </html>
