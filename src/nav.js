@@ -20,6 +20,7 @@ export const NAV_MAP = {
   prologue:{ open: 'scenes/prologue.js',       canLeave: ()  => true,   block: null },
   inside:  { open: 'scenes/inside.js',         canLeave: ()  => true,   block: null },
   achievements: { open: 'scenes/achievements.js', canLeave: () => true,  block: null },
+  tutorial:{ open: 'scenes/tutorial.js',       canLeave: ()  => true,   block: null },
   // new_scene: { open: 'scenes/new_scene.js', canLeave: () => true,    block: null },
 };
 

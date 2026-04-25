@@ -55,6 +55,7 @@ initRotateOverlay();
   const gmSfx    = document.getElementById('gm-sfx');
   const gmAch    = document.getElementById('gm-ach');
   const gmFs     = document.getElementById('gm-fs');
+  const gmTut    = document.getElementById('gm-tut');
   const gmReset  = document.getElementById('gm-reset');
   const backdrop = gameMenu?.querySelector('.game-menu-backdrop');
 
@@ -88,6 +89,10 @@ initRotateOverlay();
   });
   gmAch?.addEventListener('click',   () => { openAchievements(); _closeMenu(); });
   gmFs?.addEventListener('click',    () => { toggleFullscreen(); _closeMenu(); });
+  gmTut?.addEventListener('click',   () => {
+    _closeMenu();
+    import('./scenes/tutorial.js').then(m => m.openSceneTutorial());
+  });
   gmReset?.addEventListener('click', () => {
     _closeMenu();
     if (confirm('Начать игру заново? Весь прогресс будет удалён.')) {
