@@ -337,6 +337,46 @@ git add <файл> && git commit -m 'описание' && git push origin main
 
 ---
 
+## Deployment — GitHub Pages
+
+> URL: https://mystrange.github.io/monk-game/ — деплоится автоматически из ветки `main` (root).
+
+**ОПАСНО:** Pages привязан к одной конкретной ветке. Если её удалить или переименовать
+без переконфига — сайт упадёт в 404 (источник деплоя пропадает).
+
+**Перед удалением/переименованием deploy-ветки:**
+1. `gh api repos/MyStrange/monk-game/pages` — проверить из какой ветки сейчас деплоится
+2. Если совпадает с удаляемой → сначала переключить:
+   ```
+   gh api -X PUT repos/MyStrange/monk-game/pages \
+     -f 'source[branch]=NEW_BRANCH' -f 'source[path]=/'
+   ```
+3. Только потом удалять старую
+
+**Если 404 уже случился (Pages config 404'нул):** пересоздать конфиг:
+```
+gh api -X POST repos/MyStrange/monk-game/pages \
+  -f 'source[branch]=main' -f 'source[path]=/'
+```
+Деплой запустится автоматически (видно в `gh api repos/MyStrange/monk-game/actions/runs`).
+
+---
+
+## Параллельные Claude-сессии (важно)
+
+Несколько Claude-чатов могут работать в одном репозитории через worktrees
+(`.claude/worktrees/<name>/`). Каждый worktree — отдельная ветка.
+
+**Правила чтобы не получать конфликты:**
+- В `main` пушит **только основной чат** (тот что чинит архитектуру/баги).
+- Каждая отдельная фича-локация — своя ветка (например `tutorial`).
+- Фича-чат ничего не пушит в `main`. Только `git push origin <feature-branch>`.
+- Когда фича готова — основной чат делает merge/rebase в main отдельным шагом.
+
+Перед `git push` всегда проверять `git branch --show-current`.
+
+---
+
 ## Правило обновления .md файлов
 - **CLAUDE.md** — обновлять при изменении паттернов, инвариантов, новых сценах/предметах
 - **CLAUDE_INSTRUCTIONS.md** — детали ассетов, спрайтов, зон (не пушить)
