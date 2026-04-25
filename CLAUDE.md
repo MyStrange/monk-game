@@ -1,6 +1,8 @@
 # CLAUDE.md — Monk Game Rules
 
-> Ветка: `perfectmonk` | GitHub: https://github.com/MyStrange/monk-game
+> Ветка: `main` | GitHub: https://github.com/MyStrange/monk-game
+>
+> Параллельные фичи живут в отдельных ветках (например `tutorial`). В `main` льётся только готовое.
 
 ---
 
@@ -321,9 +323,9 @@ showError('текст')     // ошибка — клик закрывает
 
 ## Git workflow
 ```
-git add <файл> && git commit -m 'описание' && git push origin perfectmonk
+git add <файл> && git commit -m 'описание' && git push origin main
 ```
-Если push rejected: `git pull --rebase origin perfectmonk` → затем push.
+Если push rejected: `git pull --rebase origin main` → затем push.
 
 Кэш браузера завис → поднять версию в `index.html`:
 ```html
