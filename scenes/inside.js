@@ -12,6 +12,7 @@
 import { state }          from '../src/state.js';
 import { SCREENS }        from '../src/constants.js';
 import { Particles }      from '../src/particles.js';
+import { drawPixelGlow3 } from '../src/anims.js';
 import { showMsgIn }                                         from '../src/ui/messages.js';
 import { showLoading, hideLoading, showError }               from '../src/ui/overlays.js';
 import { setCursor }                                         from '../src/ui/cursor.js';
@@ -133,12 +134,10 @@ function animate() {
     const br   = 0.42 + 0.58 * (0.5 + 0.5 * Math.sin(p.phase));
     const px   = Math.round(R.x + (p.x + sway) * R.w);
     const py   = Math.round(R.y + p.y * R.h);
-    const s    = p.sz;
-    ctx.fillStyle = p.col;
-    ctx.globalAlpha = br * 0.13;  ctx.fillRect(px - s*2, py - s*2, s*5, s*5);
-    ctx.globalAlpha = br * 0.35;  ctx.fillRect(px - s,   py - s,   s*3, s*3);
-    ctx.globalAlpha = br;         ctx.fillRect(px,        py,       s,   s);
+    // Споры — 3-слойный pixel glow (общий из src/anims.js, обычная плотность).
+    drawPixelGlow3(ctx, px, py, p.sz, p.col, br);
   });
+  ctx.globalAlpha = 1;
 
   // Активное состояние теперь рисуется через второй <img> (bgActive) под canvas.
   // Никаких canvas.drawImage — меняется весь кадр целиком по CSS opacity.

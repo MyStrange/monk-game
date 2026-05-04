@@ -35,7 +35,7 @@
 //   dust.tick();
 //   dust.draw(ctx, { phase });
 
-import { phaseToward } from './anims.js';
+import { phaseToward, drawPixelGlow } from './anims.js';
 
 // ── Константы стиля ────────────────────────────────────────────────────────
 // Источник правды — все сцены спавнят один и тот же набор символов,
@@ -289,12 +289,11 @@ export function createDustField() {
     if (!dust.length) return;
     ctx.save();
     for (const p of dust) {
-      ctx.globalAlpha = p.life * phase;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur  = 6;
-      ctx.fillStyle   = p.color;
-      ctx.fillRect(Math.round(p.x), Math.round(p.y), p.sz, p.sz);
+      // Pixel glow (без shadowBlur) — единый визуальный язык проекта.
+      drawPixelGlow(ctx, Math.round(p.x), Math.round(p.y),
+                    p.sz, p.color, p.life * phase);
     }
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 

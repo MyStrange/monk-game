@@ -15,6 +15,8 @@ import {
   wishDoneMsg,
   earMsg, durianAfterDialog, DIALOG,
 } from '../src/dialogue.js';
+// Pixel-glow helpers — единый визуал «свечения» во всех сценах.
+import { drawPixelGlow, drawGlowTrail } from '../src/anims.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('buddha');
@@ -537,25 +539,10 @@ function animate() {
       if (f.escapeA <= 0 || f.x < -80 || f.x > bW + 80 || f.y < -80 || f.y > bH + 80) {
         f.alive = false; continue;
       }
-      // Светящийся след (3 слоя без shadowBlur)
-      for (let ti = 0; ti < f.trail.length; ti++) {
-        const p  = f.trail[ti];
-        const ta = (ti / f.trail.length) * f.escapeA * 0.7;
-        if (ta < 0.01) continue;
-        bCtx.fillStyle = `rgba(255,220,60,${ta})`;
-        bCtx.globalAlpha = ta * 0.18; bCtx.fillRect(Math.round(p.x) - 2, Math.round(p.y) - 2, 7, 7);
-        bCtx.globalAlpha = ta * 0.45; bCtx.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, 5, 5);
-        bCtx.globalAlpha = ta;        bCtx.fillRect(Math.round(p.x),     Math.round(p.y),     3, 3);
-      }
-      // Сам улетающий светлячок — 4 слоя
-      const s    = Math.ceil(f.sz);
-      const px   = Math.round(f.x), py = Math.round(f.y);
-      const ea   = f.escapeA;
-      bCtx.fillStyle = `rgba(255,255,200,${ea})`;
-      bCtx.globalAlpha = ea * 0.08;  bCtx.fillRect(px - s*5, py - s*5, s*11, s*11);
-      bCtx.globalAlpha = ea * 0.18;  bCtx.fillRect(px - s*3, py - s*3, s*7,  s*7);
-      bCtx.globalAlpha = ea * 0.42;  bCtx.fillRect(px - s,   py - s,   s*3,  s*3);
-      bCtx.globalAlpha = ea;         bCtx.fillRect(px,        py,       s,    s);
+      drawGlowTrail(bCtx, f.trail, 3, '#ffdc3c', f.escapeA * 0.7);
+      drawPixelGlow(bCtx, Math.round(f.x), Math.round(f.y),
+                    Math.ceil(f.sz), '#ffffc8', f.escapeA);
+      bCtx.globalAlpha = 1;
       continue;
     }
 
@@ -564,19 +551,9 @@ function animate() {
     if (f.br < 0 || f.br > 1) f.bv *= -1;
     if (f.x < 0) f.x = bW; if (f.x > bW) f.x = 0;
     if (f.y < 0) f.y = bH; if (f.y > bH) f.y = 0;
-    // Светлячок: маленькое ядро + большой многослойный ореол (без shadowBlur)
-    const a  = 0.4 + f.br * 0.6;
-    const s  = Math.ceil(f.sz);
-    const px = Math.round(f.x), py = Math.round(f.y);
-    bCtx.fillStyle = `rgba(255,220,80,${a})`;
-    // внешнее широкое свечение
-    bCtx.globalAlpha = a * 0.07;  bCtx.fillRect(px - s*5, py - s*5, s*11, s*11);
-    // средний ореол
-    bCtx.globalAlpha = a * 0.16;  bCtx.fillRect(px - s*3, py - s*3, s*7,  s*7);
-    // ближний ореол
-    bCtx.globalAlpha = a * 0.38;  bCtx.fillRect(px - s,   py - s,   s*3,  s*3);
-    // яркое ядро
-    bCtx.globalAlpha = a;         bCtx.fillRect(px,        py,       s,    s);
+    // Светлячок: 4-слойный pixel glow без shadowBlur (общий drawPixelGlow).
+    drawPixelGlow(bCtx, Math.round(f.x), Math.round(f.y),
+                  Math.ceil(f.sz), '#ffdc50', 0.4 + f.br * 0.6);
     bCtx.globalAlpha = 1;
   }
 
@@ -628,25 +605,10 @@ function animate() {
       wf.trail.push({ x: wf.x, y: wf.y });
       if (wf.trail.length > 38) wf.trail.shift();
 
-      // Draw trail (3 слоя без shadowBlur)
       const trailSz = Math.max(2, Math.ceil(wf.sz * 0.8));
-      for (let ti = 0; ti < wf.trail.length; ti++) {
-        const p  = wf.trail[ti];
-        const ta = (ti / wf.trail.length) * wf.alpha * 0.65;
-        if (ta < 0.01) continue;
-        wCtx.fillStyle = `rgba(255,220,60,${ta})`;
-        wCtx.globalAlpha = ta * 0.15; wCtx.fillRect(Math.round(p.x) - trailSz, Math.round(p.y) - trailSz, trailSz*3, trailSz*3);
-        wCtx.globalAlpha = ta * 0.40; wCtx.fillRect(Math.round(p.x),           Math.round(p.y),            trailSz,   trailSz);
-      }
-      // Wish fly — 4-layer glow
-      const ws  = Math.ceil(wf.sz);
-      const wpx = Math.round(wf.x), wpy = Math.round(wf.y);
-      const wa  = wf.alpha;
-      wCtx.fillStyle = `rgba(255,255,200,${wa})`;
-      wCtx.globalAlpha = wa * 0.07;  wCtx.fillRect(wpx - ws*6, wpy - ws*6, ws*13, ws*13);
-      wCtx.globalAlpha = wa * 0.16;  wCtx.fillRect(wpx - ws*3, wpy - ws*3, ws*7,  ws*7);
-      wCtx.globalAlpha = wa * 0.42;  wCtx.fillRect(wpx - ws,   wpy - ws,   ws*3,  ws*3);
-      wCtx.globalAlpha = wa;         wCtx.fillRect(wpx,         wpy,        ws,    ws);
+      drawGlowTrail(wCtx, wf.trail, trailSz, '#ffdc3c', wf.alpha * 0.65);
+      drawPixelGlow(wCtx, Math.round(wf.x), Math.round(wf.y),
+                    Math.ceil(wf.sz), '#ffffc8', wf.alpha);
       wCtx.globalAlpha = 1;
     }
   }

@@ -299,6 +299,23 @@ const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
 ## Визуальный стиль
 
+### Pixel-glow — единый визуальный язык свечения
+**Источник правды:** `src/anims.js` → `drawPixelGlow`, `drawPixelGlow3`, `drawGlowTrail`.
+
+Все «огоньки/искры/пыль/символы медитации» в проекте используют один и тот же
+многослойный rect-glow, БЕЗ `shadowBlur` (он тяжёлый при 100+ частицах).
+
+| Кейс | Helper | Слои |
+|---|---|---|
+| Светлячки (buddha bFlies/wishFlies), огоньки (tutorial embers, main dust) | `drawPixelGlow` | 4 (mul 5/3/1/0, alpha 0.07/0.16/0.42/1) |
+| Споры (inside), фоновые искры (rotate-overlay) | `drawPixelGlow3` | 3 (mul 2/1/0, alpha 0.10/0.22/1) |
+| Активация (scene2 камни) — плотный | `drawPixelGlow3(.., dense=true)` | 3 (alpha 0.18/0.45/1) |
+| Затухающий хвост (комета, escaping firefly) | `drawGlowTrail(ctx, trail, sz, color, baseA)` | 2 |
+
+**Правило:** новые анимации с пиксельным светом — ТОЛЬКО через эти функции.
+Не писать inline `ctx.fillRect` с alpha-multiplier'ами по слоям.
+Не использовать `ctx.shadowBlur` для свечения частиц (только для UI-акцентов на 1-2 элемента).
+
 ### Иконки — только пиксель-арт SVG
 - Только `<rect>` элементы, `image-rendering:pixelated`
 - Никаких `<path>`, `<circle>`, `<polygon>`, эмодзи

@@ -1,6 +1,8 @@
 // src/rotate-overlay.js — оверлей «поверни телефон» для портретного режима
 // Только мобильные. Огоньки-светлячки на canvas. Запуск из game.js один раз.
 
+import { drawPixelGlow3 } from './anims.js';
+
 export function initRotateOverlay() {
   if (!window.matchMedia('(pointer:coarse)').matches) return; // desktop: skip
   const overlay = document.getElementById('rotate-overlay');
@@ -48,17 +50,8 @@ export function initRotateOverlay() {
       if (f.y < -8)    { f.y = H + 4; f.x = Math.random() * W; }
       if (f.x < -8)    f.x = W + 4;
       if (f.x > W + 8) f.x = -4;
-      const px = Math.round(f.x), py = Math.round(f.y);
-      ctx.fillStyle = f.col;
-      // soft glow halo — larger rect at low alpha (project style, no shadowBlur)
-      ctx.globalAlpha = br * 0.22;
-      ctx.fillRect(px - f.sz, py - f.sz, f.sz * 3, f.sz * 3);
-      // outer halo ring
-      ctx.globalAlpha = br * 0.10;
-      ctx.fillRect(px - f.sz * 2, py - f.sz * 2, f.sz * 5, f.sz * 5);
-      // bright pixel core
-      ctx.globalAlpha = br;
-      ctx.fillRect(px, py, f.sz, f.sz);
+      // 3-слойный pixel glow — единый визуал из src/anims.js.
+      drawPixelGlow3(ctx, Math.round(f.x), Math.round(f.y), f.sz, f.col, br);
     }
     ctx.globalAlpha = 1;
     animId = requestAnimationFrame(_tick);

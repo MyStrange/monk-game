@@ -7,6 +7,7 @@ import { showLoading, hideLoading, showError }               from '../src/ui/ove
 import { CURSOR_DEF, CURSOR_PTR, setCursor }                 from '../src/ui/cursor.js';
 import { leaveMain, resumeMain } from './main.js';
 import { SCENE_DEFS } from '../src/scene-defs.js';
+import { drawPixelGlow3 } from '../src/anims.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
 import { getZoneMsg }    from '../src/zone-msgs.js';
 import { renderHotbar }  from '../src/hotbar.js';
@@ -401,17 +402,9 @@ function animate() {
         if (a <= 0) continue;
         const px = Math.round(rx + p.x * rw);
         const py = Math.round(ry + p.y * rh);
-        const s  = p.sz;
-        ctx.fillStyle = p.col;
-        // halo — широкое мягкое свечение
-        ctx.globalAlpha = a * 0.18;
-        ctx.fillRect(px - s * 2, py - s * 2, s * 5, s * 5);
-        // mid — средний ореол
-        ctx.globalAlpha = a * 0.45;
-        ctx.fillRect(px - s, py - s, s * 3, s * 3);
-        // core — яркий пиксель
-        ctx.globalAlpha = a;
-        ctx.fillRect(px, py, s, s);
+        // 3-слойный pixel glow (halo / mid / core) — общий из src/anims.js,
+        // dense=true даёт alpha-профиль 0.18/0.45/1 как у активации в scene2.
+        drawPixelGlow3(ctx, px, py, p.sz, p.col, a, /* dense */ true);
       }
       ctx.globalAlpha = 1;
     }
@@ -441,17 +434,8 @@ function animate() {
 
       const ppx = Math.round(rx + (p.fx + sway) * rw);
       const ppy = Math.round(ry + p.fy * rh);
-      const s   = p.sz;
-      ctx.fillStyle = p.col;
-      // halo — мягкое размытое свечение
-      ctx.globalAlpha = br * 0.20;
-      ctx.fillRect(ppx - s, ppy - s, s * 3, s * 3);
-      // mid ореол
-      ctx.globalAlpha = br * 0.52;
-      ctx.fillRect(ppx - Math.max(1, s >> 1), ppy - Math.max(1, s >> 1), s + Math.max(1, s >> 1) * 2, s + Math.max(1, s >> 1) * 2);
-      // core — яркий пиксель
-      ctx.globalAlpha = br;
-      ctx.fillRect(ppx, ppy, s, s);
+      // Ambient orbital — тот же 3-слойный glow, что и активация (палитра одна).
+      drawPixelGlow3(ctx, ppx, ppy, p.sz, p.col, br, /* dense */ true);
     }
     ctx.globalAlpha = 1;
   }

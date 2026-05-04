@@ -18,6 +18,7 @@ import { punkThoughts, tutHints, tutZoneMsgs,
 import { tickHeroMove }                                  from '../src/hero.js';
 import { Particles }                                     from '../src/particles.js';
 import { waitImg }                                       from '../src/scene-base.js';
+import { drawPixelGlow }                                 from '../src/anims.js';
 
 // ── Persistent scene state ────────────────────────────────────────────────
 const S = SaveManager.getScene('tutorial');
@@ -625,13 +626,12 @@ function _spawnEmber() {
 function _drawEmbers(sx, sy) {
   embers.tick();
   embers.forEach(p => {
-    ctx.globalAlpha = p.life;
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur  = 6;
-    ctx.fillStyle   = p.color;
-    ctx.fillRect(Math.round(p.x * sx), Math.round(p.y * sy), p.sz * sx, p.sz * sy);
+    // Pixel glow (без shadowBlur — общий визуальный язык, легче на мобильных).
+    drawPixelGlow(ctx,
+      Math.round(p.x * sx), Math.round(p.y * sy),
+      Math.max(1, Math.round(p.sz * Math.min(sx, sy))),
+      p.color, p.life);
   });
-  ctx.shadowBlur  = 0;
   ctx.globalAlpha = 1;
 }
 
