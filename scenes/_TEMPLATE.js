@@ -32,8 +32,9 @@ let W = 0, H = 0;
 const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
 // ── BG natural size — для coverRect (нужно чтобы зоны работали на любом
-//    соотношении экрана). Смотри size картинки и пропиши тут.
-const BG_W = 1376, BG_H = 768;
+//    соотношении экрана). Зарегистрируй в src/scene-defs.js → SCENE_DEFS.SCENEID.
+import { SCENE_DEFS } from '../src/scene-defs.js';
+const { bgW: BG_W, bgH: BG_H } = SCENE_DEFS.SCENEID;
 
 // ── ZONES (нормализованные 0..1 от BG) ────────────────────────────────────
 // Используй формат {fx, fy, fw, fh}  или  {x0, y0, x1, y1} — rectHitZone

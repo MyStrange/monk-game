@@ -36,8 +36,9 @@ S.placed = S.placed ?? {};
 function saveAch() { SaveManager.setScene('achievements', S); }
 
 // ── BG geometry ────────────────────────────────────────────────────────────
-// shelf.png: 1376×775
-const BG_W = 1376, BG_H = 775;
+// shelf.png: 1376×775 — реестр в src/scene-defs.js
+import { SCENE_DEFS } from '../src/scene-defs.js';
+const { bgW: BG_W, bgH: BG_H } = SCENE_DEFS.achievements;
 
 // ── Shelves (нормализованные 0..1 относительно BG) ─────────────────────────
 // Внутреннее пространство шкафа на shelf.png (1376×775) — между дверцами,

@@ -33,7 +33,8 @@ let W = 0, H = 0;
 const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
 // ── BG ────────────────────────────────────────────────────────────────────
-const BG_W = 1376, BG_H = 768;
+import { SCENE_DEFS } from '../src/scene-defs.js';
+const { bgW: BG_W, bgH: BG_H, heroXMax: HERO_X_MAX_DEF } = SCENE_DEFS.tutorial;
 const BG_START  = 'assets/bg/tut_start.png';   // база — всё на местах
 const BG_BROKEN = 'assets/bg/tut_broken.png';  // окно разбито
 const BG_FIRE_A = 'assets/bg/tut_fire_a.png';  // огонь kadr A
@@ -55,7 +56,7 @@ const SPR_POS = {
 };
 
 // ── Hero movement — упор в светофор ───────────────────────────────────────
-const HERO_X_MAX  = 850;  // BG-px, дальше нельзя
+const HERO_X_MAX  = HERO_X_MAX_DEF;  // BG-px, дальше нельзя — см. SCENE_DEFS.tutorial
 let _trafficMsgIdx = 0;
 
 // ── Onboarding step → подсвечиваемая зона/слот ───────────────────────────

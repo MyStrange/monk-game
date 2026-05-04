@@ -24,7 +24,8 @@ import { renderHotbar }   from '../src/hotbar.js';
 import { coverRect, hitZone as _hitNormZone } from '../src/scene-base.js';
 
 // ── BG aspect ratio ────────────────────────────────────────────────────────
-const BG_W = 1920, BG_H = 1080;   // 16:9, object-fit:cover адаптирует
+import { SCENE_DEFS } from '../src/scene-defs.js';
+const { bgW: BG_W, bgH: BG_H } = SCENE_DEFS.inside;   // 16:9, object-fit:cover адаптирует
 
 // Активный фон подключается как второй <img> в createEl (dual-layer + opacity).
 // Раньше тут был canvas-crop через _HEART_SPRITE — обрезало по прямоугольнику

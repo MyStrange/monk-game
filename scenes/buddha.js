@@ -33,7 +33,8 @@ const showMsg = (t, d) => showMsgIn(bMsgEl, t, d);
 // привязано к конкретному пикселю bg, значит hit-зона должна считаться
 // относительно видимого rect, а не canvas (иначе на экранах с aspect
 // ≠ 1376/768 зона уплывает от нарисованного уха).
-const BBG_AR = 1376 / 768;
+import { SCENE_DEFS } from '../src/scene-defs.js';
+const BBG_AR = SCENE_DEFS.buddha.bgW / SCENE_DEFS.buddha.bgH;
 function _bgRect() {
   const cAr = bW / bH;
   if (cAr > BBG_AR) {

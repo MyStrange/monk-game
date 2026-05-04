@@ -6,6 +6,7 @@ import { showMsgIn }                                         from '../src/ui/mes
 import { showLoading, hideLoading, showError }               from '../src/ui/overlays.js';
 import { CURSOR_DEF, CURSOR_PTR, setCursor }                 from '../src/ui/cursor.js';
 import { leaveMain, resumeMain } from './main.js';
+import { SCENE_DEFS } from '../src/scene-defs.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
 import { getZoneMsg }    from '../src/zone-msgs.js';
 import { renderHotbar }  from '../src/hotbar.js';
@@ -32,7 +33,7 @@ let W = 0, H = 0;
 const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
 // ── BG image dims ─────────────────────────────────────────────────────────
-const BG_W = 1376, BG_H = 768;
+const { bgW: BG_W, bgH: BG_H } = SCENE_DEFS.scene2;
 
 // ── Bottle (jar) sprite ────────────────────────────────────────────────────
 const bottleImg = new Image();

@@ -52,7 +52,8 @@ let el, bgEl, layer2El, layer3El, msgEl, debugCv;
 let _resizeObs = null;
 
 // ── BG dims + layer sprite coords ─────────────────────────────────────────
-const BG_W = 2051, BG_H = 1154;
+import { SCENE_DEFS } from '../src/scene-defs.js';
+const { bgW: BG_W, bgH: BG_H } = SCENE_DEFS.scene4;
 const SP_X = 784, SP_Y = 0, SP_W = 509, SP_H = 854;
 
 // ── Hit-зоны (normalized 0..1 в BG natural 2051×1154) ────────────────────

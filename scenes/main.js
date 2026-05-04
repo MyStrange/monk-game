@@ -8,6 +8,7 @@ import { CURSOR_DEF, CURSOR_PTR, setCursor }                 from '../src/ui/cur
 import { setEdgeNavTarget, setDefaultEnterFor,
          OPPOSITE_EDGE }                                     from '../src/edge-nav.js';
 import { coverRect }       from '../src/scene-base.js';
+import { SCENE_DEFS }      from '../src/scene-defs.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
@@ -75,10 +76,10 @@ const INSCRIPTION_TARGET  = { x: 566, y: 593, w: 421, h: 149 };
 const catSheet  = new Image(); catSheet.src  = 'assets/sprites/cat.png';
 const monkSheet = new Image(); monkSheet.src = 'assets/sprites/monk_red.png';
 
-// ── Scene constants (in BG px, BG = 2000×1116) ────────────────────────────
+// ── Scene constants (in BG px) ────────────────────────────────────────────
 // HERO_* размеры, HERO_SPEED, HERO_FRAMES, HERO_LEFT_YOFF — из src/hero.js.
-const BG_W = 2000, BG_H = 1116;
-const GROUND_Y      = 920;   // единая плоскость героя/монаха/кота
+// BG_W / BG_H / groundY — единый реестр в src/scene-defs.js.
+const { bgW: BG_W, bgH: BG_H, groundY: GROUND_Y } = SCENE_DEFS.main;
 const HERO_GROUND_Y = GROUND_Y;
 
 // Cat display size — frame ratio ~410/338 = 1.21
