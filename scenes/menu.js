@@ -16,7 +16,7 @@ import { leaveMain, resumeMain }              from './main.js';
 import { openScene }                          from '../src/nav.js';
 import { SaveManager }                        from '../src/save.js';
 import { openAchievements }                   from '../src/achievements.js';
-import { setCursor }                          from '../src/utils.js';
+import { setCursor }                          from '../src/ui/cursor.js';
 
 // ── Buttons (фракции 0..1 от W/H) ─────────────────────────────────────────
 const BUTTONS = [

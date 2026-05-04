@@ -2,7 +2,9 @@
 
 import { state }         from '../src/state.js';
 import { SCREENS }       from '../src/constants.js';
-import { showMsgIn, showLoading, hideLoading, showError, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
+import { showMsgIn }                                         from '../src/ui/messages.js';
+import { showLoading, hideLoading, showError }               from '../src/ui/overlays.js';
+import { CURSOR_DEF, CURSOR_PTR, setCursor }                 from '../src/ui/cursor.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
 import { getZoneMsg }    from '../src/zone-msgs.js';

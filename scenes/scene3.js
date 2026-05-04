@@ -2,7 +2,8 @@
 
 import { state }        from '../src/state.js';
 import { SCREENS }      from '../src/constants.js';
-import { showMsgIn, CURSOR_DEF, CURSOR_PTR, setCursor } from '../src/utils.js';
+import { showMsgIn }                                from '../src/ui/messages.js';
+import { CURSOR_DEF, CURSOR_PTR, setCursor }        from '../src/ui/cursor.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { renderHotbar } from '../src/hotbar.js';

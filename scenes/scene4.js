@@ -21,9 +21,9 @@
 
 import { state }                          from '../src/state.js';
 import { SCREENS }                        from '../src/constants.js';
-import { showLoading, hideLoading, showError,
-         showMsgIn, showChoiceIn, isStoryActive,
-         setCursor }                      from '../src/utils.js';
+import { showLoading, hideLoading, showError }   from '../src/ui/overlays.js';
+import { showMsgIn, showChoiceIn, isStoryActive } from '../src/ui/messages.js';
+import { setCursor }                              from '../src/ui/cursor.js';
 import { leaveMain, resumeMain }          from './main.js';
 import { openScene }                      from '../src/nav.js';
 import { SaveManager }                    from '../src/save.js';

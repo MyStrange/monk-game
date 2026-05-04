@@ -7,9 +7,12 @@
 
 import { state }                                            from '../src/state.js';
 import { SCREENS }                                          from '../src/constants.js';
-import { showMsgIn, showLoading, hideLoading, showError,
-         setCursor, edgeNavMode, tryEdgeNavClick,
-         setDefaultEnterFor, OPPOSITE_EDGE, setMeditateBtn } from '../src/utils.js';
+import { showMsgIn }                                         from '../src/ui/messages.js';
+import { showLoading, hideLoading, showError,
+         setMeditateBtn }                                    from '../src/ui/overlays.js';
+import { setCursor }                                         from '../src/ui/cursor.js';
+import { edgeNavMode, tryEdgeNavClick,
+         setDefaultEnterFor, OPPOSITE_EDGE }                 from '../src/edge-nav.js';
 import { leaveMain, resumeMain }                            from './main.js';
 import { SaveManager }                                      from '../src/save.js';
 import { ACHIEVEMENT_DEFS, getUnlockedIds,

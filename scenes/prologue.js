@@ -11,7 +11,8 @@
 
 import { state }                              from '../src/state.js';
 import { SCREENS }                            from '../src/constants.js';
-import { showMsgIn, setCursor }               from '../src/utils.js';
+import { showMsgIn }                          from '../src/ui/messages.js';
+import { setCursor }                          from '../src/ui/cursor.js';
 import { leaveMain, resumeMain }              from './main.js';
 import { Sequence }                           from '../src/sequence.js';
 import { openScene }                          from '../src/nav.js';

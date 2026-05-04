@@ -2,9 +2,11 @@
 
 import { state }           from '../src/state.js';
 import { SCREENS, INPUT }  from '../src/constants.js';
-import { showMsgIn, showLoading, hideLoading, showChoiceIn, isStoryActive,
-         CURSOR_DEF, CURSOR_PTR, setCursor, setEdgeNavTarget,
-         setDefaultEnterFor, OPPOSITE_EDGE, setMeditateBtn }  from '../src/utils.js';
+import { showMsgIn, showChoiceIn, isStoryActive }            from '../src/ui/messages.js';
+import { showLoading, hideLoading, setMeditateBtn }          from '../src/ui/overlays.js';
+import { CURSOR_DEF, CURSOR_PTR, setCursor }                 from '../src/ui/cursor.js';
+import { setEdgeNavTarget, setDefaultEnterFor,
+         OPPOSITE_EDGE }                                     from '../src/edge-nav.js';
 import { coverRect }       from '../src/scene-base.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';

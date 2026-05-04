@@ -1,10 +1,10 @@
 // src/hotbar.js — renderHotbar, updateItemCursor, item context menu
 
 import { state }          from './state.js';
-import { isMobile }       from './utils.js';
+import { isMobile }       from './ui/cursor.js';
 import { renderItemIcon } from './icons.js';
 import { itemOnItem }     from './combos.js';
-import { showMsgIn }      from './utils.js';
+import { showMsgIn }      from './ui/messages.js';
 import { trackSlotSelect } from './achievements.js';
 
 const SLOTS = 5;

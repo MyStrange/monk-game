@@ -2,9 +2,10 @@
 // Базируется на _TEMPLATE.js + паттерн main (sit/stand, walking, item×zone)
 
 import { state }                                         from '../src/state.js';
-import { showMsgIn, showLoading, hideLoading,
-         showError, CURSOR_DEF, CURSOR_PTR,
-         setMeditateBtn }                                from '../src/utils.js';
+import { showMsgIn }                                     from '../src/ui/messages.js';
+import { showLoading, hideLoading, showError,
+         setMeditateBtn }                                from '../src/ui/overlays.js';
+import { CURSOR_DEF, CURSOR_PTR }                        from '../src/ui/cursor.js';
 import { leaveMain, resumeMain }                         from './main.js';
 import { getSelectedItem, addItem, makeItem }            from '../src/inventory.js';
 import { renderHotbar, setHotbarMsgEl }                  from '../src/hotbar.js';
