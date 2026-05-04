@@ -54,3 +54,32 @@ export function onSceneVisible(isActive, onResume) {
 export function makeIsActiveCheck(sceneId) {
   return () => state.activeScreen === sceneId;
 }
+
+// ── Cached element rect ──────────────────────────────────────────────────
+// `getBoundingClientRect()` форсит layout reflow. Если вызывать его в каждом
+// mousemove (60Hz) — браузер пересчитывает геометрию страницы 60 раз/сек,
+// тормозит на сложных сценах. Решение: кэшировать rect, обновлять только
+// при resize/scroll или вручную после программного изменения размера canvas.
+//
+//   const [getRect, refreshRect] = cacheElementRect(canvas);
+//   canvas.addEventListener('mousemove', e => {
+//     const r = getRect();
+//     const cx = e.clientX - r.left, cy = e.clientY - r.top;
+//   });
+//   // После canvas.width = ..., canvas.height = ... — refreshRect() руками.
+//
+// Возвращает [getRect, refreshRect] — getter и forced-refresh.
+export function cacheElementRect(el) {
+  let rect = el ? el.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
+  const refresh = () => { if (el) rect = el.getBoundingClientRect(); };
+  window.addEventListener('resize', refresh);
+  window.addEventListener('scroll', refresh, { passive: true });
+  // Возвращаем getter с прикреплённым refresh — оба варианта вызова работают:
+  //   const getRect = cacheElementRect(el);  getRect();          (legacy)
+  //   const [get, ref] = cacheElementRect(el); get(); ref();     (новый)
+  const getRect = () => rect;
+  getRect.refresh = refresh;
+  // Tuple-доступ (если деструктурируешь массивом):
+  getRect[Symbol.iterator] = function* () { yield getRect; yield refresh; };
+  return getRect;
+}

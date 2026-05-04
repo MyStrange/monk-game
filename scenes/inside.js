@@ -13,6 +13,7 @@ import { state }          from '../src/state.js';
 import { SCREENS }        from '../src/constants.js';
 import { Particles }      from '../src/particles.js';
 import { drawPixelGlow3 } from '../src/anims.js';
+import { cacheElementRect } from '../src/scene-input.js';
 import { showMsgIn }                                         from '../src/ui/messages.js';
 import { showLoading, hideLoading, showError }               from '../src/ui/overlays.js';
 import { setCursor }                                         from '../src/ui/cursor.js';
@@ -311,28 +312,31 @@ function createEl() {
   el.appendChild(canvas); el.appendChild(back); el.appendChild(msgEl);
   document.getElementById('wrap').appendChild(el);
 
+  // Кэш rect через src/scene-input.js → cacheElementRect.
+  // _iRectRefresh используется в lifecycle после программного resize canvas.
+  const getIRect = cacheElementRect(canvas);
+  _iRectRefresh = getIRect.refresh;
+
   canvas.addEventListener('click', e => {
-    onTap(e.clientX - _iRect.left, e.clientY - _iRect.top);
+    const r = getIRect();
+    onTap(e.clientX - r.left, e.clientY - r.top);
   });
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    onTap(t.clientX - _iRect.left, t.clientY - _iRect.top);
+    const r = getIRect();
+    onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
   canvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== SCREENS.INSIDE) return;
-    const hz = _hitZone(e.clientX - _iRect.left, e.clientY - _iRect.top);
+    const r = getIRect();
+    const hz = _hitZone(e.clientX - r.left, e.clientY - r.top);
     setCursor(hz === 'opening' ? 'up' : !!hz);
   });
   canvas.addEventListener('mouseleave', () => setCursor(false));
-  _iCacheRect();
-  window.addEventListener('resize', _iCacheRect);
-  window.addEventListener('scroll', _iCacheRect, { passive: true });
 }
 
-// Кэш rect — заменяет три getBoundingClientRect на событие.
-let _iRect = { left: 0, top: 0, width: 0, height: 0 };
-function _iCacheRect() { if (canvas) _iRect = canvas.getBoundingClientRect(); }
+let _iRectRefresh = () => {};
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 export async function openSceneInside() {
@@ -366,7 +370,7 @@ export async function openSceneInside() {
       const r = el.getBoundingClientRect();
       W = canvas.width  = Math.round(r.width);
       H = canvas.height = Math.round(r.height);
-      _iCacheRect();
+      _iRectRefresh();
       _spawnSpores();
       if (!animId) animate();
     });

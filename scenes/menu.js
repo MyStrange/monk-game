@@ -18,7 +18,7 @@ import { SaveManager }                        from '../src/save.js';
 import { openAchievements }                   from '../src/achievements.js';
 import { setCursor }                          from '../src/ui/cursor.js';
 import { runAnimLoop }                        from '../src/anim-loop.js';
-import { makeIsActiveCheck }                  from '../src/scene-input.js';
+import { makeIsActiveCheck, cacheElementRect } from '../src/scene-input.js';
 
 // ── Buttons (фракции 0..1 от W/H) ─────────────────────────────────────────
 const BUTTONS = [
@@ -115,26 +115,29 @@ function createEl() {
     onFrame:  (c, w, h) => _drawFrame(c, w, h),
   });
 
+  // Кэшированный rect — getBoundingClientRect не вызывается в каждом mousemove.
+  const getRect = cacheElementRect(canvas);
+
   const onTap = (cx, cy) => {
     if (state.activeScreen !== SCREENS.MENU) return;
     hitButton(cx, cy)?.action();
   };
 
   canvas.addEventListener('click', e => {
-    const r = canvas.getBoundingClientRect();
+    const r = getRect();
     onTap(e.clientX - r.left, e.clientY - r.top);
   });
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    const r = canvas.getBoundingClientRect();
+    const r = getRect();
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
 
   // Hover: lotus над кнопкой, bud над пустым местом.
   canvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== SCREENS.MENU) return;
-    const r = canvas.getBoundingClientRect();
+    const r = getRect();
     setCursor(hitButton(e.clientX - r.left, e.clientY - r.top) ? 'ptr' : false);
   });
   canvas.addEventListener('mouseleave', () => setCursor(false));

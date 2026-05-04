@@ -18,6 +18,7 @@ import {
 // Pixel-glow helpers — единый визуал «свечения» во всех сценах.
 import { drawPixelGlow, drawGlowTrail, drawRadialFlash } from '../src/anims.js';
 import { Particles }                                    from '../src/particles.js';
+import { cacheElementRect }                             from '../src/scene-input.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const [S] = useSceneState('buddha', {
@@ -654,24 +655,26 @@ function createEl() {
   el.appendChild(bMsgEl);
   document.getElementById('wrap').appendChild(el);
 
-  // Кэш bounding-rect — обновляется на resize/scroll, а не 60 раз/сек в mousemove.
-  // Было: три getBoundingClientRect() в каждом обработчике = layout-thrash.
-  _bCacheRect();
-  window.addEventListener('resize', _bCacheRect);
-  window.addEventListener('scroll', _bCacheRect, { passive: true });
+  // Кэш bounding-rect через src/scene-input.js → cacheElementRect.
+  // getBRect() — обновляется только на resize/scroll, не 60Hz в mousemove.
+  const getBRect = cacheElementRect(bCanvas);
+  _bRectRefresh = getBRect.refresh;
 
   bCanvas.addEventListener('click', e => {
-    onTap(e.clientX - _bRect.left, e.clientY - _bRect.top);
+    const r = getBRect();
+    onTap(e.clientX - r.left, e.clientY - r.top);
   });
   bCanvas.addEventListener('touchend', e => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    onTap(t.clientX - _bRect.left, t.clientY - _bRect.top);
+    const r = getBRect();
+    onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
   let _stickHintZone = false;
   bCanvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== SCREENS.BUDDHA) return;
-    const cx = e.clientX - _bRect.left, cy = e.clientY - _bRect.top;
+    const r = getBRect();
+    const cx = e.clientX - r.left, cy = e.clientY - r.top;
     setCursor(_hitBuddha(cx, cy));
     // Подсказка: стик над зоной уха
     const item = getSelectedItem();
@@ -686,11 +689,9 @@ function createEl() {
   bCanvas.addEventListener('mouseleave', () => { setCursor(false); });
 }
 
-// Кэш rect для bCanvas — чтобы не звать getBoundingClientRect 60Hz.
-let _bRect = { left: 0, top: 0, width: 0, height: 0 };
-function _bCacheRect() {
-  if (bCanvas) _bRect = bCanvas.getBoundingClientRect();
-}
+// Forced-refresh кэшированного rect (см. cacheElementRect в scene-input.js).
+// Хранится модульно, чтобы lifecycle мог вызвать ПОСЛЕ программного resize canvas.
+let _bRectRefresh = () => {};
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 export async function openSceneBuddha() {
@@ -718,7 +719,7 @@ export async function openSceneBuddha() {
       const r = el.getBoundingClientRect();
       bW = bCanvas.width = wishCanvas.width  = Math.round(r.width);
       bH = bCanvas.height = wishCanvas.height = Math.round(r.height);
-      _bCacheRect();         // rect валиден только после resize canvas
+      _bRectRefresh();       // rect валиден только после resize canvas
       _spawnFlies(30);
       if (!animId) animate();
     });

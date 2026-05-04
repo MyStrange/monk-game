@@ -5,6 +5,7 @@ import { SCREENS }      from '../src/constants.js';
 import { showMsgIn }                                from '../src/ui/messages.js';
 import { CURSOR_DEF, CURSOR_PTR, setCursor }        from '../src/ui/cursor.js';
 import { drawRadialFlash }                          from '../src/anims.js';
+import { cacheElementRect }                         from '../src/scene-input.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { renderHotbar } from '../src/hotbar.js';
@@ -227,19 +228,24 @@ function createEl() {
   el.appendChild(msgEl);
   document.getElementById('wrap').appendChild(el);
 
+  // cacheElementRect — getRect() возвращает кэшированный rect, обновляется
+  // только на resize/scroll. Раньше были 3 getBoundingClientRect() прямо
+  // в обработчиках (layout-thrash в mousemove).
+  const getRect = cacheElementRect(canvas);
+
   canvas.addEventListener('click', e => {
-    const r = canvas.getBoundingClientRect();
+    const r = getRect();
     onTap(e.clientX - r.left, e.clientY - r.top);
   });
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    const r = canvas.getBoundingClientRect();
+    const r = getRect();
     onTap(t.clientX - r.left, t.clientY - r.top);
   }, { passive: false });
   canvas.addEventListener('mousemove', e => {
     if (state.activeScreen !== SCREENS.SCENE3) return;
-    const r = canvas.getBoundingClientRect();
+    const r = getRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
     setCursor(!S.fireFlowerPicked &&
       Math.abs(cx - s3W * 0.5) < 40 && Math.abs(cy - s3H * 0.58) < 40);
