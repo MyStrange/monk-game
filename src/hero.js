@@ -164,6 +164,42 @@ export function drawHero(ctx, hero, sx, sy, tick, opts = {}) {
     hpX - hW/2, hpY - hH, hW, hH);
 }
 
+// ── Edge-spawn helper ─────────────────────────────────────────────────────
+// Размещает героя у нужного края BG при переходе из соседней сцены.
+// Раньше каждая сцена писала ~10 строк копипасты (main:971-981, ach:633-645).
+//
+//   spawnHeroAtEdge(hero, opts.enterAt, BG_W, { margin: 80 });
+//   // opts.enterAt 'left' → hero.x = margin + offset, facing right
+//   //              'right'→ hero.x = BG_W - margin - offset, facing left
+//   //              иное   → ничего не делает (back-button и т.п. сохраняют позу)
+//
+// `offset` — отступ от точной границы (default 20). Нужен, чтобы tickHeroMove
+// мог снова сгенерировать edge-событие при удержании клавиши обратно: условие
+// edge = «prev < maxX && hero.x === maxX» требует движения к границе.
+export function spawnHeroAtEdge(hero, enterAt, bgW, { margin = 80, offset = 20 } = {}) {
+  if (enterAt === 'left') {
+    hero.x = margin + offset;
+    hero.facing = 'right';
+  } else if (enterAt === 'right') {
+    hero.x = bgW - margin - offset;
+    hero.facing = 'left';
+  } else {
+    return false;
+  }
+  hero.targetX = null;
+  hero.walking = false;
+  return true;
+}
+
+// Walk-to-tap helper. Клик по фону → герой идёт к bgX.
+//   setHeroTarget(hero, bgX, { minX: 80, maxX: BG_W - 80 });
+export function setHeroTarget(hero, bgX, { minX = 0, maxX = Infinity } = {}) {
+  const x = Math.max(minX, Math.min(maxX, bgX));
+  hero.targetX = x;
+  hero.walking = true;
+  hero.facing  = x > hero.x ? 'right' : 'left';
+}
+
 // ── Keyboard helpers (с русской раскладкой) ───────────────────────────────
 // Верхнее правило: везде, где монах ходит, — одинаковые клавиши:
 //   ←/→ или WASD (с ф/в/ы/щ для русской раскладки).

@@ -136,3 +136,23 @@ export const SaveManager = {
     this.save();
   },
 };
+
+// ── useSceneState helper ─────────────────────────────────────────────────
+// Раньше каждая сцена писала:
+//   const S = SaveManager.getScene('foo');
+//   S.bar ??= false; S.baz ??= 0;
+//   function saveS() { SaveManager.setScene('foo', S); }
+//
+// Теперь:
+//   const [S, saveS] = useSceneState('foo', { bar: false, baz: 0 });
+//
+// Дефолты применяются только если ключа нет (??=). Возвращаемая `saveS`
+// сохраняет текущий S в сторадж.
+export function useSceneState(id, defaults = {}) {
+  const S = SaveManager.getScene(id);
+  for (const [k, v] of Object.entries(defaults)) {
+    if (S[k] === undefined) S[k] = v;
+  }
+  const saveS = () => SaveManager.setScene(id, S);
+  return [S, saveS];
+}

@@ -20,9 +20,23 @@ export function canvasToBG(cx, cy, bgR, bgW, bgH) {
   };
 }
 
+// BG px → canvas px (cover-rect already applied via _bgR).
+// Обратная к canvasToBG. Используется при отрисовке зон/героя/спрайтов.
+export function bgToCanvas(bx, by, bgR, bgW, bgH) {
+  return {
+    x: bgR.x + bx * bgR.w / bgW,
+    y: bgR.y + by * bgR.h / bgH,
+  };
+}
+
 // canvas px → BG px (для сцен без cover-rect, прямой scale W↔BG_W).
 export function canvasToBGSimple(cx, cy, canvasW, canvasH, bgW, bgH) {
   return { x: cx * bgW / canvasW, y: cy * bgH / canvasH };
+}
+
+// BG px → canvas px (без cover-rect, прямой scale).
+export function bgToCanvasSimple(bx, by, canvasW, canvasH, bgW, bgH) {
+  return { x: bx * canvasW / bgW, y: by * canvasH / bgH };
 }
 
 // Проверяет точку в BG-координатах против объекта зон. Возвращает name или null.

@@ -26,21 +26,33 @@
 - [ ] Нет лишних переменных, дублирующих уже существующие (проверить через `grep` или чтение файла)
 - [ ] Нет вызовов функций внутри `animate()` / `requestAnimationFrame`, которые можно вынести наружу
 - [ ] Новые массивы/объекты не создаются каждый кадр — инициализированы один раз
+- [ ] Системы частиц — через `Particles` из `src/particles.js`, не свой массив
+- [ ] Нет локального `_waitImg` — использовать `waitImg` из `src/scene-base.js`
+- [ ] Edge-spawn героя — `spawnHeroAtEdge(...)` из `src/hero.js`, не ручной if/else
+- [ ] visibilitychange — `onSceneVisible(...)` из `src/scene-input.js`
+- [ ] BG_W / BG_H / groundY — из `SCENE_DEFS.<id>`, не хардкод
 
 ### Расположение кода
 - [ ] UI-сообщения → `src/ui/messages.js` (showMsgIn, showChoiceIn)
 - [ ] UI-курсор → `src/ui/cursor.js` (setCursor, CURSOR_*)
 - [ ] UI-оверлеи → `src/ui/overlays.js` (showLoading, showError, setMeditateBtn)
 - [ ] Edge-навигация → `src/edge-nav.js` (edgeNavMode, OPPOSITE_EDGE, …)
-- [ ] Иконки предметов → `src/icons/items.js`
+- [ ] Иконки предметов → `src/icons/items.js` (новые статичные — через `svgRects`)
 - [ ] Иконки ачивок → `src/icons/achievements.js`
-- [ ] Медитация / символы → `src/meditation.js`
-- [ ] Универсальный hit-test зон → `src/zones.js`
+- [ ] Медитация / символы → `src/meditation.js` (sitDown, standUp)
+- [ ] Универсальный hit-test зон → `src/zones.js` (canvasToBG, bgToCanvas, hitZoneBG)
+- [ ] Системы частиц → `src/particles.js` (`new Particles()`, spawn/tick/forEach/clear)
+- [ ] Animation-loop с guard'ом → `src/anim-loop.js` (`runAnimLoop`)
+- [ ] Edge-spawn героя → `src/hero.js` → `spawnHeroAtEdge`, `setHeroTarget`
+- [ ] Состояние сцены → `useSceneState('id', defaults)` из `src/save.js`
+- [ ] visibilitychange / keysHeld → `src/scene-input.js` (onSceneVisible, createKeysHeld)
+- [ ] Image preload в сцене → `waitImg` из `src/scene-base.js`
 - [ ] Звук → `src/audio.js`
 - [ ] Диалоги/тексты → `src/dialogue.js` (никаких inline-массивов в сценах)
 - [ ] Комбо предметов → `src/combos.js`
 - [ ] Сообщения зон → `src/zone-msgs.js`
 - [ ] Реестр BG_W/BG_H/groundY сцен → `src/scene-defs.js`
+- [ ] Регистрация сцены (id, module, edges, assets) → `src/scene-registrations.js`
 - [ ] Логика сцены → `scenes/<name>.js`, не в `game.js`
 - [ ] `game.js` — только точка входа (imports + init), ничего лишнего
 

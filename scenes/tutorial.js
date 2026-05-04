@@ -16,6 +16,8 @@ import { punkThoughts, tutHints, tutZoneMsgs,
          tutBottleOnTrash, tutBottleAfterPick }          from '../src/dialogue.js';
 // Общая walk-логика. Свой sprite/draw оставляем (панк ≠ монах).
 import { tickHeroMove }                                  from '../src/hero.js';
+import { Particles }                                     from '../src/particles.js';
+import { waitImg }                                       from '../src/scene-base.js';
 
 // ── Persistent scene state ────────────────────────────────────────────────
 const S = SaveManager.getScene('tutorial');
@@ -579,59 +581,57 @@ function _drawPunk(sx, sy, tick) {
 }
 
 // ── Smoke particles (when smoking) ────────────────────────────────────────
-const smoke = [];
+// Все системы частиц через src/particles.js → Particles класс. Spawn
+// сохраняет vx/vy/life/decay; tick() обновляет всё одинаково; draw —
+// своим стилем.
+const smoke  = new Particles();
+const embers = new Particles();
+
 function _spawnSmoke() {
   const c = _cigZoneBG();
-  smoke.push({
-    bx: c.x + c.w * 0.6,
-    by: c.y - 4,
-    vy: -0.45 - Math.random() * 0.4,
+  smoke.spawn({
+    x:  c.x + c.w * 0.6,
+    y:  c.y - 4,
     vx: (Math.random() - 0.5) * 0.4,
-    life: 1.0,
-    sz: 2 + Math.random() * 3,
+    vy: -0.45 - Math.random() * 0.4,
+    life:  1.0,
+    decay: 0.011,
+    sz:    2 + Math.random() * 3,
   });
 }
 function _drawSmoke(sx, sy) {
-  for (let i = smoke.length - 1; i >= 0; i--) {
-    const p = smoke[i];
-    p.bx += p.vx;
-    p.by += p.vy;
-    p.life -= 0.011;
-    if (p.life <= 0) { smoke.splice(i, 1); continue; }
+  smoke.tick();
+  smoke.forEach(p => {
     ctx.globalAlpha = p.life * 0.5;
-    ctx.fillStyle = '#a0a0a8';
-    ctx.fillRect(Math.round(p.bx * sx), Math.round(p.by * sy), p.sz * sx, p.sz * sy);
-  }
+    ctx.fillStyle   = '#a0a0a8';
+    ctx.fillRect(Math.round(p.x * sx), Math.round(p.y * sy), p.sz * sx, p.sz * sy);
+  });
   ctx.globalAlpha = 1;
 }
 
 // ── Embers + sparks during fire ───────────────────────────────────────────
-const embers = [];
 function _spawnEmber() {
-  embers.push({
-    bx: 200 + Math.random() * 300,
-    by: 380 + Math.random() * 100,
-    vy: -0.6 - Math.random() * 0.8,
+  embers.spawn({
+    x:  200 + Math.random() * 300,
+    y:  380 + Math.random() * 100,
     vx: (Math.random() - 0.5) * 0.6,
-    life: 1.0,
-    sz: 1 + Math.random() * 2,
+    vy: -0.6 - Math.random() * 0.8,
+    life:  1.0,
+    decay: 0.012,
+    sz:    1 + Math.random() * 2,
     color: Math.random() < 0.5 ? '#ffaa20' : '#ff4010',
   });
 }
 function _drawEmbers(sx, sy) {
-  for (let i = embers.length - 1; i >= 0; i--) {
-    const p = embers[i];
-    p.bx += p.vx;
-    p.by += p.vy;
-    p.life -= 0.012;
-    if (p.life <= 0) { embers.splice(i, 1); continue; }
+  embers.tick();
+  embers.forEach(p => {
     ctx.globalAlpha = p.life;
     ctx.shadowColor = p.color;
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = p.color;
-    ctx.fillRect(Math.round(p.bx * sx), Math.round(p.by * sy), p.sz * sx, p.sz * sy);
-  }
-  ctx.shadowBlur = 0;
+    ctx.shadowBlur  = 6;
+    ctx.fillStyle   = p.color;
+    ctx.fillRect(Math.round(p.x * sx), Math.round(p.y * sy), p.sz * sx, p.sz * sy);
+  });
+  ctx.shadowBlur  = 0;
   ctx.globalAlpha = 1;
 }
 
@@ -972,9 +972,7 @@ function _resize() {
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────
-const _waitImg = img => img.complete && img.naturalWidth
-  ? Promise.resolve()
-  : new Promise(r => { img.onload = r; img.onerror = r; });
+// waitImg — общий helper из src/scene-base.js (раньше дублировался локально).
 
 export async function openSceneTutorial() {
   leaveMain();
@@ -983,7 +981,7 @@ export async function openSceneTutorial() {
   showLoading('туториал');
 
   bgEl.onerror = () => showError('не удалось загрузить туториал');
-  await Promise.all([_waitImg(bgEl), _waitImg(sprTrashFallen), _waitImg(sprBottleTaken), _waitImg(sprPosterGone), _waitImg(sprCanisterGone)]);
+  await Promise.all([waitImg(bgEl), waitImg(sprTrashFallen), waitImg(sprBottleTaken), waitImg(sprPosterGone), waitImg(sprCanisterGone)]);
   if (!bgEl.naturalWidth) return;
 
   hideLoading();

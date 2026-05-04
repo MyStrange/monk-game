@@ -31,9 +31,11 @@ import {
 // Общий монах — спрайты, размеры, движение, отрисовка, клавиши.
 import { makeHero, tickHeroMove, drawHero,
          meditationKeyAction, isWalkKey,
+         spawnHeroAtEdge,
          HERO_STAND_H, HERO_STAND_W, HERO_SIT_W, HERO_SIT_H,
          HERO_LEFT_YOFF, HERO_FRAMES, HERO_SPEED,
          heroImgR, heroImgL, heroImgS }                      from '../src/hero.js';
+import { onSceneVisible, makeIsActiveCheck }                 from '../src/scene-input.js';
 // Палитра/символы медитации — общие со всеми сценами с медитацией.
 import { THAI_CHARS, PURPLE_PALETTE }                        from '../src/meditation-fx.js';
 import { sitDown as _sitDownCommon,
@@ -962,23 +964,8 @@ export function resumeMain(opts = {}) {
 
   // Edge-spawn: при переходе через границу экрана монах спаунится на
   // соответствующем крае main, чтобы визуально «войти из-за кадра».
-  //
-  // EDGE_SPAWN_OFFSET — отступ от точной границы в BG-пикс., чтобы
-  // tickHeroMove мог повторно триггернуть edge-событие для обратного
-  // перехода (условие edge = «prev < maxX && x === maxX» требует движение
-  // в край, а не стоянку в нём).
-  const EDGE_SPAWN_OFFSET = 20;
-  if (opts.enterAt === 'left') {
-    hero.x       = 80 + EDGE_SPAWN_OFFSET;
-    hero.facing  = 'right';
-    hero.targetX = null;
-    hero.walking = false;
-  } else if (opts.enterAt === 'right') {
-    hero.x       = BG_W - 80 - EDGE_SPAWN_OFFSET;
-    hero.facing  = 'left';
-    hero.targetX = null;
-    hero.walking = false;
-  }
+  // Helper из src/hero.js — раньше каждая сцена писала эти 10 строк сама.
+  spawnHeroAtEdge(hero, opts.enterAt, BG_W, { margin: 80 });
 
   // Pray-кнопка — top-level фиксированная, видна только в сценах с ходячим
   // героем/монахом. Включаем на resume (возврат из соседней сцены).
@@ -1131,10 +1118,8 @@ export async function initMain() {
   document.addEventListener('keydown', e => { keysHeld[e.key] = true; _onKey(e); });
   document.addEventListener('keyup',   e => { keysHeld[e.key] = false; });
 
-  // Перезапуск анимации после скрытия вкладки
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && state.activeScreen === SCREENS.MAIN && !animId) animate();
-  });
+  // Перезапуск анимации после скрытия вкладки — общий helper.
+  onSceneVisible(makeIsActiveCheck(SCREENS.MAIN), () => { if (!animId) animate(); });
 
   // Ждём загрузки всех спрайтов — чтобы сцена появилась без рывков.
   // bgImg — DOM-картинка из index.html, браузер загружает её параллельно,

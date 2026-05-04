@@ -25,7 +25,8 @@ import { AudioSystem }                                      from '../src/audio.j
 import { openScene }                                        from '../src/nav.js';
 import { makeHero, tickHeroMove, drawHero,
          meditationKeyAction, isWalkKey,
-         heroOptsForBG, groundYForBG }                      from '../src/hero.js';
+         heroOptsForBG, groundYForBG,
+         spawnHeroAtEdge }                                  from '../src/hero.js';
 import { createMeditationFx }                               from '../src/meditation-fx.js';
 import { sitDown as _sitDownCommon,
          standUp as _standUpCommon }                         from '../src/meditation.js';
@@ -629,20 +630,14 @@ export async function openSceneAchievements(opts = {}) {
   // Иначе tickHeroMove не сможет сгенерировать edge-событие для обратного
   // перехода (условие edge = «prev < maxX && x === maxX» — если prev
   // сразу равен maxX, событие не стреляет и герой «застревает» у края).
-  const EDGE_SPAWN_OFFSET = 20;
-  if (opts.enterAt === 'left') {
-    hero.x      = 120 + EDGE_SPAWN_OFFSET;
-    hero.facing = 'right';
-  } else if (opts.enterAt === 'right') {
-    hero.x      = BG_W - 120 - EDGE_SPAWN_OFFSET;
-    hero.facing = 'left';
-  } else {
+  const ok = spawnHeroAtEdge(hero, opts.enterAt, BG_W, { margin: 120 });
+  if (!ok) {
     // Дефолт (back-button, прямой openScene без enterAt) — правая дверь.
-    hero.x      = BG_W - 240;
-    hero.facing = 'left';
+    hero.x       = BG_W - 240;
+    hero.facing  = 'left';
+    hero.targetX = null;
+    hero.walking = false;
   }
-  hero.targetX = null;
-  hero.walking = false;
   hero.praying = false;
   fx.clear();
   meditationPhase = 0;

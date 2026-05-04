@@ -11,6 +11,7 @@
 
 import { state }          from '../src/state.js';
 import { SCREENS }        from '../src/constants.js';
+import { Particles }      from '../src/particles.js';
 import { showMsgIn }                                         from '../src/ui/messages.js';
 import { showLoading, hideLoading, showError }               from '../src/ui/overlays.js';
 import { setCursor }                                         from '../src/ui/cursor.js';
@@ -71,13 +72,14 @@ const _SPORE_COLS = [
   '#40e0d0','#20c8b8','#60ece4','#38d4c8',
   '#80f4ec','#50dcd4','#c0fff8','#a0f0e8',
 ];
-let _spores = [];
+// Споры — Particles batch (160 частиц, индивидуальный sin-tick в animate).
+const _spores = new Particles();
 
 function _spawnSpores() {
   // Пользователь попросил «чуть больше». 50→100→160 — плотный насыщенный
   // дрейф, при этом каждая частица — 3 fillRect без shadowBlur, draw-loop
   // не проседает.
-  _spores = Array.from({ length: 160 }, () => ({
+  _spores.spawnBatch(160, () => ({
     x:         Math.random(),
     y:         Math.random(),
     vy:        -(0.0005 + Math.random() * 0.0018),
@@ -88,7 +90,7 @@ function _spawnSpores() {
     phaseRate: 0.009 + Math.random() * 0.020,
     sz:        1 + Math.floor(Math.random() * 3),
     col:       _SPORE_COLS[Math.floor(Math.random() * _SPORE_COLS.length)],
-  }));
+  }), /* resetFirst= */ true);
 }
 
 // ── Mushroom glow (по бокам сцены) ───────────────────────────────────────
@@ -117,9 +119,9 @@ function animate() {
 
   const R = _bgRect();
 
-  // Споры
-  for (const p of _spores) {
-    p.y        += p.vy;
+  // Споры — кастомный sin-tick (Particles.tick() не покрывает swayPhase/phase).
+  _spores.forEach(p => {
+    p.y         += p.vy;
     p.swayPhase += p.swayFreq;
     p.phase     += p.phaseRate;
     if (p.y < -0.06) {
@@ -136,7 +138,7 @@ function animate() {
     ctx.globalAlpha = br * 0.13;  ctx.fillRect(px - s*2, py - s*2, s*5, s*5);
     ctx.globalAlpha = br * 0.35;  ctx.fillRect(px - s,   py - s,   s*3, s*3);
     ctx.globalAlpha = br;         ctx.fillRect(px,        py,       s,   s);
-  }
+  });
 
   // Активное состояние теперь рисуется через второй <img> (bgActive) под canvas.
   // Никаких canvas.drawImage — меняется весь кадр целиком по CSS opacity.
