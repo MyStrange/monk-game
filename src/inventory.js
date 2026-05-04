@@ -1,5 +1,5 @@
 // src/inventory.js — ITEM_DEFS, makeItem, addItem, getSelectedItem
-// Новый предмет: добавить сюда + icons.js + zone-msgs.js
+// Новый предмет: добавить сюда + src/icons/items.js + src/zone-msgs.js
 
 import { state }             from './state.js';
 import { SaveManager }       from './save.js';

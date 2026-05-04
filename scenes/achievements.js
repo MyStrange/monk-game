@@ -17,7 +17,7 @@ import { leaveMain, resumeMain }                            from './main.js';
 import { SaveManager }                                      from '../src/save.js';
 import { ACHIEVEMENT_DEFS, getUnlockedIds,
          getAchievementById, trackShelfVisit }              from '../src/achievements.js';
-import { renderAchIconByKey }                               from '../src/icons.js';
+import { renderAchIconByKey }                               from '../src/icons/achievements.js';
 import { ASSET }                                            from '../src/assets.js';
 import { waitImg, coverRect, hitZone as rectHitZone,
          buildSceneDOM }                                    from '../src/scene-base.js';

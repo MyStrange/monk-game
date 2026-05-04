@@ -2,7 +2,7 @@
 
 import { state }          from './state.js';
 import { isMobile }       from './ui/cursor.js';
-import { renderItemIcon } from './icons.js';
+import { renderItemIcon } from './icons/items.js';
 import { itemOnItem }     from './combos.js';
 import { showMsgIn }      from './ui/messages.js';
 import { trackSlotSelect } from './achievements.js';

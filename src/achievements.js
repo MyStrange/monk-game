@@ -3,7 +3,7 @@
 //   'monk_ach'       → JSON array of unlocked ids
 //   'monk_ach_stats' → JSON snapshot of persistent stats
 
-import { renderAchIconByKey, renderQuestionIcon } from './icons.js';
+import { renderAchIconByKey, renderQuestionIcon } from './icons/achievements.js';
 
 // ── Definitions ────────────────────────────────────────────────────────────
 // Все ачивки — про off-script поведение: клики, перебор, случайные открытия.
