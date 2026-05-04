@@ -27,6 +27,8 @@ import { makeHero, tickHeroMove, drawHero,
          meditationKeyAction, isWalkKey,
          heroOptsForBG, groundYForBG }                      from '../src/hero.js';
 import { createMeditationFx }                               from '../src/meditation-fx.js';
+import { sitDown as _sitDownCommon,
+         standUp as _standUpCommon }                         from '../src/meditation.js';
 
 // ── Scene persistent state ─────────────────────────────────────────────────
 // S.placed: { [achId]: { shelf: 0|1|2, slot: 0..SLOTS_PER_SHELF-1 } }
@@ -94,21 +96,11 @@ const keysHeld = {};
 const fx = createMeditationFx();
 let meditationPhase = 0;
 
-function sitDown() {
-  if (hero.praying) { standUp(); return; }
-  hero.praying = true;
-  hero.walking = false;
-  hero.targetX = null;
-  AudioSystem.playPrayerSound?.();
-  AudioSystem.setMode?.('sitting');
-}
-
+// Базовые sit/stand — общие для main / achievements / tutorial. См. src/meditation.js.
+// Сцена-специфичный cleanup тут — clear FX-частиц + сброс meditationPhase.
+function sitDown() { _sitDownCommon(hero); }
 function standUp() {
-  if (!hero.praying) return;
-  hero.praying = false;
-  fx.clear();
-  meditationPhase = 0;
-  AudioSystem.setMode?.('ambient');
+  _standUpCommon(hero, { cleanup: () => { fx.clear(); meditationPhase = 0; } });
 }
 
 // ── Edge navigation: правый край → назад на main ──────────────────────────

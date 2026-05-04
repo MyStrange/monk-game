@@ -36,6 +36,9 @@ import { makeHero, tickHeroMove, drawHero,
          heroImgR, heroImgL, heroImgS }                      from '../src/hero.js';
 // Палитра/символы медитации — общие со всеми сценами с медитацией.
 import { THAI_CHARS, PURPLE_PALETTE }                        from '../src/meditation-fx.js';
+import { sitDown as _sitDownCommon,
+         standUp as _standUpCommon,
+         setMeditating as _setMeditatingCommon }            from '../src/meditation.js';
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let canvas, ctx, msgEl;
@@ -221,45 +224,51 @@ function startBury() {
 }
 
 // ── Meditation ─────────────────────────────────────────────────────────────
+// Базовые sit/stand живут в src/meditation.js. Сцена дополняет их своим
+// контекстом (символы, частицы, кот-сидячка и т.д.) через cleanup/onSit hooks.
 export function standUp() {
-  if (hero.praying) trackStandUp();
-  hero.praying      = false;
-  meditationPhase   = 0;
-  pSyms             = [];
-  mParticles        = [];
-  draggedSym        = null;
-  statueParticles   = [];
-  AudioSystem.setMode('ambient');
+  _standUpCommon(hero, {
+    onTrack: () => { if (hero.praying) trackStandUp(); },
+    cleanup: () => {
+      meditationPhase = 0;
+      pSyms           = [];
+      mParticles      = [];
+      draggedSym      = null;
+      statueParticles = [];
+    },
+  });
 }
 
 function sitDown() {
-  if (hero.praying) { standUp(); return; }
-  hero.praying = true;
-  AudioSystem.playPrayerSound();
-  AudioSystem.setMode('sitting');
-  trackSitDown();
-  // Off-script: сел прямо на кота (кот виден и x-боксы пересекаются)
-  if (!catHidden) {
-    const heroLeft  = hero.x - HERO_STAND_W / 2;
-    const heroRight = hero.x + HERO_STAND_W / 2;
-    const catLeft   = CAT_X;
-    const catRight  = CAT_X + CAT_W;
-    if (heroRight > catLeft && heroLeft < catRight) trackSitOnCat();
-  }
+  _sitDownCommon(hero, {
+    onTrack: () => trackSitDown(),
+    onSit: () => {
+      // Off-script: сел прямо на кота (кот виден и x-боксы пересекаются)
+      if (!catHidden) {
+        const heroLeft  = hero.x - HERO_STAND_W / 2;
+        const heroRight = hero.x + HERO_STAND_W / 2;
+        const catLeft   = CAT_X;
+        const catRight  = CAT_X + CAT_W;
+        if (heroRight > catLeft && heroLeft < catRight) trackSitOnCat();
+      }
+    },
+  });
 }
 
 // Принудительно включить/выключить медитацию извне (вызывается из inside.js,
 // когда игрок возвращается из дупла — по сюжету он остаётся в медитативном
-// состоянии, так как только что общался с сердцем-огнём).
-// НЕ toggle — sitDown переключает, а эта гарантирует нужное состояние.
+// состоянии). НЕ toggle.
 export function setMeditating(on = true) {
-  if (on && !hero.praying) {
-    hero.praying = true;
-    AudioSystem.playPrayerSound?.();
-    AudioSystem.setMode?.('sitting');
-  } else if (!on && hero.praying) {
-    standUp();
-  }
+  _setMeditatingCommon(hero, on, {
+    onTrack: () => { if (hero.praying) trackStandUp(); },
+    cleanup: () => {
+      meditationPhase = 0;
+      pSyms           = [];
+      mParticles      = [];
+      draggedSym      = null;
+      statueParticles = [];
+    },
+  });
 }
 
 function _spawnSym() {
