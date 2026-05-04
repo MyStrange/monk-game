@@ -17,6 +17,8 @@ import { openScene }                          from '../src/nav.js';
 import { SaveManager }                        from '../src/save.js';
 import { openAchievements }                   from '../src/achievements.js';
 import { setCursor }                          from '../src/ui/cursor.js';
+import { runAnimLoop }                        from '../src/anim-loop.js';
+import { makeIsActiveCheck }                  from '../src/scene-input.js';
 
 // ── Buttons (фракции 0..1 от W/H) ─────────────────────────────────────────
 const BUTTONS = [
@@ -40,7 +42,7 @@ const BUTTONS = [
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, canvas, ctx;
 let W = 0, H = 0;
-let animId = null;
+let _loop = null;   // runAnimLoop instance, создаётся в createEl()
 
 // ── Hit test ───────────────────────────────────────────────────────────────
 function hitButton(cx, cy) {
@@ -52,19 +54,18 @@ function hitButton(cx, cy) {
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
-function animate() {
-  if (state.activeScreen !== SCREENS.MENU) { animId = null; return; }
-  ctx.clearRect(0, 0, W, H);
-
+// Анимация управляется через runAnimLoop из src/anim-loop.js. Loop создаётся
+// в createEl() (нужен canvas), здесь только описана функция кадра.
+function _drawFrame(ctx, W, H) {
   // фон
   ctx.fillStyle = '#0a0a12';
   ctx.fillRect(0, 0, W, H);
 
   // заголовок
   ctx.save();
-  ctx.fillStyle   = 'rgba(255,230,120,0.9)';
-  ctx.font        = `bold ${Math.round(H * 0.07)}px serif`;
-  ctx.textAlign   = 'center';
+  ctx.fillStyle    = 'rgba(255,230,120,0.9)';
+  ctx.font         = `bold ${Math.round(H * 0.07)}px serif`;
+  ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('Монах', W / 2, H * 0.28);
   ctx.restore();
@@ -88,8 +89,6 @@ function animate() {
     ctx.fillText(btn.label, x + w / 2, y + h / 2);
     ctx.restore();
   }
-
-  animId = requestAnimationFrame(animate);
 }
 
 // ── DOM creation ───────────────────────────────────────────────────────────
@@ -108,6 +107,13 @@ function createEl() {
 
   el.appendChild(canvas);
   document.getElementById('wrap').appendChild(el);
+
+  // Один общий цикл анимации — guard, clearRect и rAF делает runAnimLoop.
+  _loop = runAnimLoop({
+    canvas,
+    isActive: makeIsActiveCheck(SCREENS.MENU),
+    onFrame:  (c, w, h) => _drawFrame(c, w, h),
+  });
 
   const onTap = (cx, cy) => {
     if (state.activeScreen !== SCREENS.MENU) return;
@@ -147,14 +153,14 @@ export async function openSceneMenu() {
     const r = el.getBoundingClientRect();
     W = canvas.width  = Math.round(r.width);
     H = canvas.height = Math.round(r.height);
-    if (!animId) animate();
+    _loop?.start();
   });
 }
 
 export function closeSceneMenu() {
   state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
-  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  _loop?.stop();
   setCursor(false);   // сбросить hover-курсор если уходим с подсвеченной кнопки
   resumeMain();   // иначе main-анимация не перезапустится после меню
 }

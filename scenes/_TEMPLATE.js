@@ -21,6 +21,8 @@ import { SaveManager, useSceneState }             from '../src/save.js';
 import { ASSET }                                  from '../src/assets.js';
 import { waitImg, coverRect, hitZone as rectHitZone,
          buildSceneDOM, bindSceneInput }          from '../src/scene-base.js';
+import { runAnimLoop }                            from '../src/anim-loop.js';
+import { makeIsActiveCheck }                      from '../src/scene-input.js';
 
 // ── SCENE STATE (только флаги этой сцены) ─────────────────────────────────
 // Единый паттерн через useSceneState — массив [S, saveS]. Дефолты применяются
@@ -76,12 +78,10 @@ function onTap(cx, cy) {
 }
 
 // ── ANIMATION ──────────────────────────────────────────────────────────────
-let animId = null;
-function animate() {
-  if (state.activeScreen !== SCREENS.SCENEID) { animId = null; return; }
-  ctx.clearRect(0, 0, W, H);
-  // draw here
-  animId = requestAnimationFrame(animate);
+// Универсальный цикл из src/anim-loop.js — guard и rAF делает он сам.
+let _loop = null;
+function _drawFrame(ctx, W, H) {
+  // draw here. ctx уже clearRect'ed (autoClear: true по умолчанию).
 }
 
 // ── DOM CREATION ───────────────────────────────────────────────────────────
@@ -101,6 +101,13 @@ function createEl() {
     onHover:    (cx, cy) => setCursor(!!findZone(cx, cy)),
     onLeave:    () => setCursor(false),
     activeCheck: () => state.activeScreen === SCREENS.SCENEID,
+  });
+
+  // Loop создаётся ПОСЛЕ canvas — нужно чтобы был готов к старту.
+  _loop = runAnimLoop({
+    canvas,
+    isActive: makeIsActiveCheck(SCREENS.SCENEID),
+    onFrame:  _drawFrame,
   });
 }
 
@@ -124,14 +131,14 @@ export async function openSceneSCENEID() {
     const r = el.getBoundingClientRect();
     W = canvas.width  = Math.round(r.width);
     H = canvas.height = Math.round(r.height);
-    if (!animId) animate();
+    _loop?.start();
   });
 }
 
 export function closeSceneSCENEID() {
   state.activeScreen = SCREENS.MAIN;
   if (el) el.style.display = 'none';
-  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  _loop?.stop();
   SaveManager.setScene('SCENEID', S);
   resumeMain();
 }
