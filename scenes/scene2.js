@@ -2,7 +2,7 @@
 
 import { state }         from '../src/state.js';
 import { SCREENS }       from '../src/constants.js';
-import { showMsgIn }                                         from '../src/ui/messages.js';
+import { showMsgIn, showCascadeIn }                          from '../src/ui/messages.js';
 import { showLoading, hideLoading, showError }               from '../src/ui/overlays.js';
 import { CURSOR_DEF, CURSOR_PTR, setCursor }                 from '../src/ui/cursor.js';
 import { leaveMain, resumeMain } from './main.js';
@@ -162,23 +162,15 @@ function _activatedCount() {
   return Object.values(S.rockStates).filter(Boolean).length;
 }
 
-// Показать массив story-сообщений подряд через cascade onDismiss.
-// Каждое само закрывается по dur, и следующая строка появляется после.
+// Каскадный показ массива story-сообщений (через showCascadeIn в ui/messages.js).
+// startDelay 1200ms по умолчанию — даёт время прозвучать частицам и спрайту
+// активации до начала reflection-текста.
 function _showReflectionSequence(msgs, startDelay = 1200) {
-  setTimeout(() => {
-    if (state.activeScreen !== SCREENS.SCENE2) return;
-    let i = 0;
-    const next = () => {
-      if (i >= msgs.length || state.activeScreen !== SCREENS.SCENE2) return;
-      const txt = msgs[i++];
-      showMsgIn(msgEl, txt, {
-        story: true,
-        dur:   4200,
-        onDismiss: next,
-      });
-    };
-    next();
-  }, startDelay);
+  showCascadeIn(msgEl, msgs, {
+    dur:        4200,
+    startDelay,
+    isActive:   () => state.activeScreen === SCREENS.SCENE2,
+  });
 }
 
 function _activateRock(zone, msg) {

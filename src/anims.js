@@ -146,3 +146,42 @@ export function drawGlowTrail(ctx, trail, sz, color, baseAlpha = 1) {
     ctx.globalAlpha = ta * 0.42; ctx.fillRect(px,       py,      sz,    sz);
   }
 }
+
+// Радиальная вспышка: gradient по радиусу с тёплым ядром.
+// Используется для catch-вспышки светлячков (buddha) и пульсирующего glow
+// вокруг особых объектов (fire flower в scene3).
+//
+// stops: [{ pos: 0..1, rgba: 'rgba(...)' }] — пользовательские стопы (опц.).
+// dimRgba — цвет внешнего края (по умолчанию полная прозрачность).
+//   drawRadialFlash(ctx, x, y, 60, '#ffe060', 0.6);
+//   drawRadialFlash(ctx, x, y, 70, '#ff8800', 0.5, [
+//     { pos: 0,   rgba: 'rgba(255,140,20,0.6)' },
+//     { pos: 0.5, rgba: 'rgba(255,80,0,0.2)'  },
+//     { pos: 1,   rgba: 'rgba(255,40,0,0)'    },
+//   ]);
+export function drawRadialFlash(ctx, x, y, radius, color = '#ffe060', alpha = 1, stops = null) {
+  if (alpha <= 0 || radius <= 0) return;
+  const grd = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  if (stops) {
+    for (const s of stops) grd.addColorStop(s.pos, s.rgba);
+  } else {
+    // Простой пресет: ядро (color, alpha) → mid (color, alpha*0.55) → fade
+    grd.addColorStop(0,   `${_rgba(color, alpha)}`);
+    grd.addColorStop(0.5, `${_rgba(color, alpha * 0.55)}`);
+    grd.addColorStop(1,   `${_rgba(color, 0)}`);
+  }
+  ctx.save();
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Helper: hex `#rrggbb` → `rgba(r,g,b,a)`. Поддерживает только #rrggbb.
+function _rgba(hex, a) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!m) return hex;
+  const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+  return `rgba(${r},${g},${b},${a})`;
+}

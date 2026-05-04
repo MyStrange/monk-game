@@ -33,7 +33,7 @@
 - [ ] BG_W / BG_H / groundY — из `SCENE_DEFS.<id>`, не хардкод
 
 ### Расположение кода
-- [ ] UI-сообщения → `src/ui/messages.js` (showMsgIn, showChoiceIn)
+- [ ] UI-сообщения → `src/ui/messages.js` (showMsgIn, showChoiceIn, showCascadeIn)
 - [ ] UI-курсор → `src/ui/cursor.js` (setCursor, CURSOR_*)
 - [ ] UI-оверлеи → `src/ui/overlays.js` (showLoading, showError, setMeditateBtn)
 - [ ] Edge-навигация → `src/edge-nav.js` (edgeNavMode, OPPOSITE_EDGE, …)

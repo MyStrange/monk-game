@@ -4,6 +4,7 @@ import { state }        from '../src/state.js';
 import { SCREENS }      from '../src/constants.js';
 import { showMsgIn }                                from '../src/ui/messages.js';
 import { CURSOR_DEF, CURSOR_PTR, setCursor }        from '../src/ui/cursor.js';
+import { drawRadialFlash }                          from '../src/anims.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { renderHotbar } from '../src/hotbar.js';
@@ -102,16 +103,12 @@ function draw() {
     const fy = s3H * 0.58;
     const pulse = 1 + 0.15 * Math.sin(tick * 0.07);
 
-    // Outer glow
-    const grd = ctx.createRadialGradient(fx, fy, 0, fx, fy, 70 * pulse);
-    grd.addColorStop(0,   'rgba(255,140,20,0.6)');
-    grd.addColorStop(0.5, 'rgba(255,80,0,0.2)');
-    grd.addColorStop(1,   'rgba(255,40,0,0)');
-    ctx.fillStyle = grd;
-    ctx.beginPath();
-    ctx.arc(fx, fy, 70 * pulse, 0, Math.PI * 2);
-    ctx.fill();
-
+    // Тёплый оранжевый radial gradient — общий drawRadialFlash из anims.js.
+    drawRadialFlash(ctx, fx, fy, 70 * pulse, '#ff8c14', 1, [
+      { pos: 0,   rgba: 'rgba(255,140,20,0.6)' },
+      { pos: 0.5, rgba: 'rgba(255,80,0,0.2)'  },
+      { pos: 1,   rgba: 'rgba(255,40,0,0)'    },
+    ]);
     _drawFireFlower(ctx, fx, fy, 28 * pulse);
   }
 }

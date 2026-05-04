@@ -118,6 +118,36 @@ export function dismissStoryIn(el) {
   if (s.storyDismiss) s.storyDismiss();
 }
 
+// ── Cascade story messages — массив текстов, один за другим через onDismiss
+//
+// Паттерн появлялся в scene2 (_showReflectionSequence), main (_startMonkDialog
+// серия Q/A), будет полезен везде где нужно показать связанные строки
+// с автоматическим переходом.
+//
+//   showCascadeIn(msgEl, [
+//     'Камень принял.',
+//     'Дерево услышало тебя.',
+//     'Что-то изменилось.',
+//   ], { dur: 4200, startDelay: 1200, isActive: () => state.activeScreen === 'scene2' });
+//
+// `isActive` — guard: если по ходу каскада сцена сменилась, прервать.
+// `onEnd` — вызывается после показа последней строки.
+export function showCascadeIn(el, messages, opts = {}) {
+  const { dur = 4200, startDelay = 0, isActive, onEnd } = opts;
+  if (!el || !messages?.length) return;
+  setTimeout(() => {
+    if (isActive && !isActive()) return;
+    let i = 0;
+    const next = () => {
+      if (isActive && !isActive()) return;
+      if (i >= messages.length) { onEnd?.(); return; }
+      const txt = messages[i++];
+      showMsgIn(el, txt, { story: true, dur, onDismiss: next });
+    };
+    next();
+  }, startDelay);
+}
+
 // ── Single choice block — вопрос + кнопки ответов ─────────────────────────
 // Один элемент внизу: сверху prompt, под ним кнопки. Блокирует всё как story.
 // options: [{text, value?}] — value передаётся в onPick, иначе text

@@ -16,7 +16,8 @@ import {
   earMsg, durianAfterDialog, DIALOG,
 } from '../src/dialogue.js';
 // Pixel-glow helpers — единый визуал «свечения» во всех сценах.
-import { drawPixelGlow, drawGlowTrail } from '../src/anims.js';
+import { drawPixelGlow, drawGlowTrail, drawRadialFlash } from '../src/anims.js';
+import { Particles }                                    from '../src/particles.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const S = SaveManager.getScene('buddha');
@@ -56,12 +57,16 @@ function _inEar(cx, cy) {
 }
 
 // ── Fireflies ──────────────────────────────────────────────────────────────
-let bFlies = [];
-let bDust  = [];  // фоновые некликабельные частицы
-let bFlash = [];  // вспышки при поимке светлячка
+// Все системы частиц — через src/particles.js (единый контейнер, единый API:
+// spawn/spawnBatch/forEach/clear/length). Кастомный tick (toroidal wrap,
+// escape-trail) — через forEach, потому что Particles.tick() покрывает только
+// life-based частицы.
+const bFlies = new Particles();   // светлячки (yellow pixels with glow)
+const bDust  = new Particles();   // фоновые некликабельные частицы
+const bFlash = new Particles();   // вспышки при поимке светлячка
 
 function _spawnFlies(n) {
-  bFlies = Array.from({ length: n }, () => ({
+  bFlies.spawnBatch(n, () => ({
     x:  Math.random() * bW,
     y:  Math.random() * bH,
     vx: (Math.random() - 0.5) * 1.2,
@@ -71,8 +76,8 @@ function _spawnFlies(n) {
     bv: (Math.random() - 0.5) * 0.025,
     alive: true,
     trail: [],
-  }));
-  bDust = Array.from({ length: 40 }, () => ({
+  }), /* resetFirst */ true);
+  bDust.spawnBatch(40, () => ({
     x:  Math.random() * bW,
     y:  Math.random() * bH,
     vx: (Math.random() - 0.5) * 0.22,
@@ -80,13 +85,13 @@ function _spawnFlies(n) {
     sz: 1 + Math.random() * 1.8,
     br: Math.random(),
     bv: (Math.random() - 0.5) * 0.008,
-  }));
+  }), /* resetFirst */ true);
 }
 
 // ── Epic wish release animation ─────────────────────────────────────────────
 // Светлячки вырываются из позиции банки в инвентаре (низ экрана),
 // летят по большим петлям со светящимися следами.
-let wishFlies = [];
+const wishFlies = new Particles();
 let wishTick  = 0;
 const WISH_DURATION = 160; // frames @ ~60fps = ~2.7s
 
@@ -102,7 +107,7 @@ function _startWish(jar) {
   const startX = bW * 0.5;
   const startY = bH * 0.88;
 
-  wishFlies = Array.from({ length: 10 }, (_, i) => {
+  wishFlies.spawnBatch(10, (i) => {
     const phase = (i / 10) * Math.PI * 2;
     return {
       t:          0,
@@ -116,9 +121,9 @@ function _startWish(jar) {
       y:          startY,
       trail:      [],
       alpha:      1.0,
-      sz:         3 + Math.random() * 4,    // то же что ambient: маленькое ядро, большое свечение
+      sz:         3 + Math.random() * 4,
     };
-  });
+  }, /* resetFirst */ true);
 
   setTimeout(() => {
     // Guard: колбэк не должен дёргать UI если игрок ушёл из buddha
@@ -436,10 +441,12 @@ function interactItem(itemId, zone) {
 // ── Hit test (for cursor) ─────────────────────────────────────────────────
 function _hitBuddha(cx, cy) {
   if (_inEar(cx, cy)) return true;
-  for (const f of bFlies) {
-    if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < Math.max(22, f.sz * 3)) return true;
-  }
-  return false;
+  let hit = false;
+  bFlies.forEach(f => {
+    if (hit) return;
+    if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < Math.max(22, f.sz * 3)) hit = true;
+  });
+  return hit;
 }
 
 // ── onTap ──────────────────────────────────────────────────────────────────
@@ -459,48 +466,47 @@ function onTap(cx, cy) {
   // No jar: click on fly → escape + колокольчик (раньше было playFlyFlutter
   // — жужжание, пользователь хочет бубенчик как при поимке).
   if (!item || (item.id !== 'jar' && item.id !== 'jar_open')) {
-    for (const f of bFlies) {
+    let scared = false;
+    bFlies.forEach(f => {
+      if (scared) return;
       if (f.alive && !f.escaping && Math.hypot(cx - f.x, cy - f.y) < Math.max(22, f.sz * 3)) {
         f.escaping = true;
         const angle = Math.random() * Math.PI * 2;
         f.escapeVx  = Math.cos(angle) * (5 + Math.random() * 4);
         f.escapeVy  = Math.sin(angle) * (5 + Math.random() * 4);
         f.escapeA   = 1.0;
-        AudioSystem.playFlyCatch?.();      // bell (тот же звук что при поимке)
+        AudioSystem.playFlyCatch?.();
         trackFlyScared();
-        return;
+        scared = true;
       }
-    }
+    });
+    if (scared) return;
   }
 
   // Jar: catch firefly (small precision radius)
   if (item && (item.id === 'jar' || item.id === 'jar_open')) {
     if (item.released) { showMsg('В банке уже был свет. Хватит.'); return; }
-    for (let i = 0; i < bFlies.length; i++) {
-      const f = bFlies[i];
-      if (!f.alive) continue;
+    let caught = false;
+    bFlies.forEach(f => {
+      if (caught) return;
+      if (!f.alive) return;
       if (Math.hypot(cx - f.x, cy - f.y) < Math.max(22, f.sz * 3)) {
-        bFlash.push({ x: f.x, y: f.y, t: 0 });
+        bFlash.spawn({ x: f.x, y: f.y, t: 0 });
         f.alive = false;
         item.caught = (item.caught ?? 0) + 1;
         AudioSystem.playFlyCatch();
         trackFlyCaught();
-
-        // Оставляем банку в руке — обновляем только иконку (caught увеличился)
         renderHotbar();
-
         if (item.caught >= 10) {
-          // Сразу запускаем wish-анимацию. Единое story-сообщение
-          // (wishDoneMsg) появится в самом конце — никакого мигания
-          // между двумя сообщениями.
+          // Сразу запускаем wish-анимацию.
           setTimeout(() => {
-            if (state.activeScreen !== SCREENS.BUDDHA) return;  // guard
+            if (state.activeScreen !== SCREENS.BUDDHA) return;
             _startWish(item);
           }, 300);
         }
-        return;
+        caught = true;
       }
-    }
+    });
   }
 }
 
@@ -514,7 +520,7 @@ function animate() {
   bTick++;
 
   // ── Background dust (dim, non-interactive) ────────────────────────────────
-  for (const d of bDust) {
+  bDust.forEach(d => {
     d.x += d.vx; d.y += d.vy;
     if (d.y < 0) { d.y = bH; d.x = Math.random() * bW; }
     if (d.x < 0 || d.x > bW) d.x = Math.random() * bW;
@@ -522,12 +528,12 @@ function animate() {
     bCtx.globalAlpha = 0.07 + d.br * 0.16;
     bCtx.fillStyle   = '#ffe8a0';
     bCtx.fillRect(Math.round(d.x), Math.round(d.y), Math.ceil(d.sz), Math.ceil(d.sz));
-  }
+  });
   bCtx.globalAlpha = 1;
 
   // ── Ambient fireflies (yellow pixels with glow) ───────────────────────────
-  for (const f of bFlies) {
-    if (!f.alive) continue;
+  bFlies.forEach(f => {
+    if (!f.alive) return;
 
     if (f.escaping) {
       // Убегающий светлячок: ускоряется, оставляет след
@@ -537,13 +543,13 @@ function animate() {
       f.escapeVx *= 0.95; f.escapeVy *= 0.95;
       f.escapeA  -= 0.022;
       if (f.escapeA <= 0 || f.x < -80 || f.x > bW + 80 || f.y < -80 || f.y > bH + 80) {
-        f.alive = false; continue;
+        f.alive = false; return;
       }
       drawGlowTrail(bCtx, f.trail, 3, '#ffdc3c', f.escapeA * 0.7);
       drawPixelGlow(bCtx, Math.round(f.x), Math.round(f.y),
                     Math.ceil(f.sz), '#ffffc8', f.escapeA);
       bCtx.globalAlpha = 1;
-      continue;
+      return;
     }
 
     f.x += f.vx; f.y += f.vy;
@@ -555,26 +561,24 @@ function animate() {
     drawPixelGlow(bCtx, Math.round(f.x), Math.round(f.y),
                   Math.ceil(f.sz), '#ffdc50', 0.4 + f.br * 0.6);
     bCtx.globalAlpha = 1;
-  }
+  });
 
   // ── Catch flashes ─────────────────────────────────────────────────────────
-  for (let i = bFlash.length - 1; i >= 0; i--) {
-    const fl = bFlash[i];
+  // Радиальная вспышка при поимке светлячка — общий drawRadialFlash из anims.js.
+  // Particles.arr — прямой доступ для in-place splice (нужно для удаления по
+  // индексу, forEach это не позволяет).
+  for (let i = bFlash.arr.length - 1; i >= 0; i--) {
+    const fl = bFlash.arr[i];
     fl.t++;
-    if (fl.t >= 20) { bFlash.splice(i, 1); continue; }
+    if (fl.t >= 20) { bFlash.arr.splice(i, 1); continue; }
     const prog = fl.t / 20;
     const radius = 18 + prog * 44;
     const a = (1 - prog) * 0.72;
-    bCtx.save();
-    const grd = bCtx.createRadialGradient(fl.x, fl.y, 0, fl.x, fl.y, radius);
-    grd.addColorStop(0,   `rgba(255,255,220,${a})`);
-    grd.addColorStop(0.5, `rgba(255,210,50,${a * 0.55})`);
-    grd.addColorStop(1,   'rgba(255,180,0,0)');
-    bCtx.fillStyle = grd;
-    bCtx.beginPath();
-    bCtx.arc(fl.x, fl.y, radius, 0, Math.PI * 2);
-    bCtx.fill();
-    bCtx.restore();
+    drawRadialFlash(bCtx, fl.x, fl.y, radius, '#ffd232', a, [
+      { pos: 0,   rgba: `rgba(255,255,220,${a})` },
+      { pos: 0.5, rgba: `rgba(255,210,50,${a * 0.55})` },
+      { pos: 1,   rgba: 'rgba(255,180,0,0)' },
+    ]);
   }
 
   // ── Epic wish release animation ────────────────────────────────────────────
@@ -583,17 +587,15 @@ function animate() {
     wishTick++;
     const prog = wishTick / WISH_DURATION;
 
-    for (const wf of wishFlies) {
+    wishFlies.forEach(wf => {
       wf.t++;
       // Rising center with slow drift
       const cx = bW * 0.5 + Math.sin(wf.t * 0.018 + wf.phase) * bW * 0.18;
       const cy = bH * 0.88 - wf.t * wf.riseSpeed;
 
-      // Large spiral orbit
+      // Large spiral orbit + secondary smaller loop
       const ox = Math.cos(wf.t * wf.orbitSpeed + wf.phase) * wf.orbitR;
       const oy = Math.sin(wf.t * wf.orbitSpeed + wf.phase) * wf.orbitR * 0.55;
-
-      // Secondary smaller loop
       const lx = Math.cos(wf.t * wf.loopSpeed) * wf.loopR;
       const ly = Math.sin(wf.t * wf.loopSpeed) * wf.loopR * 0.7;
 
@@ -601,7 +603,6 @@ function animate() {
       wf.y = cy + oy + ly;
       wf.alpha = Math.max(1.0 - prog * 1.1, 0);
 
-      // Trail
       wf.trail.push({ x: wf.x, y: wf.y });
       if (wf.trail.length > 38) wf.trail.shift();
 
@@ -610,7 +611,7 @@ function animate() {
       drawPixelGlow(wCtx, Math.round(wf.x), Math.round(wf.y),
                     Math.ceil(wf.sz), '#ffffc8', wf.alpha);
       wCtx.globalAlpha = 1;
-    }
+    });
   }
 
   animId = requestAnimationFrame(animate);
