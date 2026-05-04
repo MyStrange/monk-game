@@ -23,6 +23,7 @@ import {
   MONK_Q1_RESP, MONK_Q2_RESP, MONK_Q3_RESP, MONK_FINAL_MSG, FLOWER_GIVEN_MSG,
   MONK_NEED_ROCKS_MSG,
   INSCRIPTION_MSGS, INSCRIPTION_ITEM_MSGS,
+  WATER_MSGS,
 } from '../src/dialogue.js';
 // Общий монах — спрайты, размеры, движение, отрисовка, клавиши.
 import { makeHero, tickHeroMove, drawHero,
@@ -427,12 +428,6 @@ function zoneClick(zone) {
 
   if (zone === 'water') {
     AudioSystem.playWater();
-    const WATER_MSGS = [
-      'Вода отражает всё что есть. И кое-что чего нет.',
-      'Тихая. Холодная. Никуда не спешит.',
-      'Под поверхностью ничего не видно. Это успокаивает.',
-      'Если смотреть долго, начинаешь видеть что-то. Лучше не смотреть долго.',
-    ];
     interactCounts.water = (interactCounts.water ?? 0) + 1;
     showMsg(WATER_MSGS[interactCounts.water % WATER_MSGS.length]);
     return;

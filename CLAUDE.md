@@ -25,12 +25,19 @@
 - [ ] Новые массивы/объекты не создаются каждый кадр — инициализированы один раз
 
 ### Расположение кода
-- [ ] Утилиты и примитивы → `src/utils.js`
-- [ ] Иконки предметов → `src/icons.js`
+- [ ] UI-сообщения → `src/ui/messages.js` (showMsgIn, showChoiceIn)
+- [ ] UI-курсор → `src/ui/cursor.js` (setCursor, CURSOR_*)
+- [ ] UI-оверлеи → `src/ui/overlays.js` (showLoading, showError, setMeditateBtn)
+- [ ] Edge-навигация → `src/edge-nav.js` (edgeNavMode, OPPOSITE_EDGE, …)
+- [ ] Иконки предметов → `src/icons/items.js`
+- [ ] Иконки ачивок → `src/icons/achievements.js`
+- [ ] Медитация / символы → `src/meditation.js`
+- [ ] Универсальный hit-test зон → `src/zones.js`
 - [ ] Звук → `src/audio.js`
-- [ ] Диалоги/тексты → `src/dialogue.js`
+- [ ] Диалоги/тексты → `src/dialogue.js` (никаких inline-массивов в сценах)
 - [ ] Комбо предметов → `src/combos.js`
 - [ ] Сообщения зон → `src/zone-msgs.js`
+- [ ] Реестр BG_W/BG_H/groundY сцен → `src/scene-defs.js`
 - [ ] Логика сцены → `scenes/<name>.js`, не в `game.js`
 - [ ] `game.js` — только точка входа (imports + init), ничего лишнего
 
@@ -47,8 +54,11 @@
 | Задача | Читать | Не читать |
 |---|---|---|
 | Новая сцена | `scenes/_TEMPLATE.js` + 1 строка `src/nav.js` | остальное |
-| Новый предмет | `src/inventory.js`, `src/icons.js`, `src/zone-msgs.js` | сцены |
+| Новый предмет | `src/inventory.js`, `src/icons/items.js`, `src/zone-msgs.js` | сцены, achievements-иконки |
+| Новая ачивка | `src/achievements.js`, `src/icons/achievements.js` | items-иконки |
 | Диалог/текст | `src/dialogue.js` | — |
+| Правка медитации | `src/meditation.js` | main.js |
+| UI-сообщение/курсор | `src/ui/messages.js` или `src/ui/cursor.js` | utils.js (старого нет) |
 | Предмет × предмет | `src/combos.js` | сцены |
 | Предмет × зона | только сам файл сцены | combos.js |
 | Звук | `src/audio.js` | — |
@@ -270,7 +280,7 @@ const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 - Никаких `<path>`, `<circle>`, `<polygon>`, эмодзи
 - Палитра: тёмные оттенки + один яркий акцент
 
-**Текущие функции:**
+**Текущие функции (`src/icons/items.js`, dispatch в `renderItemIcon`):**
 | Предмет | Функция |
 |---|---|
 | `jar`, `jar_open` | `renderJarIcon(item)` |
@@ -278,6 +288,12 @@ const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 | `durian` | `renderDurianIcon()` |
 | `dirt` | `renderDirtIcon()` |
 | `fireflower` | `renderFireflowerIcon()` |
+| `flower` | `renderFlowerIcon()` |
+| `bottle`, `bottle_fuel` | `renderBottleIcon(filled)` |
+| `molotov`, `molotov_lit` | `renderMolotovIcon(lit)` |
+| `poster` | `renderPosterIcon()` |
+
+Иконки ачивок — в `src/icons/achievements.js` (`ACH_ICON_MAP` + `renderAchIconByKey`).
 
 ### Загрузка и ошибки
 ```js
@@ -307,17 +323,31 @@ showError('текст')     // ошибка — клик закрывает
 | `game.js` | ~30 | никогда |
 | `src/state.js` | ~10 | никогда |
 | `src/nav.js` | ~35 + N | +1 строка на сцену |
-| `src/inventory.js` | ~80 | +5 строк на предмет |
-| `src/icons.js` | ~500 | +30 строк на предмет |
-| `src/combos.js` | ~120 | +5 строк на комбо |
-| `src/zone-msgs.js` | ~150 | +3 строки на зону×предмет |
-| `src/dialogue.js` | ~150 | +N строк на диалог |
-| `src/sequence.js` | ~50 | не растёт |
+| `src/inventory.js` | ~135 | +5 строк на предмет |
+| `src/icons/items.js` | ~500 | +30 строк на предмет |
+| `src/icons/achievements.js` | ~700 | +25 строк на ачивку |
+| `src/combos.js` | ~110 | +5 строк на комбо |
+| `src/zone-msgs.js` | ~220 | +3 строки на зону×предмет |
+| `src/dialogue.js` | ~600 | +N строк на диалог |
+| `src/sequence.js` | ~70 | не растёт |
+| `src/scene-base.js` | ~200 | не растёт |
+| `src/ui/messages.js` | ~200 | не растёт |
+| `src/ui/cursor.js` | ~100 | не растёт |
+| `src/ui/overlays.js` | ~80 | не растёт |
+| `src/edge-nav.js` | ~80 | не растёт |
+| `src/meditation.js` | ~200 | не растёт |
+| `src/zones.js` | ~80 | не растёт |
 | `scenes/_TEMPLATE.js` | ~150 | никогда |
 | `scenes/my_scene.js` | 120–250 | изолировано |
-| `scenes/main.js` | ~600 | рефакторить если >700 |
+| `scenes/main.js` | ~500 | рефакторить если >700 |
+| `scenes/tutorial.js` | ~1000 | использует hero.js, дальше не растёт |
+| `scenes/buddha.js` | ~830 | стабильна |
+| `scenes/achievements.js` | ~690 | стабильна |
 
-> Если `main.js` > 700 строк → вынести медитацию в `src/meditation.js`
+> Старые legacy-сцены (main, tutorial, buddha, scene2/3/4, inside) — на ручном
+> DOM-сборе (без buildSceneDOM). Новые — через `scenes/_TEMPLATE.js` factory.
+>
+> При правке медитации/символов/inscription → `src/meditation.js`, не main.
 
 ---
 
