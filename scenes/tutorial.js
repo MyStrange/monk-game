@@ -15,7 +15,7 @@ import { punkThoughts, tutHints, tutZoneMsgs,
          trafficLightMsgs, stepMessages,
          tutBottleOnTrash, tutBottleAfterPick }          from '../src/dialogue.js';
 // Общая walk-логика. Свой sprite/draw оставляем (панк ≠ монах).
-import { tickHeroMove }                                  from '../src/hero.js';
+import { tickHeroMove, setHeroTarget }                   from '../src/hero.js';
 import { Particles }                                     from '../src/particles.js';
 import { waitImg }                                       from '../src/scene-base.js';
 import { drawPixelGlow }                                 from '../src/anims.js';
@@ -352,10 +352,11 @@ function onTap(cx, cy) {
   if (item && zone) { interactItem(item.id, zone); _scheduleHint(); return; }
   if (zone)         { zoneClick(zone);            _scheduleHint(); return; }
 
-  // empty click — walk
+  // empty click — walk. Helper setHeroTarget устанавливает targetX/walking/facing
+  // в одном вызове. minX/maxX — границы для панка (упрётся в светофор в animate).
   if (!hero.smoking) {
-    const bgX = Math.max(80, Math.min(BG_W - 80, cx * BG_W / W));
-    hero.targetX = bgX;  // ограничится HERO_X_MAX в animate
+    const bgX = cx * BG_W / W;
+    setHeroTarget(hero, bgX, { minX: 80, maxX: BG_W - 80 });
   }
 }
 

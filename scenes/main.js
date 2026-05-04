@@ -31,7 +31,7 @@ import {
 // Общий монах — спрайты, размеры, движение, отрисовка, клавиши.
 import { makeHero, tickHeroMove, drawHero,
          meditationKeyAction, isWalkKey,
-         spawnHeroAtEdge,
+         spawnHeroAtEdge, setHeroTarget,
          HERO_STAND_H, HERO_STAND_W, HERO_SIT_W, HERO_SIT_H,
          HERO_LEFT_YOFF, HERO_FRAMES, HERO_SPEED,
          heroImgR, heroImgL, heroImgS }                      from '../src/hero.js';
@@ -493,10 +493,11 @@ function onTap(cx, cy) {
   if (item && zone) { interactItem(item.id, zone); return; }
   if (zone)         { zoneClick(zone); return; }
 
-  // Empty click: walk to clicked position
+  // Empty click: walk to clicked position. Helper из src/hero.js — он
+  // выставляет targetX/walking/facing с учётом границ.
   if (!hero.praying) {
     const { x: bgX } = canvasToBG(cx, cy);
-    hero.targetX = Math.max(80, Math.min(BG_W - 80, bgX));
+    setHeroTarget(hero, bgX, { minX: 80, maxX: BG_W - 80 });
   }
   trackEmptyClick();
 }

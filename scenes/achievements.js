@@ -26,7 +26,7 @@ import { openScene }                                        from '../src/nav.js'
 import { makeHero, tickHeroMove, drawHero,
          meditationKeyAction, isWalkKey,
          heroOptsForBG, groundYForBG,
-         spawnHeroAtEdge }                                  from '../src/hero.js';
+         spawnHeroAtEdge, setHeroTarget }                   from '../src/hero.js';
 import { createMeditationFx, drawMeditationOverlay,
          updateMeditationPhase }                            from '../src/meditation-fx.js';
 import { sitDown as _sitDownCommon,
@@ -418,10 +418,10 @@ async function onTap(e, cx, cy) {
   if (shelf !== null) { openPicker(shelf); return; }
 
   // Пустое место → шагаем. Конверсия через coverRect — иначе на не-16:9
-  // вьюпортах клик мапится не в ту BG-точку.
+  // вьюпортах клик мапится не в ту BG-точку. Helper setHeroTarget из hero.js.
   const R = coverRect(W, H, BG_W, BG_H);
   const bgX = (cx - R.x) * BG_W / R.w;
-  hero.targetX = Math.max(120, Math.min(BG_W - 120, bgX));
+  setHeroTarget(hero, bgX, { minX: 120, maxX: BG_W - 120 });
 }
 
 // ── Animation ──────────────────────────────────────────────────────────────
