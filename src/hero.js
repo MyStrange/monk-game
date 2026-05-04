@@ -88,8 +88,10 @@ export function makeHero({ x = 300, y = 920 } = {}) {
 //           Важно: возвращается null если монах уже стоял на границе раньше
 //           (например, спавн в край) — иначе был бы бесконечный цикл.
 export function tickHeroMove(hero, keysHeld,
-  { minX = 120, maxX = Infinity, speed = HERO_SPEED } = {}) {
-  if (hero.praying) return { moved: false, edge: null };
+  { minX = 120, maxX = Infinity, speed = HERO_SPEED, frozen = false } = {}) {
+  // Замороженные состояния: медитация (монах), курение / удар (панк-туториал).
+  // Сцена передаёт frozen вручную если у героя кастомные блокирующие поля.
+  if (hero.praying || frozen) return { moved: false, edge: null };
 
   const hasLeft  = keysHeld['ArrowLeft']  || keysHeld['a'] || keysHeld['ф'];
   const hasRight = keysHeld['ArrowRight'] || keysHeld['d'] || keysHeld['в'];

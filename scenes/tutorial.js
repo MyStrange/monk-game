@@ -14,6 +14,8 @@ import { SaveManager }                                   from '../src/save.js';
 import { punkThoughts, tutHints, tutZoneMsgs,
          trafficLightMsgs, stepMessages,
          tutBottleOnTrash, tutBottleAfterPick }          from '../src/dialogue.js';
+// Общая walk-логика. Свой sprite/draw оставляем (панк ≠ монах).
+import { tickHeroMove }                                  from '../src/hero.js';
 
 // ── Persistent scene state ────────────────────────────────────────────────
 const S = SaveManager.getScene('tutorial');
@@ -755,33 +757,12 @@ function animate() {
     if (hero.x >= BG_W * 0.78 && !car.lit) _spawnCar();
     if (hero.x >= BG_W * 0.92 && !hero.hit) _onCarHit();
   } else if (!hero.smoking && !hero.hit) {
+    // Walk-логика монаха общая → tickHeroMove из src/hero.js.
+    // hero.targetX обработается там же; границы 80…HERO_X_MAX (упор в светофор).
     const prevX = hero.x;
-    if (keysHeld['ArrowLeft'] || keysHeld['a'] || keysHeld['ф']) {
-      hero.x = Math.max(80, hero.x - HERO_SPEED);
-      hero.facing = 'left';
-      hero.walking = true;
-      hero.targetX = null;
-    } else if (keysHeld['ArrowRight'] || keysHeld['d'] || keysHeld['в']) {
-      hero.x = Math.min(HERO_X_MAX, hero.x + HERO_SPEED);
-      hero.facing = 'right';
-      hero.walking = true;
-      hero.targetX = null;
-    } else if (hero.targetX !== null) {
-      // если цель за светофором — упираемся в HERO_X_MAX
-      const target = Math.min(HERO_X_MAX, hero.targetX);
-      const dx = target - hero.x;
-      if (Math.abs(dx) > HERO_SPEED) {
-        hero.x += Math.sign(dx) * HERO_SPEED;
-        hero.facing = dx > 0 ? 'right' : 'left';
-        hero.walking = true;
-      } else {
-        hero.x = target;
-        hero.targetX = null;
-        hero.walking = false;
-      }
-    } else {
-      hero.walking = false;
-    }
+    tickHeroMove(hero, keysHeld, {
+      minX: 80, maxX: HERO_X_MAX, speed: HERO_SPEED,
+    });
     // Подсказка про светофор — когда упираемся в правую границу
     if (hero.x >= HERO_X_MAX && prevX < HERO_X_MAX && !S.windowBroken) {
       const arr = trafficLightMsgs;
