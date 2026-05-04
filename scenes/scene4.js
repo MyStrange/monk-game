@@ -33,7 +33,7 @@ import { S4_CAT_MSGS, S4_MONK_MSGS,
          S4_STATUE_MSGS, S4_ITEM_MSGS,
          SCENE4_OPEN_MSG3 }              from '../src/dialogue.js';
 import { getSelectedItem }                from '../src/inventory.js';
-import { waitImg, coverRect, hitZone }    from '../src/scene-base.js';
+import { waitImg, coverRect, hitZone, createBackBtn }    from '../src/scene-base.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const [S] = useSceneState('scene4', {
@@ -357,13 +357,7 @@ function createEl() {
   layer3El.dataset.layer = '3';
   layer3El.style.zIndex = '61';
 
-  const back = document.createElement('button');
-  back.className = 'back-btn';
-  back.textContent = '←';
-  back.onclick = closeSceneScene4;
-  back.addEventListener('touchend', e => {
-    e.stopPropagation(); e.preventDefault(); closeSceneScene4();
-  }, { passive: false });
+  const back = createBackBtn(closeSceneScene4);
 
   msgEl = document.createElement('div');
   msgEl.className = 'scene-msg';

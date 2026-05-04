@@ -14,6 +14,7 @@ import { SCREENS }        from '../src/constants.js';
 import { Particles }      from '../src/particles.js';
 import { drawPixelGlow3 } from '../src/anims.js';
 import { cacheElementRect } from '../src/scene-input.js';
+import { createBackBtn }    from '../src/scene-base.js';
 import { showMsgIn }                                         from '../src/ui/messages.js';
 import { showLoading, hideLoading, showError }               from '../src/ui/overlays.js';
 import { setCursor }                                         from '../src/ui/cursor.js';
@@ -297,13 +298,7 @@ function createEl() {
   canvas.className = 'scene-canvas';
   ctx = canvas.getContext('2d');
 
-  const back = document.createElement('button');
-  back.className = 'back-btn';
-  back.textContent = '←';
-  back.onclick = closeSceneInside;
-  back.addEventListener('touchend', e => {
-    e.stopPropagation(); e.preventDefault(); closeSceneInside();
-  }, { passive: false });
+  const back = createBackBtn(closeSceneInside);
 
   msgEl = document.createElement('div');
   msgEl.className = 'scene-msg';

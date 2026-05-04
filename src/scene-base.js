@@ -92,6 +92,26 @@ export function hitZone(cx, cy, zone, rect) {
 //   onClose   — fn() вызывается click и touchend на back-button
 //   withBack  — true (дефолт); false отключит back-btn (для prologue/menu)
 //
+// ─── createBackBtn — кнопка-стрелка «назад» с touchend handler ───────────
+// Используется и внутри buildSceneDOM, и в legacy-сценах, которые сами
+// собирают DOM. Раньше каждая legacy-сцена дублировала 5 строк (создание
+// button + className + textContent + onclick + touchend).
+//
+//   const back = createBackBtn(closeSceneXxx);
+//   el.appendChild(back);
+//
+// touchend требует preventDefault для подавления double-tap zoom + click.
+export function createBackBtn(onClose) {
+  const back = document.createElement('button');
+  back.className   = 'back-btn';
+  back.textContent = '←';
+  back.onclick     = onClose;
+  back.addEventListener('touchend', e => {
+    e.stopPropagation(); e.preventDefault(); onClose?.();
+  }, { passive: false });
+  return back;
+}
+
 // Возвращает: { el, bgImg | null, canvas, ctx, msgEl | null, back | null }
 // Если элемент уже существует в DOM (createEl повторный вызов), возвращает
 // ссылки через querySelector.
@@ -131,13 +151,7 @@ export function buildSceneDOM(opts) {
 
   let back = null;
   if (withBack) {
-    back = document.createElement('button');
-    back.className = 'back-btn';
-    back.textContent = '←';
-    back.onclick = onClose;
-    back.addEventListener('touchend', e => {
-      e.stopPropagation(); e.preventDefault(); onClose?.();
-    }, { passive: false });
+    back = createBackBtn(onClose);
     el.appendChild(back);
   }
 

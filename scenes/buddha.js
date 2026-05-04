@@ -19,6 +19,7 @@ import {
 import { drawPixelGlow, drawGlowTrail, drawRadialFlash } from '../src/anims.js';
 import { Particles }                                    from '../src/particles.js';
 import { cacheElementRect }                             from '../src/scene-input.js';
+import { createBackBtn }                                 from '../src/scene-base.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 const [S] = useSceneState('buddha', {
@@ -199,12 +200,7 @@ function _buildFlyroom() {
   _pauseDots.innerHTML = '<span>·</span><span>·</span><span>·</span>';
   _pauseDots.style.display = 'none';
 
-  const back = document.createElement('button');
-  back.className = 'back-btn';
-  back.textContent = '←';
-  const _closeFlyr = e => { e.stopPropagation(); e.preventDefault(); flyroomEl.style.display = 'none'; };
-  back.onclick = _closeFlyr;
-  back.addEventListener('touchend', _closeFlyr, { passive: false });
+  const back = createBackBtn(() => { flyroomEl.style.display = 'none'; });
 
   flyroomEl.appendChild(bg);
   flyroomEl.appendChild(frCanvas);
@@ -639,11 +635,7 @@ function createEl() {
   wishCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;';
   wCtx = wishCanvas.getContext('2d');
 
-  const back = document.createElement('button');
-  back.className = 'back-btn';
-  back.textContent = '←';
-  back.onclick = closeSceneBuddha;
-  back.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); closeSceneBuddha(); }, { passive: false });
+  const back = createBackBtn(closeSceneBuddha);
 
   bMsgEl = document.createElement('div');
   bMsgEl.className = 'scene-msg';

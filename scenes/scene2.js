@@ -16,7 +16,7 @@ import { AudioSystem }   from '../src/audio.js';
 import { trackZoneClick, trackEmptyClick, trackSpotClick, trackRockActivated, trackSceneVisit } from '../src/achievements.js';
 import { BARE_ROCK_MSGS, ACTIVATED_ROCK_MSGS, JAR_ON_ROCK_MSGS,
          ROCK1_REFLECT, ROCK2_REFLECT } from '../src/dialogue.js';
-import { waitImg, coverRect, hitZone as _hitZone } from '../src/scene-base.js';
+import { waitImg, coverRect, hitZone as _hitZone, createBackBtn } from '../src/scene-base.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
 // useSceneState из src/save.js — единый паттерн state + дефолтов + saver.
@@ -451,11 +451,7 @@ function createEl() {
   canvas.className = 'scene-canvas';
   ctx = canvas.getContext('2d');
 
-  const back = document.createElement('button');
-  back.className = 'back-btn';
-  back.textContent = '←';
-  back.onclick = closeSceneScene2;
-  back.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); closeSceneScene2(); }, { passive: false });
+  const back = createBackBtn(closeSceneScene2);
 
   msgEl = document.createElement('div');
   msgEl.className = 'scene-msg';

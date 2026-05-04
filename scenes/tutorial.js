@@ -20,6 +20,7 @@ import { Particles }                                     from '../src/particles.
 import { waitImg }                                       from '../src/scene-base.js';
 import { drawPixelGlow }                                 from '../src/anims.js';
 import { bgToCanvasSimple, canvasToBGSimple, hitZoneAtBG } from '../src/zones.js';
+import { createBackBtn }                                 from '../src/scene-base.js';
 
 // ── Persistent scene state ────────────────────────────────────────────────
 // useSceneState из src/save.js — единый паттерн получения сохранённого
@@ -916,11 +917,7 @@ function createEl() {
   canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:default;';
   ctx = canvas.getContext('2d');
 
-  const back = document.createElement('button');
-  back.className = 'back-btn';
-  back.textContent = '←';
-  back.onclick = closeSceneTutorial;
-  back.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); closeSceneTutorial(); }, { passive: false });
+  const back = createBackBtn(closeSceneTutorial);
 
   msgEl = document.createElement('div');
   msgEl.className = 'scene-msg';

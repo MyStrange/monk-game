@@ -6,6 +6,7 @@ import { showMsgIn }                                from '../src/ui/messages.js'
 import { CURSOR_DEF, CURSOR_PTR, setCursor }        from '../src/ui/cursor.js';
 import { drawRadialFlash }                          from '../src/anims.js';
 import { cacheElementRect }                         from '../src/scene-input.js';
+import { createBackBtn }                            from '../src/scene-base.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { renderHotbar } from '../src/hotbar.js';
@@ -215,10 +216,7 @@ function createEl() {
   canvas.className = 'scene-canvas';
   ctx = canvas.getContext('2d');
 
-  const back = document.createElement('button');
-  back.className = 'back-btn';
-  back.textContent = '←';
-  back.onclick = closeSceneScene3;
+  const back = createBackBtn(closeSceneScene3);
 
   msgEl = document.createElement('div');
   msgEl.className = 'scene-msg';
