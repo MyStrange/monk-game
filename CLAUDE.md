@@ -39,7 +39,10 @@
 - [ ] Edge-навигация → `src/edge-nav.js` (edgeNavMode, OPPOSITE_EDGE, …)
 - [ ] Иконки предметов → `src/icons/items.js` (новые статичные — через `svgRects`)
 - [ ] Иконки ачивок → `src/icons/achievements.js`
-- [ ] Медитация / символы → `src/meditation.js` (sitDown, standUp)
+- [ ] sitDown / standUp / setMeditating → `src/meditation.js`
+- [ ] Палитра символов / overlay / particles медитации → `src/meditation-fx.js`
+      (`createMeditationFx` paths, `createDustField`, `drawMeditationOverlay`)
+- [ ] Анимационные примитивы (phaseUp/Down, decay, pumpDecay, sinSway) → `src/anims.js`
 - [ ] Универсальный hit-test зон → `src/zones.js` (canvasToBG, bgToCanvas, hitZoneBG)
 - [ ] Системы частиц → `src/particles.js` (`new Particles()`, spawn/tick/forEach/clear)
 - [ ] Animation-loop с guard'ом → `src/anim-loop.js` (`runAnimLoop`)
@@ -256,9 +259,15 @@ const seq = new Sequence(SLIDES, onEnd);
 - `activeScreen` — строго ключ из `NAV_MAP`: `'main'|'scene2'|'buddha'|'scene3'|'scene4'|'menu'|'prologue'`
 
 ### Медитация
-- Конец медитации — только через `standUp()` (чистит `pSyms`, `mParticles`, аудио)
-- `draggedSym = null` при любом выходе → делает `leaveMain()`
-- scene4 открывается только если `inscriptionReady === true`
+- Все сцены с медитацией используют ОБЩИЕ примитивы из `src/meditation-fx.js`:
+  - `createMeditationFx({ paths, drag, sizeBase, ... })` — символы (тайские, лиловые)
+  - `createDustField()` — homing/burst dust-частицы
+  - `drawMeditationOverlay(ctx, W, H, phase)` — фиолетовый fade
+  - `updateMeditationPhase(phase, isPraying)` — fade-in/out
+- Палитра, шрифт, цвет overlay, формы движения символов — **только в meditation-fx.js**.
+  Меняешь там — меняется во всех сценах.
+- Конец медитации — через `standUp()` из `src/meditation.js` (cleanup передаёт fx.clear()/dust.clear()).
+- scene4 открывается только если `inscriptionReady === true`.
 
 ### Сообщения — единый паттерн
 **Каждая сцена** объявляет локальный алиас в начале:

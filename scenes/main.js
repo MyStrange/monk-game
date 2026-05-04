@@ -36,8 +36,12 @@ import { makeHero, tickHeroMove, drawHero,
          HERO_LEFT_YOFF, HERO_FRAMES, HERO_SPEED,
          heroImgR, heroImgL, heroImgS }                      from '../src/hero.js';
 import { onSceneVisible, makeIsActiveCheck }                 from '../src/scene-input.js';
-// Палитра/символы медитации — общие со всеми сценами с медитацией.
-import { THAI_CHARS, PURPLE_PALETTE }                        from '../src/meditation-fx.js';
+// Палитра/символы/dust/overlay медитации — общие со всеми сценами.
+import { PURPLE_PALETTE,
+         createMeditationFx, createDustField,
+         drawMeditationOverlay,
+         updateMeditationPhase }                             from '../src/meditation-fx.js';
+import { phaseToward, decay, pumpDecay }                    from '../src/anims.js';
 import { sitDown as _sitDownCommon,
          standUp as _standUpCommon,
          setMeditating as _setMeditatingCommon }            from '../src/meditation.js';
@@ -137,16 +141,20 @@ const hero = makeHero({ x: 300, y: HERO_GROUND_Y });
 const keysHeld = {};
 
 // ── Meditation ─────────────────────────────────────────────────────────────
-// THAI_CHARS и PURPLE_PALETTE — из src/meditation-fx.js.
-// Главный _spawnSym / _symTick — свой, с path-вариациями, drag, delivery.
-// Простой fx не подходит: здесь символы нужно ловить, таскать и доставлять
-// на надпись. См. тж. scenes/achievements.js — там простой createMeditationFx.
-let meditationPhase  = 0;
-let pSyms    = [];
-let mParticles = [];
-let draggedSym = null;
-let _justDelivered = false;  // блокирует click после mouseup с _deliverSym
-let statueParticles = [];  // вспышки при доставке символа
+// Все символы / dust-частицы / overlay — общие из src/meditation-fx.js.
+// Главная сцена включает paths:4 (4 формы движения) и drag (символ можно
+// схватить и доставить на надпись). См. achievements.js — там paths:1, без drag.
+let meditationPhase = 0;
+const fx   = createMeditationFx({
+  paths: 4, drag: true,
+  sizeBase: 26, sizeVar: 36,
+  riseSpeedBase: 0.38, riseSpeedVar: 0.32,
+  ampXBase: 20, ampXVar: 26,
+  freqXBase: 0.35, freqXVar: 0.55,
+  lifeDecay: 0.0008,
+});
+const dust = createDustField();   // dissolve-частицы при доставке/burst
+let _justDelivered = false;       // блокирует click после mouseup с _deliverSym
 
 // ── Ambient fireflies (240, yellow pixel, varied sizes + glow) ────────────
 const _SIZES = [1,1,2,2,2,2,3,3,3,4,5];
@@ -233,10 +241,8 @@ export function standUp() {
     onTrack: () => { if (hero.praying) trackStandUp(); },
     cleanup: () => {
       meditationPhase = 0;
-      pSyms           = [];
-      mParticles      = [];
-      draggedSym      = null;
-      statueParticles = [];
+      fx.clear();        // pSyms + drag
+      dust.clear();      // dissolve-частицы
     },
   });
 }
@@ -265,57 +271,19 @@ export function setMeditating(on = true) {
     onTrack: () => { if (hero.praying) trackStandUp(); },
     cleanup: () => {
       meditationPhase = 0;
-      pSyms           = [];
-      mParticles      = [];
-      draggedSym      = null;
-      statueParticles = [];
+      fx.clear();
+      dust.clear();
     },
   });
 }
 
+// Spawn символа над головой героя. Координаты — canvas (через bgToCanvas).
 function _spawnSym() {
   if (!hero.praying) return;
-  const ch   = THAI_CHARS[Math.floor(Math.random() * THAI_CHARS.length)];
-  const p    = bgToCanvas(hero.x, hero.y - HERO_STAND_H * 0.8);
-  const path = Math.floor(Math.random() * 4);
-  pSyms.push({
-    ch,
-    x: p.x, y: p.y, x0: p.x, y0: p.y,
-    t: 0, path,
-    phase:      Math.random() * Math.PI * 2,
-    ampX:       20 + Math.random() * (path === 1 ? 55 : 26),
-    freqX:      0.35 + Math.random() * 0.55,
-    riseSpeed:  0.38 + Math.random() * 0.32,
-    life:       1.0,
-    dragging:   false,
-    vx: 0, vy: 0, ax: 0,
-    size:       26 + Math.random() * 36,
-    color:      PURPLE_PALETTE[Math.floor(Math.random() * PURPLE_PALETTE.length)],
-  });
+  const p = bgToCanvas(hero.x, hero.y - HERO_STAND_H * 0.8);
+  fx.spawn(p.x, p.y);
 }
-
-function _symTick() {
-  for (let i = pSyms.length - 1; i >= 0; i--) {
-    const s = pSyms[i];
-    if (s.dragging) continue;
-    s.t++;
-    const sec = s.t / 60;
-    switch (s.path) {
-      case 0: s.x = s.x0 + Math.sin(sec * s.freqX * Math.PI + s.phase) * s.ampX; break;
-      case 1: s.x = s.x0 + Math.sin(sec * s.freqX * 1.2 + s.phase) * (s.ampX * 1.9); break;
-      case 2: s.x = s.x0
-            + Math.sin(sec * s.freqX * 1.8 + s.phase) * s.ampX
-            + Math.cos(sec * s.freqX * 0.9) * (s.ampX * 0.45); break;
-      case 3: {
-        const spiralR = s.ampX * (0.35 + 0.65 * Math.abs(Math.sin(sec * 0.7)));
-        s.x = s.x0 + spiralR * Math.cos(sec * s.freqX * 2.4 + s.phase); break;
-      }
-    }
-    s.y = s.y0 - (s.riseSpeed * s.t + 0.0008 * s.t * s.t);
-    s.life -= 0.0008;
-    if (s.life <= 0 || s.y < -80) pSyms.splice(i, 1);
-  }
-}
+// Tick символов делает fx.tick() — один и тот же путь/скорость для всех сцен.
 
 // ── Monk meditation dialogue ──────────────────────────────────────────────
 // Запускается один раз: герой сидит + клик по монаху = философский разговор.
@@ -510,11 +478,11 @@ function onTap(cx, cy) {
   if (state.activeScreen !== SCREENS.MAIN) return;
   trackSpotClick(cx, cy, 'main');
 
-  if (draggedSym) {
+  if (fx.getDragSym()) {
     if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
       _deliverSym();
     }
-    if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
+    fx.endDrag();
     _dragMoved = false;
     return;
   }
@@ -541,14 +509,12 @@ const _DRAG_THRESHOLD = INPUT.DRAG_THRESHOLD_PX;
 function onDragStart(cx, cy) {
   if (state.activeScreen !== SCREENS.MAIN) return;
   if (!hero.praying && meditationPhase <= 0) return;
-  for (const s of pSyms) {
-    if (Math.hypot(cx - s.x, cy - s.y) < 52) {
-      s.dragging = true;
-      draggedSym = s;
-      _dragStartX = cx; _dragStartY = cy;
-      _dragMoved = false;
-      return;
-    }
+  const sym = fx.findSymAt(cx, cy);
+  if (sym) {
+    fx.startDrag(sym);
+    _dragStartX = cx; _dragStartY = cy;
+    _dragMoved = false;
+    return;
   }
   // Не зацепили символ — проверяем попадание по надписи. Если попали,
   // запускаем «дёрганье» букв пока зажата кнопка. Мгновенный толчок
@@ -590,15 +556,12 @@ function _pointInInscriptionTarget(cx, cy) {
 // Проверить, попадает ли точка по живому символу (для курсора)
 function _hitSym(cx, cy) {
   if (!hero.praying && meditationPhase <= 0) return false;
-  for (const s of pSyms) {
-    if (Math.hypot(cx - s.x, cy - s.y) < 52) return true;
-  }
-  return false;
+  return fx.hitTest(cx, cy);
 }
 
 function onDragMove(cx, cy) {
-  if (draggedSym) {
-    draggedSym.x = cx; draggedSym.y = cy;
+  if (fx.getDragSym()) {
+    fx.dragMove(cx, cy);
     if (!_dragMoved &&
         Math.hypot(cx - _dragStartX, cy - _dragStartY) > _DRAG_THRESHOLD) {
       _dragMoved = true;
@@ -606,34 +569,19 @@ function onDragMove(cx, cy) {
   }
 }
 
-// Spawn dissolve-частицы: стартуют у точки (px,py), летят с homing'ом
-// к центру полоски рун, по пути затухают. Используется и доставкой, и
-// post-ready тапом/дропом — одна визуальная идиома для «символ впитался».
+// Dissolve burst: стартуют у точки (px,py), летят с homing'ом к центру рун,
+// по пути затухают. Универсальная функция dust.spawnHomingBurst — используется
+// и для обычной доставки, и для post-ready тапа/дропа.
 function _spawnDissolveFrom(px, py, color, count = 80) {
   const tx  = INSCRIPTION_TARGET.x + INSCRIPTION_TARGET.w / 2;
   const ty  = INSCRIPTION_TARGET.y + INSCRIPTION_TARGET.h / 2;
   const tp  = bgToCanvas(tx, ty);
-  const csx = _bgR.w / BG_W, csy = _bgR.h / BG_H;
-  const spd = Math.min(csx, csy);
-  for (let i = 0; i < count; i++) {
-    const sxPx = px + (Math.random() - 0.5) * 30;
-    const syPx = py + (Math.random() - 0.5) * 30;
-    const dx = tp.x - sxPx;
-    const dy = tp.y - syPx;
-    const flight = 24 + Math.random() * 18;
-    const col = i % 3 === 0 ? '#ffe080' : (i % 3 === 1 ? color : '#ffffff');
-    statueParticles.push({
-      x: sxPx, y: syPx,
-      vx: (dx / flight) * (0.6 + Math.random() * 0.6) + (Math.random() - 0.5) * 1.4,
-      vy: (dy / flight) * (0.6 + Math.random() * 0.6) + (Math.random() - 0.5) * 1.4,
-      life: 1.0,
-      lv: 1 / flight,
-      sz: Math.max(1, Math.round((1 + Math.random() * 2) * spd)),
-      color: col,
-      tx: tp.x, ty: tp.y,
-      homing: 0.06 + Math.random() * 0.04,
-    });
-  }
+  const scale = Math.min(_bgR.w / BG_W, _bgR.h / BG_H);
+  dust.spawnHomingBurst({
+    fromX: px, fromY: py,
+    toX: tp.x, toY: tp.y,
+    color, count, scale,
+  });
 }
 
 // Единственная точка доставки/поглощения символа на надписи.
@@ -648,13 +596,12 @@ function _spawnDissolveFrom(px, py, color, count = 80) {
 //     мерцание сильнее + финальный burst.
 //   • После активации — только звук и анимация, без счётчиков и хинтов.
 function _deliverSym() {
-  if (!draggedSym) return;
-  const sym   = draggedSym;
+  const sym = fx.getDragSym();
+  if (!sym) return;
   const symX  = sym.x, symY = sym.y;
   const symCol = sym.color ?? '#c8aaff';
 
-  pSyms = pSyms.filter(s => s !== sym);
-  draggedSym = null;
+  fx.removeSym(sym);
 
   AudioSystem.playSymbolTone?.(PURPLE_PALETTE.indexOf(symCol));
   _spawnDissolveFrom(symX, symY, symCol, 80);
@@ -671,20 +618,8 @@ function _deliverSym() {
       const tp2 = bgToCanvas(
         INSCRIPTION_TARGET.x + INSCRIPTION_TARGET.w / 2,
         INSCRIPTION_TARGET.y + INSCRIPTION_TARGET.h / 2);
-      const spd2 = Math.min(_bgR.w / BG_W, _bgR.h / BG_H);
-      for (let i = 0; i < 40; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const v     = (2.4 + Math.random() * 5) * spd2;
-        statueParticles.push({
-          x: tp2.x, y: tp2.y,
-          vx: Math.cos(angle) * v,
-          vy: Math.sin(angle) * v - 3 * spd2,
-          life: 1.0,
-          lv: 0.012 + Math.random() * 0.012,
-          sz: Math.max(1, Math.round((2 + Math.random() * 3) * spd2)),
-          color: i % 2 === 0 ? '#ffe080' : '#ffffff',
-        });
-      }
+      const scale = Math.min(_bgR.w / BG_W, _bgR.h / BG_H);
+      dust.spawnRadialBurst({ x: tp2.x, y: tp2.y, count: 40, scale });
     }
     saveMain();
   }
@@ -822,93 +757,33 @@ function animate() {
   }
 
   // ── Meditation overlay ────────────────────────────────────────────────────
-  if (hero.praying && meditationPhase < 1) meditationPhase = Math.min(meditationPhase + 0.015, 1);
-  if (!hero.praying && meditationPhase > 0) meditationPhase = Math.max(meditationPhase - 0.015, 0);
-
-  // Обновление энергии дрожания надписи. Зажата — быстро растёт до 1,
-  // отпущена — затухает. Повышенные значения чтобы тряска была
-  // заметной, а не чуть-чуть: pump 0.15/кадр (было 0.08), decay 0.93
-  // (было 0.90 — чуть дольше держится).
-  if (_inscriptionHeld && meditationPhase > 0) {
-    _inscriptionTwitch = Math.min(1, _inscriptionTwitch + 0.15);
-  } else {
-    _inscriptionTwitch *= 0.93;
-    if (_inscriptionTwitch < 0.01) _inscriptionTwitch = 0;
-  }
+  // Все апдейты состояния — через src/anims.js (phaseToward / pumpDecay).
+  meditationPhase    = phaseToward(meditationPhase, hero.praying, 0.015);
+  // Дрожание надписи: зажата кнопка — быстро растёт, отпущена — экспа-затухает.
+  _inscriptionTwitch = pumpDecay(_inscriptionTwitch,
+                                 _inscriptionHeld && meditationPhase > 0,
+                                 0.15, 0.93);
 
   if (meditationPhase > 0) {
-    ctx.fillStyle = `rgba(20,10,40,${meditationPhase * 0.35})`;
-    ctx.fillRect(0, 0, W, H);
+    drawMeditationOverlay(ctx, W, H, meditationPhase);
 
     if (hero.praying) {
       if (tick % 22 === 0) _spawnSym();
       if (tick % 22 === 11 && Math.random() < 0.45) _spawnSym();
     }
-    _symTick();
+    fx.tick();
 
-    // Jitter для дрожания летящих символов. Амплитуда — до 24px в каждую
-    // сторону при максимальной энергии (было 10 — почти не заметно).
-    // Плюс отдельный медленный sway через sin(tick) даёт ощущение
-    // качания, а не чисто случайного тряса.
+    // Jitter (дрожание) + sway (мягкое качание) — амплитуды от _inscriptionTwitch.
     const jitterPx = _inscriptionTwitch * 24 * sx;
     const swayPx   = _inscriptionTwitch * 8  * sx;
 
-    // Symbols — purple/white palette, per-symbol colour + glow
-    ctx.save();
-    for (const s of pSyms) {
-      const a = s.life * meditationPhase;
-      ctx.globalAlpha = a;
-      ctx.shadowColor = s.color ?? '#c8aaff';
-      ctx.shadowBlur  = 10;
-      ctx.fillStyle   = s.color ?? '#c8aaff';
-      ctx.font        = `${Math.round((s.size ?? 24) * sx)}px serif`;
-      ctx.textAlign   = 'center';
-      const jx = jitterPx ? (Math.random() - 0.5) * jitterPx
-                             + Math.sin(tick * 0.35 + s.phase) * swayPx
-                          : 0;
-      const jy = jitterPx ? (Math.random() - 0.5) * jitterPx
-                             + Math.cos(tick * 0.28 + s.phase * 1.3) * swayPx * 0.6
-                          : 0;
-      ctx.fillText(s.ch, s.x + jx, s.y + jy);
-    }
-    ctx.restore();
+    fx.draw(ctx, { sx, sy, phase: meditationPhase, jitterPx, swayPx, tick });
 
-    // Sparkle particles — два режима:
-    //  • homing (dissolve при доставке): тянутся к target (p.tx, p.ty)
-    //    с экспоненциальным торможением — имитация впитывания.
-    //  • burst (финальная вспышка при ready): обычная гравитация + drag.
-    ctx.save();
-    for (let i = statueParticles.length - 1; i >= 0; i--) {
-      const p = statueParticles[i];
-      p.x += p.vx; p.y += p.vy;
-      if (p.tx !== undefined) {
-        // Homing: каждый кадр доворачиваем скорость в сторону цели
-        const dx = p.tx - p.x, dy = p.ty - p.y;
-        p.vx += dx * p.homing;
-        p.vy += dy * p.homing;
-        p.vx *= 0.86;
-        p.vy *= 0.86;
-      } else {
-        p.vy += 0.14;
-        p.vx *= 0.97;
-      }
-      p.life -= p.lv;
-      if (p.life <= 0) { statueParticles.splice(i, 1); continue; }
-      ctx.globalAlpha = p.life * meditationPhase;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur  = 6;
-      ctx.fillStyle   = p.color;
-      ctx.fillRect(Math.round(p.x), Math.round(p.y), p.sz, p.sz);
-    }
-    ctx.restore();
+    // Sparkle particles — homing dissolve при доставке + radial burst при ready.
+    dust.tick();
+    dust.draw(ctx, { phase: meditationPhase });
 
-    // (Процедурная фиолетовая «надпись на шее» статуи удалена —
-    // её роль теперь полностью выполняет спрайт INSCRIPTION_OVERLAY.)
-
-    inscriptionGlow = Math.max(inscriptionGlow - 0.02, 0);
-    // Старый процедурный placeholder (центральный глиф «ᩮ» + 5 точек заряда
-    // вокруг него) удалён. Прогресс доставки теперь полностью виден через
-    // мерцание спрайта bright-over-dim, а после 5 — через постоянный bright.
+    inscriptionGlow = decay(inscriptionGlow, 0.02);
   }
 
   animId = requestAnimationFrame(animate);
@@ -934,11 +809,10 @@ function _onKey(e) {
 const _EDGE_LEFT_PX = 60;
 const _MAIN_NAV = { left: { scene: 'achievements' } };
 // NOTE: раньше проверяли `meditationPhase <= 0` — но phase затухает ~800ms
-// после standUp(), и edge-nav в этом окне не срабатывал. leaveMain()/standUp()
-// и так чистят pSyms/mParticles/draggedSym, так что переход в соседнюю
-// сцену во время fade-out безопасен. Убрали — теперь → сразу работает.
+// после standUp(), и edge-nav в этом окне не срабатывал. standUp/leaveMain
+// чистят fx/dust, так что переход во время fade-out безопасен.
 function _canEdgeNav() {
-  return !hero.praying && !draggedSym && !isStoryActive(msgEl);
+  return !hero.praying && !fx.getDragSym() && !isStoryActive(msgEl);
 }
 function _isLeftEdge(cx, cy) {
   if (!_canEdgeNav()) return false;
@@ -977,7 +851,7 @@ export function resumeMain(opts = {}) {
 // ── leaveMain ─────────────────────────────────────────────────────────────
 export function leaveMain() {
   standUp();
-  draggedSym = null;
+  fx.endDrag();
   setEdgeNavTarget(null);
   // Скрываем pray-кнопку — целевая сцена включит её сама, если поддерживает.
   setMeditateBtn(false);
@@ -1035,7 +909,7 @@ export async function initMain() {
   window.addEventListener('scroll', () => { _cRect = canvas.getBoundingClientRect(); }, { passive: true });
 
   // Blur — сбросить залипший drag при переключении вкладки
-  window.addEventListener('blur', () => { draggedSym = null; });
+  window.addEventListener('blur', () => { fx.endDrag(); });
 
   // Mouse events — используют кэшированный _cRect, не вызывая getBoundingClientRect
   canvas.addEventListener('click', e => {
@@ -1064,17 +938,15 @@ export async function initMain() {
   });
   canvas.addEventListener('mouseup', e => {
     _inscriptionHeld = false;   // отпустили «зажатие» надписи
-    if (!draggedSym) return;
-    const cx  = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
-    const sym = draggedSym;
-    // Цель доставки — кусочек рун в спрайте (INSCRIPTION_TARGET),
-    // а не старый радиус вокруг ZONES_BG.inscription.
+    if (!fx.getDragSym()) return;
+    const cx = e.clientX - _cRect.left, cy = e.clientY - _cRect.top;
+    // Цель доставки — кусочек рун в спрайте (INSCRIPTION_TARGET).
     if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
       _deliverSym();
       _justDelivered = true;
     }
     // Drop мимо надписи — символ просто отпускается и продолжает летать.
-    if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
+    fx.endDrag();
     _dragMoved = false;
   });
   canvas.addEventListener('mouseleave', () => {
@@ -1098,14 +970,12 @@ export async function initMain() {
     e.preventDefault();
     const t = e.changedTouches[0];
     const cx = t.clientX - _cRect.left, cy = t.clientY - _cRect.top;
-    if (draggedSym) {
-      draggedSym.x = cx;
-      draggedSym.y = cy;
-      const sym = draggedSym;
+    if (fx.getDragSym()) {
+      fx.dragMove(cx, cy);
       if (_dragMoved && _pointInInscriptionTarget(cx, cy) && (hero.praying || meditationPhase > 0)) {
         _deliverSym();
       }
-      if (draggedSym) { draggedSym.dragging = false; draggedSym = null; }
+      fx.endDrag();
       _dragMoved = false;
     } else if (_isLeftEdge(cx, cy)) {
       openScene('achievements', { enterAt: 'right' });

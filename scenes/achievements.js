@@ -27,7 +27,8 @@ import { makeHero, tickHeroMove, drawHero,
          meditationKeyAction, isWalkKey,
          heroOptsForBG, groundYForBG,
          spawnHeroAtEdge }                                  from '../src/hero.js';
-import { createMeditationFx }                               from '../src/meditation-fx.js';
+import { createMeditationFx, drawMeditationOverlay,
+         updateMeditationPhase }                            from '../src/meditation-fx.js';
 import { sitDown as _sitDownCommon,
          standUp as _standUpCommon }                         from '../src/meditation.js';
 
@@ -470,16 +471,18 @@ function animate() {
   drawHero(ctx, hero, sx, sy, tick, HERO_OPTS);
   ctx.restore();
 
-  // ── Meditation: phase + particles (общий fx из src/meditation-fx.js) ────
-  if (hero.praying && meditationPhase < 1) meditationPhase = Math.min(meditationPhase + 0.015, 1);
-  if (!hero.praying && meditationPhase > 0) meditationPhase = Math.max(meditationPhase - 0.015, 0);
+  // ── Meditation: тёмный overlay + символы (общие из src/meditation-fx.js) ──
+  // Та же палитра, тот же фон, та же анимация что и на главной — изменение
+  // визуала медитации в одном месте автоматически распространяется на все сцены.
+  meditationPhase = updateMeditationPhase(meditationPhase, hero.praying);
+  drawMeditationOverlay(ctx, W, H, meditationPhase);
   if (hero.praying && tick % 24 === 0) {
     const px = R.x + hero.x * sx;
     const py = R.y + (hero.y - HERO_OPTS.sitH * 0.8) * sy;
     fx.spawn(px, py);
   }
   fx.tick();
-  fx.draw(ctx);
+  fx.draw(ctx, { phase: meditationPhase });
 
   // ── Dragged icon follows cursor ─────────────────────────────────────────
   if (_drag && _drag.moved) {
