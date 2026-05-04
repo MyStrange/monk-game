@@ -1,83 +1,26 @@
-// src/inventory.js — ITEM_DEFS, makeItem, addItem, getSelectedItem
-// Новый предмет: добавить сюда + src/icons/items.js + src/zone-msgs.js
+// src/inventory.js — ITEM_DEFS (общий реестр), makeItem, addItem, getSelectedItem.
+//
+// Сборка из per-life namespace'ов (монах + панк + будущие жизни).
+// Новый предмет монаха → src/lives/monk/items.js. Панка → src/lives/punk/items.js.
+// Корневой ITEM_DEFS — спред всех жизней. Иконки → src/icons/items.js, тексты —
+// в зонах → src/zone-msgs.js.
 
 import { state }             from './state.js';
 import { SaveManager }       from './save.js';
 import { trackItemPickup }   from './achievements.js';
+import { ITEM_DEFS_MONK }    from './lives/monk/items.js';
+import { ITEM_DEFS_PUNK }    from './lives/punk/items.js';
 
 function _saveInv() {
   SaveManager.global.inventory = state.inventory.map(i => i ? { ...i } : null);
   SaveManager.save();
 }
 
-// ── Item definitions ───────────────────────────────────────────────────────
+// ── Item definitions (объединение всех жизней) ────────────────────────────
 // Нет полей `look` и `icon` — оба удалены.
 export const ITEM_DEFS = {
-  stick: {
-    id:          'stick',
-    label:       'палка',
-    description: 'Кривая, но надёжная. Из таких делают посохи и неприятности.',
-  },
-  glowstick: {
-    id:          'glowstick',
-    label:       'светопалка',
-    description: 'Палка впитала свет из банки. Светится тихо и ровно.',
-  },
-  jar: {
-    id:          'jar',
-    label:       'банка',
-    description: 'Пустая стеклянная банка с крышкой. Кулак не влезает.',
-  },
-  jar_open: {
-    id:          'jar_open',
-    label:       'банка',
-    description: 'Банка без крышки. Крышка ушла вместе со светом.',
-  },
-  dirt: {
-    id:          'dirt',
-    label:       'земля',
-    description: 'Свежая земля. Тёплая. Кот закопал сюда что-то с усилием.',
-  },
-  durian: {
-    id:          'durian',
-    label:       'дуриан',
-    description: 'Рис с кусочками фрукта. Пахнет, как носки деда в плацкарте. Или сам дед.',
-  },
-  fireflower: {
-    id:          'fireflower',
-    label:       'огнецвет',
-    description: 'Цветок, светящийся изнутри. Тёплый на ощупь. Не горит.',
-  },
-  flower: {
-    id:          'flower',
-    label:       'гибискус',
-    description: 'Красный. Тихий. Не просит ничего. Раскрылся — и всё.',
-  },
-  bottle: {
-    id:          'bottle',
-    label:       'бутылка',
-    description: 'Пустая бутылка. Стекло мутное. На дне — пыль и обещания.',
-  },
-  bottle_fuel: {
-    id:          'bottle_fuel',
-    label:       'горючее',
-    description: 'Бутылка с горючей жидкостью. Пахнет резко, идея ещё резче.',
-  },
-  molotov: {
-    id:          'molotov',
-    label:       'коктейль',
-    description: 'Бутылка с горючим и тряпкой вместо крышки. Не хватает только огня.',
-  },
-  molotov_lit: {
-    id:          'molotov_lit',
-    label:       'горит',
-    description: 'Огонь по фитилю ползёт. Времени думать не осталось.',
-  },
-  poster: {
-    id:          'poster',
-    label:       'плакат',
-    description: '«ZEN ЗА $1.99». Бумага мятая, почти как ты.',
-  },
+  ...ITEM_DEFS_MONK,
+  ...ITEM_DEFS_PUNK,
 };
 
 // ── makeItem ───────────────────────────────────────────────────────────────

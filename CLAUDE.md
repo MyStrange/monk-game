@@ -9,9 +9,12 @@
 ## ОБЯЗАТЕЛЬНО ПЕРЕД ЛЮБОЙ ПРАВКОЙ
 
 1. При добавлении **сцены** → прочти `scenes/_TEMPLATE.js` целиком
-2. При добавлении **предмета** → прочти `src/inventory.js` + `src/icons.js` + `src/zone-msgs.js`
-3. При добавлении **диалога** → прочти `src/dialogue.js`
-4. При добавлении **комбо** → прочти `src/combos.js`
+2. При добавлении **предмета**:
+   - монах → `src/lives/monk/items.js` + `src/icons/items.js` + `src/zone-msgs.js`
+   - панк (туториал) → `src/lives/punk/items.js` + `src/icons/items.js` + `src/zone-msgs.js`
+   - новая жизнь → создать `src/lives/<life>/items.js`, записать в `src/inventory.js` спред
+3. При добавлении **диалога** → `src/dialogue.js`
+4. При добавлении **комбо** → `src/combos.js`
 
 ---
 
