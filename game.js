@@ -13,6 +13,7 @@ import { openAchievements, closeAchievements, loadAchievements, resetAchievement
 import { initMain, leaveMain }              from './scenes/main.js';
 import { openScene }                        from './src/nav.js';
 import './src/assets.js';   // регистрирует window.__validateAssets() для dev-console
+import './src/scene-registrations.js';   // регистрирует все сцены в scene-registry
 
 // ── Boot-time preload ───────────────────────────────────────────────────────
 // Loading overlay показан inline в index.html (display:flex). Здесь ждём пока
