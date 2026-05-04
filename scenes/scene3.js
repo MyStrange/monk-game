@@ -8,15 +8,16 @@ import { drawRadialFlash }                          from '../src/anims.js';
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { renderHotbar } from '../src/hotbar.js';
-import { SaveManager }  from '../src/save.js';
+import { SaveManager, useSceneState } from '../src/save.js';
 import { AudioSystem }  from '../src/audio.js';
 import { trackZoneClick, trackEmptyClick } from '../src/achievements.js';
 import { fireflowerPickupMsg } from '../src/dialogue.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
-const S = SaveManager.getScene('scene3');
-S.fireFlowerPicked = S.fireFlowerPicked ?? false;
-S.scene3Unlocked   = S.scene3Unlocked   ?? false;
+const [S] = useSceneState('scene3', {
+  fireFlowerPicked: false,
+  scene3Unlocked:   false,
+});
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, canvas, ctx, msgEl;

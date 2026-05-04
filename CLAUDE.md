@@ -278,7 +278,20 @@ const showMsg = (t, d) => showMsgIn(msgEl, t, d);
 
 ### state.js — не расширять
 Только 3 поля навсегда: `inventory`, `selectedSlot`, `activeScreen`.
-Флаги сцены → в файле сцены через `SaveManager.getScene(id)`.
+
+### Scene state — через `useSceneState`
+В файле сцены — единый паттерн из `src/save.js`:
+```js
+import { useSceneState } from '../src/save.js';
+const [S, saveS] = useSceneState('myScene', {
+  fooDone:  false,
+  msgIdx:   0,
+  collected: { a: false, b: false },
+});
+// после мутации S — saveS() (или сохранится автоматом при closeScene).
+```
+Старого `const S = SaveManager.getScene(id); S.foo ??= false; function saveS()...`
+не использовать — он размножает дефолты по сценам.
 
 ### Save versioning
 `src/save.js` хранит `SCHEMA_VERSION`. При изменении схемы save:

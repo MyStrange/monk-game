@@ -14,7 +14,7 @@ import { setCursor }                                         from '../src/ui/cur
 import { edgeNavMode, tryEdgeNavClick,
          setDefaultEnterFor, OPPOSITE_EDGE }                 from '../src/edge-nav.js';
 import { leaveMain, resumeMain }                            from './main.js';
-import { SaveManager }                                      from '../src/save.js';
+import { SaveManager, useSceneState }                       from '../src/save.js';
 import { ACHIEVEMENT_DEFS, getUnlockedIds,
          getAchievementById, trackShelfVisit }              from '../src/achievements.js';
 import { renderAchIconByKey }                               from '../src/icons/achievements.js';
@@ -34,10 +34,7 @@ import { sitDown as _sitDownCommon,
 
 // ── Scene persistent state ─────────────────────────────────────────────────
 // S.placed: { [achId]: { shelf: 0|1|2, slot: 0..SLOTS_PER_SHELF-1 } }
-const S = SaveManager.getScene('achievements');
-S.placed = S.placed ?? {};
-
-function saveAch() { SaveManager.setScene('achievements', S); }
+const [S, saveAch] = useSceneState('achievements', { placed: {} });
 
 // ── BG geometry ────────────────────────────────────────────────────────────
 // shelf.png: 1376×775 — реестр в src/scene-defs.js

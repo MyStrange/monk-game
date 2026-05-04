@@ -18,7 +18,7 @@ import { showLoading, hideLoading, showError }               from '../src/ui/ove
 import { setCursor }                                         from '../src/ui/cursor.js';
 import { HEART_MSGS, HEART_ACTIVE_MSGS, STAIRS_MSGS, OPENING_MSGS } from '../src/dialogue.js';
 import { resumeMain, setMeditating } from './main.js';
-import { SaveManager }    from '../src/save.js';
+import { SaveManager, useSceneState } from '../src/save.js';
 import { AudioSystem }    from '../src/audio.js';
 import { trackZoneClick, trackSceneVisit } from '../src/achievements.js';
 import { getSelectedItem, removeItem } from '../src/inventory.js';
@@ -39,11 +39,12 @@ const OPENING_ZONE = { x0: 0.28, y0: 0.00, x1: 0.72, y1: 0.24 };
 const STAIRS_ZONE  = { x0: 0.03, y0: 0.20, x1: 0.54, y1: 0.82 };
 
 // ── Scene state ────────────────────────────────────────────────────────────
-const S = SaveManager.getScene('inside');
-S.heartIdx      = S.heartIdx      ?? 0;
-S.stairsIdx     = S.stairsIdx     ?? 0;
-S.openingIdx    = S.openingIdx    ?? 0;
-S.heartActivated = S.heartActivated ?? false;
+const [S] = useSceneState('inside', {
+  heartIdx:       0,
+  stairsIdx:      0,
+  openingIdx:     0,
+  heartActivated: false,
+});
 
 // Тексты сцены — в src/dialogue.js. См. HEART_MSGS, HEART_ACTIVE_MSGS,
 // STAIRS_MSGS, OPENING_MSGS. До активации — сердце ноет, после — светится.

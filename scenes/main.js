@@ -9,6 +9,9 @@ import { setEdgeNavTarget, setDefaultEnterFor,
          OPPOSITE_EDGE }                                     from '../src/edge-nav.js';
 import { coverRect }       from '../src/scene-base.js';
 import { SCENE_DEFS }      from '../src/scene-defs.js';
+import { canvasToBG as _canvasToBGShared,
+         bgToCanvas as _bgToCanvasShared,
+         hitZoneAtBG }                     from '../src/zones.js';
 import { getSelectedItem, addItem, removeItem, makeItem } from '../src/inventory.js';
 import { getZoneMsg }      from '../src/zone-msgs.js';
 import { renderHotbar, setHotbarMsgEl } from '../src/hotbar.js';
@@ -19,7 +22,7 @@ import { trackZoneClick, trackEmptyClick, trackSpotClick,
          trackWaterJar, trackCatHiss, trackCatBury,
          trackMonkDialogDone, trackInscriptionReady,
          trackSceneVisit, trackSitOnCat } from '../src/achievements.js';
-import { SaveManager }     from '../src/save.js';
+import { SaveManager, useSceneState } from '../src/save.js';
 import {
   catMsgs, monkMsgs, MEDITATE_MSGS,
   catBuryMsg1, catBuryMsg2, catBuryDoneMsg,
@@ -114,14 +117,15 @@ const ZONES_BG = {
 };
 
 // ── Persistent scene state ────────────────────────────────────────────────
-const S = SaveManager.getScene('main');
-S.stickPickedUp     = S.stickPickedUp     ?? false;
-S.inscriptionCharge = S.inscriptionCharge ?? 0;
-S.inscriptionReady  = S.inscriptionReady  ?? false;
-S.monkDialogDone    = S.monkDialogDone    ?? false;
-S.monkHintShown     = S.monkHintShown     ?? false;   // story-подсказка про «ещё нет запроса» (один раз)
-
-function saveMain() { SaveManager.setScene('main', S); }
+// Единый паттерн через useSceneState — см. src/save.js. Возвращает массив
+// [S, saveS]: S — объект состояния с дефолтами, saveS — функция-saver.
+const [S, saveMain] = useSceneState('main', {
+  stickPickedUp:     false,
+  inscriptionCharge: 0,
+  inscriptionReady:  false,
+  monkDialogDone:    false,
+  monkHintShown:     false,   // story-подсказка про «ещё нет запроса» (один раз)
+});
 
 // ── Transient state (resets on reload) ────────────────────────────────────
 let catBurying   = false;
@@ -178,12 +182,9 @@ const interactCounts = {};
 // BG рендерится через <img class="scene-bg"> c object-fit:cover — AR фона
 // сохраняется. Все канвас-координаты должны считаться через _bgR, иначе
 // герой «висит в воздухе» относительно фона на не-16:9 вьюпортах.
-function bgToCanvas(bgX, bgY) {
-  return { x: _bgR.x + bgX * _bgR.w / BG_W, y: _bgR.y + bgY * _bgR.h / BG_H };
-}
-function canvasToBG(cx, cy) {
-  return { x: (cx - _bgR.x) * BG_W / _bgR.w, y: (cy - _bgR.y) * BG_H / _bgR.h };
-}
+// Формула — в src/zones.js, эти обёртки фиксируют _bgR/BG_W/BG_H закрытием.
+const bgToCanvas = (bgX, bgY) => _bgToCanvasShared(bgX, bgY, _bgR, BG_W, BG_H);
+const canvasToBG = (cx, cy)   => _canvasToBGShared(cx, cy, _bgR, BG_W, BG_H);
 function hitZoneBG(cx, cy) {
   const { x: bx, y: by } = canvasToBG(cx, cy);
 
@@ -197,13 +198,14 @@ function hitZoneBG(cx, cy) {
     if (bx >= t.x && bx < t.x + t.w && by >= t.y && by < t.y + t.h)
       return 'inscription';
   }
-  for (const [name, z] of Object.entries(ZONES_BG)) {
-    if (name === 'inscription' || name === 'dirt') continue;
-    if (name === 'bush' && S.stickPickedUp) continue;
-    if (name === 'cat'  && catHidden) continue;
-    if (bx >= z.x && bx < z.x + z.w && by >= z.y && by < z.y + z.h) return name;
-  }
-  return null;
+  // Поиск зоны через общий hitZoneAtBG — фильтр условий передаётся колбэком.
+  // inscription/dirt — служебные (inscription уже проверена выше; dirt живёт
+  // как «зона земли» только пока кот её зарывает, отдельным флоу).
+  return hitZoneAtBG(bx, by, ZONES_BG, name =>
+    name === 'inscription' || name === 'dirt' ||
+    (name === 'bush' && S.stickPickedUp) ||
+    (name === 'cat'  && catHidden)
+  );
 }
 
 // ── showMsg ────────────────────────────────────────────────────────────────

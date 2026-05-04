@@ -10,7 +10,7 @@ import { leaveMain, resumeMain }                         from './main.js';
 import { getSelectedItem, addItem, makeItem }            from '../src/inventory.js';
 import { renderHotbar, setHotbarMsgEl }                  from '../src/hotbar.js';
 import { AudioSystem }                                   from '../src/audio.js';
-import { SaveManager }                                   from '../src/save.js';
+import { SaveManager, useSceneState }                    from '../src/save.js';
 import { punkThoughts, tutHints, tutZoneMsgs,
          trafficLightMsgs, stepMessages,
          tutBottleOnTrash, tutBottleAfterPick }          from '../src/dialogue.js';
@@ -19,18 +19,22 @@ import { tickHeroMove, setHeroTarget }                   from '../src/hero.js';
 import { Particles }                                     from '../src/particles.js';
 import { waitImg }                                       from '../src/scene-base.js';
 import { drawPixelGlow }                                 from '../src/anims.js';
+import { bgToCanvasSimple, canvasToBGSimple, hitZoneAtBG } from '../src/zones.js';
 
 // ── Persistent scene state ────────────────────────────────────────────────
-const S = SaveManager.getScene('tutorial');
-S.trashKicked  ??= false;
-S.bottleTaken  ??= false;
-S.posterTaken  ??= false;
-S.canisterUsed ??= false;
-S.windowBroken ??= false;
-S.fireStarted  ??= false;
-S.completed    ??= false;
-S.tutorialStep ??= 0;   // 0..10, см. HL_ZONES
-function saveTut() { SaveManager.setScene('tutorial', S); }
+// useSceneState из src/save.js — единый паттерн получения сохранённого
+// состояния + дефолтов. Вернёт [S, saveS] — массив, чтобы сцена сама решала
+// имена (saveTut здесь, saveAch в achievements и т.д.).
+const [S, saveTut] = useSceneState('tutorial', {
+  trashKicked:  false,
+  bottleTaken:  false,
+  posterTaken:  false,
+  canisterUsed: false,
+  windowBroken: false,
+  fireStarted:  false,
+  completed:    false,
+  tutorialStep: 0,   // 0..10, см. HL_ZONES
+});
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, bgEl, canvas, ctx, msgEl;
@@ -142,24 +146,23 @@ const hero = {
 const keysHeld = {};
 
 // ── Coordinate scaling ────────────────────────────────────────────────────
-function bgToCanvas(bgX, bgY) {
-  return { x: bgX * W / BG_W, y: bgY * H / BG_H };
-}
+// Простой scale без cover-rect — туториал использует прямой <canvas>+<img>
+// без object-fit масштабирования. Helper'ы из src/zones.js.
+const bgToCanvas = (bgX, bgY) => bgToCanvasSimple(bgX, bgY, W, H, BG_W, BG_H);
+
 function _cigZoneBG() {
   return { x: hero.x + 18, y: hero.y - HERO_H * 0.45, w: 30, h: 22 };
 }
 function hitZoneBG(cx, cy) {
-  const bx = cx * BG_W / W, by = cy * BG_H / H;
+  const { x: bx, y: by } = canvasToBGSimple(cx, cy, W, H, BG_W, BG_H);
   if (hero.smoking) {
     const c = _cigZoneBG();
     if (bx >= c.x && bx < c.x + c.w && by >= c.y && by < c.y + c.h) return 'cigarette';
   }
-  for (const [name, z] of Object.entries(ZONES_BG)) {
-    if (name === 'poster'   && S.posterTaken)  continue;
-    if (name === 'canister' && S.canisterUsed) continue;
-    if (bx >= z.x && bx < z.x + z.w && by >= z.y && by < z.y + z.h) return name;
-  }
-  return null;
+  return hitZoneAtBG(bx, by, ZONES_BG, name =>
+    (name === 'poster'   && S.posterTaken) ||
+    (name === 'canister' && S.canisterUsed)
+  );
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

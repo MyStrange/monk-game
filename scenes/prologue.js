@@ -16,11 +16,10 @@ import { setCursor }                          from '../src/ui/cursor.js';
 import { leaveMain, resumeMain }              from './main.js';
 import { Sequence }                           from '../src/sequence.js';
 import { openScene }                          from '../src/nav.js';
-import { SaveManager }                        from '../src/save.js';
+import { SaveManager, useSceneState }         from '../src/save.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
-const S = SaveManager.getScene('prologue');
-S.seen = S.seen ?? false;
+const [S] = useSceneState('prologue', { seen: false });
 
 // ── Slides — заполнить контентом ──────────────────────────────────────────
 const SLIDES = [

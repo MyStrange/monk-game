@@ -11,7 +11,7 @@ import { drawPixelGlow3 } from '../src/anims.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
 import { getZoneMsg }    from '../src/zone-msgs.js';
 import { renderHotbar }  from '../src/hotbar.js';
-import { SaveManager }   from '../src/save.js';
+import { SaveManager, useSceneState } from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
 import { trackZoneClick, trackEmptyClick, trackSpotClick, trackRockActivated, trackSceneVisit } from '../src/achievements.js';
 import { BARE_ROCK_MSGS, ACTIVATED_ROCK_MSGS, JAR_ON_ROCK_MSGS,
@@ -19,14 +19,13 @@ import { BARE_ROCK_MSGS, ACTIVATED_ROCK_MSGS, JAR_ON_ROCK_MSGS,
 import { waitImg, coverRect, hitZone as _hitZone } from '../src/scene-base.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
-const S = SaveManager.getScene('scene2');
-S.jarPickedUp  = S.jarPickedUp  ?? false;
-S.rockStates   = S.rockStates   ?? { rock1: false, rock2: false, rock3: false };
-
-// Авто-сейв флагов сцены — вызывается после каждой мутации S, чтобы
-// прогресс не терялся при F5/reload/крэше внутри сцены (иначе состояние
-// записывается только в closeSceneScene2 и при перезагрузке откатывается).
-function _saveS() { SaveManager.setScene('scene2', S); }
+// useSceneState из src/save.js — единый паттерн state + дефолтов + saver.
+// Авто-сейв _saveS вызывается после каждой мутации S, чтобы прогресс не
+// терялся при F5/crash внутри сцены.
+const [S, _saveS] = useSceneState('scene2', {
+  jarPickedUp: false,
+  rockStates:  { rock1: false, rock2: false, rock3: false },
+});
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, canvas, ctx, msgEl;

@@ -8,7 +8,7 @@ import { CURSOR_DEF, CURSOR_PTR, setCursor }                 from '../src/ui/cur
 import { leaveMain, resumeMain } from './main.js';
 import { getSelectedItem, addItem, removeItem, makeItem, getItemSlot } from '../src/inventory.js';
 import { renderHotbar }  from '../src/hotbar.js';
-import { SaveManager }   from '../src/save.js';
+import { SaveManager, useSceneState } from '../src/save.js';
 import { AudioSystem }   from '../src/audio.js';
 import { trackZoneClick, trackSpotClick, trackFlyCaught, trackFliesReleased, trackFlyScared } from '../src/achievements.js';
 import {
@@ -20,10 +20,11 @@ import { drawPixelGlow, drawGlowTrail, drawRadialFlash } from '../src/anims.js';
 import { Particles }                                    from '../src/particles.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
-const S = SaveManager.getScene('buddha');
-S.earUsed        = S.earUsed        ?? false;
-S.wishPlaying    = S.wishPlaying    ?? false;
-S.durianPickedUp = S.durianPickedUp ?? false;
+const [S] = useSceneState('buddha', {
+  earUsed:        false,
+  wishPlaying:    false,
+  durianPickedUp: false,
+});
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, bCanvas, wishCanvas, bCtx, wCtx, bMsgEl;

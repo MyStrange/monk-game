@@ -26,7 +26,7 @@ import { showMsgIn, showChoiceIn, isStoryActive } from '../src/ui/messages.js';
 import { setCursor }                              from '../src/ui/cursor.js';
 import { leaveMain, resumeMain }          from './main.js';
 import { openScene }                      from '../src/nav.js';
-import { SaveManager }                    from '../src/save.js';
+import { SaveManager, useSceneState }     from '../src/save.js';
 import { trackZoneClick, trackDurianOnMonkHead } from '../src/achievements.js';
 import { S4_CAT_MSGS, S4_MONK_MSGS,
          S4_DURIAN_CAT_MSGS, S4_DURIAN_MONK_MSGS,
@@ -36,16 +36,17 @@ import { getSelectedItem }                from '../src/inventory.js';
 import { waitImg, coverRect, hitZone }    from '../src/scene-base.js';
 
 // ── Scene state ────────────────────────────────────────────────────────────
-const S = SaveManager.getScene('scene4');
-S.scene4Unlocked = S.scene4Unlocked ?? false;
-S.layer2Removed  = S.layer2Removed  ?? false;
-S.layer3Removed  = S.layer3Removed  ?? false;
-S.catMsgIdx      = S.catMsgIdx      ?? 0;
-S.monkMsgIdx     = S.monkMsgIdx     ?? 0;
-S.statueIdx      = S.statueIdx      ?? 0;
-S.durCatIdx      = S.durCatIdx      ?? 0;
-S.durMonkIdx     = S.durMonkIdx     ?? 0;
-S.doorEntered    = S.doorEntered    ?? false;
+const [S] = useSceneState('scene4', {
+  scene4Unlocked: false,
+  layer2Removed:  false,
+  layer3Removed:  false,
+  catMsgIdx:      0,
+  monkMsgIdx:     0,
+  statueIdx:      0,
+  durCatIdx:      0,
+  durMonkIdx:     0,
+  doorEntered:    false,
+});
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 let el, bgEl, layer2El, layer3El, msgEl, debugCv;

@@ -17,14 +17,18 @@ import { setCursor }                              from '../src/ui/cursor.js';
 import { leaveMain, resumeMain }                  from './main.js';
 import { getSelectedItem }                        from '../src/inventory.js';
 import { getZoneMsg }                             from '../src/zone-msgs.js';
-import { SaveManager }                            from '../src/save.js';
+import { SaveManager, useSceneState }             from '../src/save.js';
 import { ASSET }                                  from '../src/assets.js';
 import { waitImg, coverRect, hitZone as rectHitZone,
          buildSceneDOM, bindSceneInput }          from '../src/scene-base.js';
 
 // ── SCENE STATE (только флаги этой сцены) ─────────────────────────────────
-const S = SaveManager.getScene('SCENEID');
-// S.someFlag  ??= false;
+// Единый паттерн через useSceneState — массив [S, saveS]. Дефолты применяются
+// один раз (если ключа в save'е ещё нет). saveS — вызывай после каждой мутации.
+const [S, saveS] = useSceneState('SCENEID', {
+  // someFlag: false,
+  // anotherIdx: 0,
+});
 
 // ── DOM (заполняются в createEl через buildSceneDOM) ──────────────────────
 let el, canvas, ctx, msgEl;
